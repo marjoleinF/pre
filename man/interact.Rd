@@ -5,7 +5,8 @@
 \title{Calculate interaction statistics for user-specified variables}
 \usage{
 interact(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE,
-  col = c("yellow", "blue"), ylab = "Interaction strength", ...)
+  col = c("yellow", "blue"), ylab = "Interaction strength",
+  main = "Interaction test statistics", ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
@@ -27,6 +28,8 @@ used when plot = TRUE. Only first element of vector is used if
 \code{nullmods = NULL}.}
 
 \item{ylab}{character string. Label to be used for plotting y-axis.}
+
+\item{main}{character. Main title for the bar plot.}
 
 \item{...}{Additional arguments to be passed to \code{barplot}.}
 }
@@ -50,6 +53,6 @@ Can be computationally intensive, especially when nullmods is specified.
 \examples{
 \donttest{
  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
- interact(airq.ens, "Temp")}
+ interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
 }
 

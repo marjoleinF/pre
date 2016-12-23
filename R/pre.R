@@ -69,6 +69,9 @@
 #' when \code{learnrate} > 0.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link[glmnet]{cv.glmnet}}.
+#' @note The code for deriving rules from the nodes of trees was taken from an 
+#' internal function of the \code{partykit} package of Achim Zeileis and Torsten 
+#' Hothorn.
 #' @return an object of class \code{pre}, which is a list with many elements 
 #' @details Inputs can be continuous, ordered or factor variables. Continuous 
 #' variables
@@ -169,7 +172,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
                       maxdepth = maxdepth, mtry = mtry)
         # Collect rules from tree:
-        rules <- append(rules, unlist(partykit:::.list.rules.party(tree)))
+        rules <- append(rules, unlist(list.rules(tree)))
       }
     }
     if(learnrate > 0) {
@@ -191,7 +194,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
                         maxdepth = maxdepth, mtry = mtry)
           # Collect rules from tree:
-          rules <- append(rules, unlist(partykit:::.list.rules.party(tree)))
+          rules <- append(rules, unlist(list.rules(tree)))
           # Substract predictions from current y:
           y_learn <- y_learn - learnrate * predict(tree, newdata = data)
         }
@@ -216,7 +219,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                           weights = weights[subsample], maxdepth = maxdepth+1,  
                           offset = offset)
           # Collect rules from tree:
-          rules <- append(rules, unlist(partykit:::.list.rules.party(tree)))
+          rules <- append(rules, unlist(list.rules(tree)))
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")
@@ -358,6 +361,80 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   class(result) <- "pre"
   return(result)
 }
+
+# Internal function for transforming tree into a set of rules:
+# Taken and modified from package partykit, written by Achim Zeileis and 
+# Torsten Hothorn
+list.rules <- function (x, i = NULL, ...) 
+{
+  if (is.null(i)) 
+    i <- nodeids(x, terminal = TRUE)
+  if (length(i) > 1) {
+    ret <- sapply(i, list.rules, x = x)
+    names(ret) <- if (is.character(i)) 
+      i
+    else names(x)[i]
+    return(ret)
+  }
+  if (is.character(i) && !is.null(names(x))) 
+    i <- which(names(x) %in% i)
+  stopifnot(length(i) == 1 & is.numeric(i))
+  stopifnot(i <= length(x) & i >= 1)
+  i <- as.integer(i)
+  dat <- data_party(x, i)
+  if (!is.null(x$fitted)) {
+    findx <- which("(fitted)" == names(dat))[1]
+    fit <- dat[, findx:ncol(dat), drop = FALSE]
+    dat <- dat[, -(findx:ncol(dat)), drop = FALSE]
+    if (ncol(dat) == 0) 
+      dat <- x$data
+  }
+  else {
+    fit <- NULL
+    dat <- x$data
+  }
+  rule <- c()
+  recFun <- function(node) {
+    if (id_node(node) == i) 
+      return(NULL)
+    kid <- sapply(kids_node(node), id_node)
+    whichkid <- max(which(kid <= i))
+    split <- split_node(node)
+    ivar <- varid_split(split)
+    svar <- names(dat)[ivar]
+    index <- index_split(split)
+    if (is.factor(dat[, svar])) {
+      if (is.null(index)) 
+        index <- ((1:nlevels(dat[, svar])) > breaks_split(split)) + 
+          1
+      slevels <- levels(dat[, svar])[index == whichkid]
+      srule <- paste(svar, " %in% c(\"", paste(slevels, 
+                                               collapse = "\", \"", sep = ""), "\")", sep = "")
+    }
+    else {
+      if (is.null(index)) 
+        index <- 1:length(kid)
+      breaks <- cbind(c(-Inf, breaks_split(split)), c(breaks_split(split), 
+                                                      Inf))
+      sbreak <- breaks[index == whichkid, ]
+      right <- right_split(split)
+      srule <- c()
+      if (is.finite(sbreak[1])) 
+        srule <- c(srule, paste(svar, ifelse(right, ">", 
+                                             ">="), sbreak[1]))
+      if (is.finite(sbreak[2])) 
+        srule <- c(srule, paste(svar, ifelse(right, "<=", 
+                                             "<"), sbreak[2]))
+      srule <- paste(srule, collapse = " & ")
+    }
+    rule <<- c(rule, srule)
+    return(recFun(node[[whichkid]]))
+  }
+  node <- recFun(node_party(x))
+  paste(rule, collapse = " & ")
+}
+
+
 
 
 
@@ -730,16 +807,25 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' minimum, maximum, and nvals - 2 intermediate values of the predictor variable 
 #' will be plotted. Furthermore, if none of the variables specified appears in 
 #' the final prediction rule ensemble, an error will occur.
+#' @note The \code{pairplot} function uses the akima package to construct
+#' interpolated surfaces and  has an ACM license that restricts applications 
+#' to non-commercial usage, see 
+#' \url{https://www.acm.org/publications/policies/software-copyright-notice}
+#' The \code{pairplot} function prints a note refering to this ACM licence.
 #' @examples \donttest{
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
-#' @import graphics akima
+#' @import graphics
 pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45, 
                      theta = 315, col = "cyan", nvals = c(20, 20), ticktype = "detailed",
                      nticks = max(nvals), type = "response", ...) 
 {
   # preliminaries:
+  if(!("akima" %in% installed.packages()[,1])) {
+    stop("Function pairplot requires package akima. Download and install package 
+         akima from CRAN, and run again.")    
+  }
   if(length(varnames) != 2) {
     stop("Partial dependence should be requested for 2 variables.")
   }
@@ -778,26 +864,8 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
   persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y", 
         phi = phi, theta = theta, col = col, ticktype = ticktype, 
         nticks = nticks, ...)
-  
-  # to be implemented:
-  # type = flag for type of plot when both var1 and var2 are numeric
-  # type = "image" => heat map plot
-  # type = "persp" => perspective mesh plot
-  # type = "contour" => contour plot
-  # chgvars = flag for changing plotting relationship when both var1 and var2 are categorical (factors)
-  # chgvars = FALSE => plot the partial dependence on the variable (factor) with the most values (levels), for each of the  respective values (levels) of the other variable (factor)
-  # chgvars = TRUE => reverse this relationship
-  # qntl = trimming factor for plotting numeric variables. Plots are shown for variable values in the range [quantile (qntl) - quantile(1-qntl)]. (Ignored for categorical variables (factors).)
-  # nval = maximum number of evaluation points for numeric variables. (Ignored for categorical variables).
-  # nav = maximum number of observations used for averaging calculations. (larger values provide higher accuracy with a diminishing return; computation grows linearly with nav)
-  # vals1 = vector of names for values (levels) of var1 if it is categorical (factor). (Ignored if var1 is numeric)
-  # vals2 = vector of names for values (levels) of var2 if it is categorical (factor). (Ignored if var2 is numeric) 
-  # horiz = plot orientation for categorical variable barplots
-  # horiz = T/F => do/don't plot bars horizontally
-  # las = label orientation flag for categorical variable plots (horiz = F, only)
-  # las =1 => horizontal orientation of value (level) names stored in vals1 and/or vals2 (if present).
-  # las =2 => vertical orientation of value (level) names stored in vals1 and/or vals2 (if present).
-  # cex.names = expansion factor for axis names (bar labels)  for categorical variable barplots 
+  cat("NOTE: function pairplot uses package 'akima', which has an ACM license.
+    See also https://www.acm.org/publications/policies/software-copyright-notice.")
 }
 
 
@@ -827,8 +895,8 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' @param col character string. Plotting color to be used for bars in barplot.
 #' @param round integer. Number of decimal places to round numeric results to.
 #' If NA (default), no rounding is performed.
-#' @param ... further arguments to be passed to \code{\link[graphics]{barplot}} 
-#' (only used when \code{plot = TRUE}).
+#' @param ... further arguments to be passed to \code{barplot} (only used 
+#' when \code{plot = TRUE}).
 #' @return A list with two dataframes: $baseimps, giving the importances for 
 #' baselearners in the ensemble, and $varimps, giving the importances for 
 #' variables that appear and do not appear in the ensemble.
@@ -1074,11 +1142,12 @@ Hsquaredj <- function(object, varname, k = 10) {
 #' used when plot = TRUE. Only first element of vector is used if 
 #' \code{nullmods = NULL}.
 #' @param ylab character string. Label to be used for plotting y-axis.
+#' @param main character. Main title for the bar plot.
 #' @param ... Additional arguments to be passed to \code{barplot}.
 #' @examples 
 #' \donttest{
 #'  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
-#'  interact(airq.ens, "Temp")}
+#'  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
 #' @details Can be computationally intensive, especially when nullmods is specified.
 #' @return If nullmods is not specified, the function returns the interaction 
 #' test statistic. If nullmods is specified, the function returns a list, 
@@ -1090,7 +1159,7 @@ Hsquaredj <- function(object, varname, k = 10) {
 #' @export
 interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE, 
                      col = c("yellow", "blue"), ylab = "Interaction strength", 
-                     ...)
+                     main = "Interaction test statistics", ...)
 {
   if(is.null(varnames)) {
     varnames <- as.character(importance(object, plot = FALSE)$varimps$varname)
@@ -1118,7 +1187,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
   if(is.null(nullmods)) {
     if(plot) {
       names(H) <- varnames # object$x_names
-      barplot(H, col = col[1], ...)
+      barplot(H, col = col[1], main = main, ...)
     }
     return(data.frame(varnames = varnames, trainingH2 = H))
   }
@@ -1130,7 +1199,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
       }
       H2s <- matrix(c(H, nullmeans), nrow = 2, byrow = T)
       colnames(H2s) <- varnames
-      barplot(H2s, col = col, ylab = ylab, ...)
+      barplot(H2s, col = col, ylab = ylab, main = main, ...)
     }
     return(list(trainingH2 = H, nullH2 = nullH))
   }  

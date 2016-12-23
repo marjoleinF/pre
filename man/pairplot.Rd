@@ -62,6 +62,13 @@ minimum, maximum, and nvals - 2 intermediate values of the predictor variable
 will be plotted. Furthermore, if none of the variables specified appears in 
 the final prediction rule ensemble, an error will occur.
 }
+\note{
+The \code{pairplot} function uses the akima package to construct
+interpolated surfaces and  has an ACM license that restricts applications 
+to non-commercial usage, see 
+\url{https://www.acm.org/publications/policies/software-copyright-notice}
+The \code{pairplot} function prints a note refering to this ACM licence.
+}
 \examples{
 \donttest{
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])

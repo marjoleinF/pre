@@ -109,6 +109,11 @@ prediction of a continuous or binary outcome.
 Inputs can be continuous, ordered or factor variables. Continuous 
 variables
 }
+\note{
+The code for deriving rules from the nodes of trees was taken from an 
+internal function of the \code{partykit} package of Achim Zeileis and Torsten 
+Hothorn.
+}
 \examples{
 \donttest{
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])}

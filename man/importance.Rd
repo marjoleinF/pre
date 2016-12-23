@@ -35,8 +35,8 @@ importances calculated over the 25\% highest values of F(X).}
 \item{round}{integer. Number of decimal places to round numeric results to.
 If NA (default), no rounding is performed.}
 
-\item{...}{further arguments to be passed to \code{\link[graphics]{barplot}} 
-(only used when \code{plot = TRUE}).}
+\item{...}{further arguments to be passed to \code{barplot} (only used 
+when \code{plot = TRUE}).}
 }
 \value{
 A list with two dataframes: $baseimps, giving the importances for 
