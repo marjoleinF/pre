@@ -7,12 +7,12 @@ Maintainer: Marjolein Fokkema <m.fokkema@fsw.leidenuniv.nl>
 Description: Derives prediction rule ensembles (PREs). Largely follows the 
   procedure for deriving PREs as described in Friedman & Popescu (2008; 
   <DOI:10.1214/07-AOAS148>), with several adjustments and improvements. The 
-  main function pre derives a prediction rule ensemble. Functions coef and 
-  importance can be used to inspect the generated ensemble. Function predict 
-  generates predicted values. Singeplot and pairplot depict dependence of the 
-  output on specified predictor variables. Function cvpre performs full cross 
-  validation of a pre to calculates the expected prediction error. Functions 
-  interact and bsnullinteract can be used to assess interaction effects of 
+  main function pre() derives a prediction rule ensemble. Functions coef() and 
+  importance() can be used to inspect the generated ensemble. Function predict() 
+  generates predicted values. Singeplot() and pairplot() depict dependence of the 
+  output on specified predictor variables. Function cvpre() performs full cross 
+  validation of a pre to calculate the expected prediction error. Functions 
+  interact() and bsnullinteract() can be used to assess interaction effects of 
   predictor variables.
 Depends: R (>= 3.3.0), partykit, glmnet, MatrixModels, Formula, methods, graphics
 Suggests: akima
