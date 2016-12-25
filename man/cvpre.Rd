@@ -4,7 +4,8 @@
 \alias{cvpre}
 \title{Full k-fold cross validation of a pre}
 \usage{
-cvpre(object, k = 10, seed = 42, verbose = TRUE, pclass = 0.5)
+cvpre(object, k = 10, seed = 42, verbose = TRUE, pclass = 0.5,
+  penalty.par.val = "lambda.1se")
 }
 \arguments{
 \item{object}{An object of class \code{\link{pre}}.}
@@ -19,6 +20,11 @@ to the command line?}
 
 \item{pclass}{numeric. Only used for classification. Cut-off value between 
 0 and 1 to be used for classifying to second class.}
+
+\item{penalty.par.val}{character. Calculate cross-validated error for ensembles 
+with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
+or giving cv error that is within 1 standard error of minimum cv error 
+("\code{lambda.1se}")?}
 }
 \value{
 A list with three elements: cvpreds (a vector with cross-validated

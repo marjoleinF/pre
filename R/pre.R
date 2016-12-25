@@ -76,7 +76,7 @@
 #' @details Inputs can be continuous, ordered or factor variables. Continuous 
 #' variables
 #' @examples \donttest{
-#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])}
+#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 #' @import glmnet partykit datasets
 #' @export
 pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data)), 
@@ -84,7 +84,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                  removeduplicates = TRUE, maxrules = 2000, mtry = Inf, 
                  thres = 1e-07, standardize = FALSE, winsfrac = .025, 
                  normalize = TRUE, nfolds = 10, mod.sel.crit = "deviance", 
-                 verbose = TRUE, ctreecontrol = ctree_control(),
+                 verbose = FALSE, ctreecontrol = ctree_control(),
                  ...)   
 {
   ###################
@@ -109,7 +109,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   set.seed(seed)
   data <- model.frame(formula, data, na.action = NULL)
   x_names <- attr(attr(data, "terms"), "term.labels")
-  y_name <- names(data)[!names(data)%in%x_names]
+  y_name <- names(data)[attr(attr(data, "terms"), "response")]
   if(is.factor(data[,y_name])) {
     classify <- TRUE
   } else {
@@ -362,6 +362,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   return(result)
 }
 
+
+
 # Internal function for transforming tree into a set of rules:
 # Taken and modified from package partykit, written by Achim Zeileis and 
 # Torsten Hothorn
@@ -435,6 +437,45 @@ list.rules <- function (x, i = NULL, ...)
 }
 
 
+#' Print method for objects of class pre
+#'
+#' \code{print.pre} prints information about the generated prediction rule 
+#' ensemble to the command line
+#' 
+#' @param x An object of class \code{\link{pre}}.
+#' @param penalty.par.val character. Information for which final prediction rule
+#' ensemble(s) should be printed? The ensemble with penalty parameter criterion 
+#' yielding minimum cv error (\code{"lambda.min"}) and/or penalty parameter 
+#' yielding error within 1 standard error of minimum cv error ("\code{lambda.1se}")?
+#' @param ... Additional arguments, currently not used.
+#' @return Prints information about the generated prediction rule ensembles, 
+#' @examples \donttest{
+#' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+#' coefs <- print(airq.ens)}
+#' @export
+#' @method print pre
+print.pre <- function(x, penalty.par.val = c("lambda.1se", "lambda.min"), 
+                      ...) {
+  if("lambda.1se" %in% penalty.par.val) {
+    l1se_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.1se)
+    cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
+      x$glmnet.fit$lambda[l1se_ind],  "\n  number of terms = ", 
+      x$glmnet.fit$nzero[l1se_ind], "\n  mean cv error (se) = ", 
+      x$glmnet.fit$cvm[l1se_ind], 
+      " (", x$glmnet.fit$cvsd[l1se_ind], ") \n\n", sep="")
+    tmp <- coef(x, penalty.par.val = "lambda.1se", print = TRUE)
+  }
+  if("lambda.min" %in% penalty.par.val) {
+    lmin_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
+    cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
+      x$glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
+      x$glmnet.fit$nzero[lmin_ind], "\n  mean cv error (se) = ", 
+      x$glmnet.fit$cvm[lmin_ind], 
+      " (", x$glmnet.fit$cvsd[lmin_ind], ") \n\n", sep = "")
+    tmp <- coef(x, penalty.par.val = "lambda.min", print = TRUE)
+  }
+}
+
 
 
 
@@ -451,6 +492,10 @@ list.rules <- function (x, i = NULL, ...)
 #' to the command line?
 #' @param pclass numeric. Only used for classification. Cut-off value between 
 #' 0 and 1 to be used for classifying to second class. 
+#' @param penalty.par.val character. Calculate cross-validated error for ensembles 
+#' with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
+#' or giving cv error that is within 1 standard error of minimum cv error 
+#' ("\code{lambda.1se}")?
 #' @return A list with three elements: cvpreds (a vector with cross-validated
 #' predicted y values), ss (a vector indicating the cross-validation subsample 
 #' each training observation was assigned to) and accuracy. For continuous 
@@ -465,7 +510,8 @@ list.rules <- function (x, i = NULL, ...)
 #' @examples \donttest{
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' airq.cv <- cvpre(airq.ens)}
-cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5) {
+cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5, 
+                  penalty.par.val = "lambda.1se") {
   set.seed(seed)
   ss <- sample(rep(1:k, length.out = nrow(object$data)), size = nrow(object$data), replace = FALSE)
   #ss <- sample(1:k, size = nrow(object$data), replace = TRUE)   
@@ -476,7 +522,7 @@ cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5) {
   }
   for (i in 1:k){
     if(verbose) {
-      cat(i, "of", k, ",")
+      cat(i, " of ", k, ", ", sep = "")
     }
     cl <- object$call
     cl$verbose <- FALSE
@@ -484,12 +530,13 @@ cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5) {
     cvobject[[i]] <- eval(cl)
     if(object$classify) {
       cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$data[ss==i,], 
-                                     type = "response")
+                                     type = "response", penalty.par.val = penalty.par.val)
     } else {
-        cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$data[ss==i,])
+        cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$data[ss==i,], 
+                                      penalty.par.val = penalty.par.val)
     }
     if(verbose & i==k) {
-      cat(" done!\n")
+      cat("done!\n")
     }
   }
   accuracy <- list()
@@ -536,7 +583,7 @@ cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5) {
 #' coefs <- coef(airq.ens)}
 #' @export
 #' @method coef pre
-coef.pre <- function(object, penalty.par.val = "lambda.1se", print = TRUE, ...)
+coef.pre <- function(object, penalty.par.val = "lambda.1se", print = FALSE, ...)
 {
   coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
               Class = "matrix")
@@ -552,7 +599,8 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", print = TRUE, ...)
   if(print) {
     nonzerocoefs <- coefs[coefs$coefficient != 0,]
     nonzerocoefs$coefficient <- round(nonzerocoefs$coefficient, digits = 4)
-    print(nonzerocoefs[order(abs(nonzerocoefs$coefficient), decreasing = TRUE),])
+    print(nonzerocoefs[order(abs(nonzerocoefs$coefficient), decreasing = TRUE),], 
+          row.names = FALSE)
   }
   return(coefs[order(abs(coefs$coefficient), decreasing = TRUE),])
 }

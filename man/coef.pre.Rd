@@ -4,7 +4,7 @@
 \alias{coef.pre}
 \title{Coefficients for the final prediction rule ensemble}
 \usage{
-\method{coef}{pre}(object, penalty.par.val = "lambda.1se", print = TRUE,
+\method{coef}{pre}(object, penalty.par.val = "lambda.1se", print = FALSE,
   ...)
 }
 \arguments{

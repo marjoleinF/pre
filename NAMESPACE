@@ -1,5 +1,6 @@
 S3method(coef,pre)
 S3method(predict,pre)
+S3method(print,pre)
 export(bsnullinteract)
 export(cvpre)
 export(importance)

@@ -8,7 +8,7 @@ pre(formula, data, type = "both", weights = rep(1, times = nrow(data)),
   sampfrac = 0.5, seed = 42, maxdepth = 3, learnrate = 0.01,
   removeduplicates = TRUE, maxrules = 2000, mtry = Inf, thres = 1e-07,
   standardize = FALSE, winsfrac = 0.025, normalize = TRUE, nfolds = 10,
-  mod.sel.crit = "deviance", verbose = TRUE,
+  mod.sel.crit = "deviance", verbose = FALSE,
   ctreecontrol = ctree_control(), ...)
 }
 \arguments{
@@ -116,6 +116,6 @@ Hothorn.
 }
 \examples{
 \donttest{
-airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])}
+airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 }
 
