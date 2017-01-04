@@ -35,8 +35,10 @@ object is used.
 }
 \examples{
 \donttest{
-airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
-predict(airq.ens, newdata = airquality[complete.cases(airquality),])
-predict(airq.ens)}
+set.seed(42)
+train <- sample(1:length(complete.cases(airquality)), size = 120)
+airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,])
+predict(airq.ens)
+predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}
 }
 

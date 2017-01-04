@@ -35,7 +35,10 @@
 #' @param maxdepth numeric. Maximal depth of trees to be grown. Defaults to 3,
 #' resulting in trees with max 15 nodes (8 terminal and 7 inner nodes), and 
 #' therefore max 15 rules.
-#' @param learnrate numeric. Learning rate for sequentially induced trees.
+#' @param learnrate numeric. Learning rate for sequentially induced trees. If 
+#' not specified (default), the learnrate is set to .01 for regression and to 0 
+#' for classification. Setting the learning rate to values > 0 for classification 
+#' dramatically increases computation time.
 #' @param removeduplicates logical. Remove rules from the ensemble which have 
 #' the exact same support in training data?
 #' @param maxrules numeric. Approximate maximum number of rules to be generated. 
@@ -65,7 +68,7 @@
 #' @param verbose logical. Should information on the initial and final ensemble 
 #' be printed to the command line?
 #' @param ctreecontrol A list with control parameters, see 
-#' \code{link[partykit]{ctree_control}}. Ignored for nominal output variables 
+#' \code{\link[partykit]{ctree_control}}. Ignored for nominal output variables 
 #' when \code{learnrate} > 0.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link[glmnet]{cv.glmnet}}.
@@ -80,7 +83,7 @@
 #' @import glmnet partykit datasets
 #' @export
 pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data)), 
-                 sampfrac = .5, seed = 42, maxdepth = 3, learnrate = 0.01, 
+                 sampfrac = .5, seed = 42, maxdepth = 3, learnrate = NULL, 
                  removeduplicates = TRUE, maxrules = 2000, mtry = Inf, 
                  thres = 1e-07, standardize = FALSE, winsfrac = .025, 
                  normalize = TRUE, nfolds = 10, mod.sel.crit = "deviance", 
@@ -91,55 +94,65 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   ## Preliminaries ##
   ###################
   
-  if(!is.data.frame(data)) {
+  if (!is.data.frame(data)) {
     stop("data should be a data frame.")
   }
-  if(length(sampfrac) != 1 || sampfrac < 0.01 || sampfrac > 1) {
+  if (length(sampfrac) != 1 || sampfrac < 0.01 || sampfrac > 1) {
     stop("Bad value for 'sampfrac'")
   }
-  if(length(type) != 1 || (type != "rules" & type != "both" & type != "linear")) {
+  if (length(type) != 1 || (type != "rules" & type != "both" & type != "linear")) {
     stop("Argument type should equal 'both', 'rules' or 'linear'")
   }
-  if(length(winsfrac) != 1 || winsfrac < 0 || winsfrac > 0.5) {
+  if (length(winsfrac) != 1 || winsfrac < 0 || winsfrac > 0.5) {
     stop("Bad value for 'winsfrac'.")
   }
-  if(!is.logical(verbose)) {
+  if (!is.logical(verbose)) {
     stop("Bad value for 'verbose'.")
   }  
   set.seed(seed)
-  data <- model.frame(formula, data, na.action = NULL)
-  x_names <- attr(attr(data, "terms"), "term.labels")
-  y_name <- names(data)[attr(attr(data, "terms"), "response")]
-  if(is.factor(data[,y_name])) {
+
+  tmp_terms <- terms(formula, data = data)
+  y_name <- all.vars(tmp_terms)[[attr(tmp_terms, "response")]]
+  x_names <- attr(tmp_terms, "term.labels")
+  # data <- model.frame(formula, data, na.action = NULL)
+  # x_names <- attr(attr(data, "terms"), "term.labels")
+  # y_name <- names(data)[attr(attr(data, "terms"), "response")]
+  n <- nrow(data)
+  if (is.factor(data[,y_name]) || grepl("factor", formula[[2]][1])) {
     classify <- TRUE
+    if (is.null(learnrate)) {
+      learnrate <- 0
+    }
   } else {
     classify <- FALSE
+    if (is.null(learnrate)) {
+      learnrate <- .01
+    }
   }
-  n <- nrow(data)
-  if(!(is.numeric(data[,y_name]) | is.factor(data[,y_name]))) {
-    stop("Output variable should be continuous (class numeric) or binary (class 
+  if (!(is.numeric(data[,y_name]) | is.factor(data[,y_name]))) {
+    stop("Response variable should be continuous (class numeric) or binary (class 
          factor)")
   }
-  if(nlevels(data[,y_name]) > 2) {
+  if (nlevels(data[,y_name]) > 2) {
     stop("No support for multinomial output variables yet.")
   }
-  if(any(sapply(data[,x_names], is.character))) {
+  if (any(sapply(data[,x_names], is.character))) {
     stop("Variables specified in formula and data argument are of class character. 
          Please coerce to class 'numeric', 'factor' or 'ordered' 'factor':", 
          x_names[sapply(data[,x_names], is.character)])
   }
-  if(classify & learnrate != 0 & !is.infinite(mtry)) {
+  if (classify & learnrate != 0 & !is.infinite(mtry)) {
     warning("Value specified for mtry will not be used when the outcome variable
             is binary and learnrate > 0")
   }
-  if(any(is.na(data))) {
+  if (any(is.na(data))) {
     data <- data[complete.cases(data),]
     n <- nrow(data)
     warning("Some observations have missing values and will be removed. 
             New sample size is ", n, ".\n", immediate. = TRUE)
   }
-  if(verbose) {
-    if(classify) {
+  if (verbose) {
+    if (classify) {
       cat("A rule ensemble for prediction of a binary output variable will be 
           created.\n")
     } else {
@@ -152,15 +165,15 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   ## Derive prediction rules ##
   #############################
   
-  if(type != "linear") {
+  if (type != "linear") {
     rules <- vector()
     treecount <- 0
     # If learning rate = 0, always use ctree():
-    if(learnrate == 0) {
+    if (learnrate == 0) {
       while(length(rules) <= maxrules) {
         # Take subsample of dataset
         treecount <- treecount + 1
-        if(sampfrac == 1) { # then bootstrap
+        if (sampfrac == 1) { # then bootstrap
           subsample <- sample(1:n, size = n, replace = TRUE)
         } else { # else subsample
           subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
@@ -175,13 +188,13 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         rules <- append(rules, unlist(list.rules(tree)))
       }
     }
-    if(learnrate > 0) {
-      if(!classify) {
+    if (learnrate > 0) {
+      if (!classify) {
         y_learn <- data[,y_name]
         while(length(rules) <= maxrules) {
           # Take subsample of dataset
           treecount <- treecount + 1
-          if(sampfrac == 1) { # then bootstrap
+          if (sampfrac == 1) { # then bootstrap
             subsample <- sample(1:n, size = n, replace = TRUE)
           } else { # else subsample
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
@@ -199,12 +212,12 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           y_learn <- y_learn - learnrate * predict(tree, newdata = data)
         }
       }
-      if(classify) { # if ouput var is a factor:
+      if (classify) {
         data2 <- data.frame(data, offset = 0)
         while(length(rules) <= maxrules) {
           # Take subsample of dataset:
           treecount <- treecount + 1
-          if(sampfrac == 1) { # then bootstrap:
+          if (sampfrac == 1) { # then bootstrap:
             subsample <- sample(1:n, size = n, replace = TRUE)
           } else { # else subsample:
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
@@ -227,32 +240,32 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       } 
     }
     nrules <- length(rules)
-    if(verbose){
+    if (verbose){
       cat("\nA total of", treecount, "trees were grown, and a total of", nrules, 
           "rules were generated initially.")
     }
     # Keep unique, non-empty rules only:
     rules <- unique(rules[!rules==""])
-    if(verbose) {
+    if (verbose) {
       cat("\n\nA total of", nrules - length(rules), "rules were duplicate or empty
             rules and removed from the initial ensemble.")
     }
     # Create dataframe with 0-1 coded rules:
-    if(length(rules)>0) {
+    if (length(rules)>0) {
       rulevars <- data.frame(
         rule1 = as.numeric(with(data, eval(parse(text = rules[[1]])))))
       for(i in 2:length(rules)) {
         rulevars[,paste("rule", i, sep="")] <- as.numeric(
           with(data, eval(parse(text = rules[[i]]))))
       }
-      if(removeduplicates) {
+      if (removeduplicates) {
         # Remove rules with identical support:
         duplicates <- duplicated(t(rulevars))
         duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
                                          description = rules[duplicates])
         rulevars <- rulevars[,!duplicates]
         rules <- rules[!duplicates]
-        if(verbose) {
+        if (verbose) {
           cat("\n\nA total of", sum(duplicates), "generated rules had 
               support identical to earlier rules and were removed from the initial 
               ensemble ($duplicates.removed shows which, if any).")
@@ -260,13 +273,13 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       } else {
         duplicates.removed <- NULL
       }
-      if(verbose) {
+      if (verbose) {
         cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was 
             succesfully created.")  
       }
     }
   }
-  if(length(rules)==0) {
+  if (length(rules)==0) {
     type <- "linear"
     warning("No prediction rules could be derived from dataset. Final ensemble 
             will include linear terms only, type will be set to 'linear'.")
@@ -281,14 +294,14 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   # convert ordered categorical predictor variables to linear terms:
   x[,sapply(x, is.ordered)] <- as.numeric(as.character(x[,sapply(x, is.ordered)]))
 
-  if(type == "rules") {
+  if (type == "rules") {
     x <- rulevars
     x_scales <- NULL
   } else { # if type is not rules, linear terms should be prepared:
     # Winsorize numeric variables (section 5 of F&P(2008)):
-    if(winsfrac > 0) {
+    if (winsfrac > 0) {
       for(i in 1:ncol(x)) {
-        if(is.numeric(x[,i])) { 
+        if (is.numeric(x[,i])) { 
           lim <- quantile(x[,i], probs = c(winsfrac, 1-winsfrac))
           x[x[,i] < lim[1],i] <- lim[1]
           x[x[,i] > lim[2],i] <- lim[2]
@@ -296,9 +309,9 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       }
     }
     # normalize numeric variables:
-    if(normalize) { 
+    if (normalize) { 
       # Normalize linear terms (section 5 of F&P08), if there are any:
-      if(sum(sapply(x, is.numeric)) > 0) {
+      if (sum(sapply(x, is.numeric)) > 0) {
         x_scales <- sapply(x[,sapply(x, is.numeric)], sd, na.rm = TRUE)/0.4
         x[,sapply(x, is.numeric)] <- scale(x[,sapply(x, is.numeric)], 
                                            center = FALSE, scale = x_scales)
@@ -309,20 +322,23 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       x_scales <- NULL
     } 
     # If both rules and linear terms are in ensemble, combine both:
-    if(type == "both") {
+    if (type == "both") {
       x <- data.frame(x, rulevars)
     }
   }
   modmat.formula <- formula(
     paste(paste(y_name, " ~ -1 +"), paste(colnames(x), collapse = "+")))
   x <- model.matrix(modmat.formula, data = data.frame(data[y_name], x))
-  y <- data[,y_name]
-  
+  #if (classify) {
+  #  y <- factor(data[,y_name])
+  #} else {
+    y <- data[,y_name]
+  #}
   ##################################################
   ## Perform penalized regression on the ensemble ##
   ##################################################
   
-  if(classify) {
+  if (classify) {
     family <- "binomial"
   } else {
     family <- "gaussian"
@@ -338,7 +354,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   
   lmin_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.min)
   l1se_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.1se)
-  if(verbose) {
+  if (verbose) {
     cat("\n\nFinal ensemble with minimum cv error: \n  lambda = ", 
         glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
         glmnet.fit$nzero[lmin_ind], "\n  mean cv error (se) = ", 
@@ -353,7 +369,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                  type = type, x_names = x_names, y_name = y_name, 
                  winsfrac = winsfrac, modmat = x, classify = classify, 
                  modmat.formula = modmat.formula)
-  if(type != "linear") {
+  if (type != "linear") {
     result$duplicates.removed <- duplicates.removed
     result$rules <- data.frame(rule = names(rulevars), description = rules)
     result$rulevars <- rulevars 
@@ -456,7 +472,7 @@ list.rules <- function (x, i = NULL, ...)
 #' @method print pre
 print.pre <- function(x, penalty.par.val = c("lambda.1se", "lambda.min"), 
                       ...) {
-  if("lambda.1se" %in% penalty.par.val) {
+  if ("lambda.1se" %in% penalty.par.val) {
     l1se_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.1se)
     cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
       x$glmnet.fit$lambda[l1se_ind],  "\n  number of terms = ", 
@@ -465,7 +481,7 @@ print.pre <- function(x, penalty.par.val = c("lambda.1se", "lambda.min"),
       " (", x$glmnet.fit$cvsd[l1se_ind], ") \n\n", sep="")
     tmp <- coef(x, penalty.par.val = "lambda.1se", print = TRUE)
   }
-  if("lambda.min" %in% penalty.par.val) {
+  if ("lambda.min" %in% penalty.par.val) {
     lmin_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
     cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
       x$glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
@@ -496,16 +512,16 @@ print.pre <- function(x, penalty.par.val = c("lambda.1se", "lambda.min"),
 #' with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
 #' or giving cv error that is within 1 standard error of minimum cv error 
 #' ("\code{lambda.1se}")?
-#' @return A list with three elements: cvpreds (a vector with cross-validated
-#' predicted y values), ss (a vector indicating the cross-validation subsample 
-#' each training observation was assigned to) and accuracy. For continuous 
-#' outputs, accuracy is a list with elements MSE (mean squared error on test 
-#' observations), MAE (mean absolute error on test observations) and 
-#' cor_true_pred_y, which is the correlation between the actual and predicted 
+#' @return A list with three elements: \code{$cvpreds} (a vector with cross-validated
+#' predicted y values), \code{$ss} (a vector indicating the cross-validation subsample 
+#' each training observation was assigned to) and \code{$accuracy}. For continuous 
+#' outputs, accuracy is a list with elements \code{$MSE} (mean squared error on test 
+#' observations), \code{$MAE} (mean absolute error on test observations) and 
+#' \code{$cor_true_pred_y}, which is the correlation between the actual and predicted 
 #' outcome variable values. For classification, accuracy is a list with elements 
-#' SEL (mean squared error on predicted probabilities), AEL (mean absolute 
-#' error on predicted probabilities), MCR (average misclassification error rate) 
-#' and table (a table with proportions of (in)correctly classified observations 
+#' \code{$SEL} (mean squared error on predicted probabilities), \code{$AEL} (mean absolute 
+#' error on predicted probabilities), \code{$MCR} (average misclassification error rate) 
+#' and \code{$table} (table with proportions of (in)correctly classified observations 
 #' per class).
 #' @examples \donttest{
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
@@ -513,34 +529,34 @@ print.pre <- function(x, penalty.par.val = c("lambda.1se", "lambda.min"),
 cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5, 
                   penalty.par.val = "lambda.1se") {
   set.seed(seed)
-  ss <- sample(rep(1:k, length.out = nrow(object$data)), size = nrow(object$data), replace = FALSE)
-  #ss <- sample(1:k, size = nrow(object$data), replace = TRUE)   
+  ss <- sample(rep(1:k, length.out = nrow(object$data)), 
+               size = nrow(object$data), replace = FALSE)
   cvobject <- list()
   cvpreds <- rep(NA, times = nrow(object$data))
-  if(verbose) {
+  if (verbose) {
     cat("Running cross validation in fold ")
   }
   for (i in 1:k){
-    if(verbose) {
+    if (verbose) {
       cat(i, " of ", k, ", ", sep = "")
     }
     cl <- object$call
     cl$verbose <- FALSE
     cl$data <- object$data[ss!=i,]
     cvobject[[i]] <- eval(cl)
-    if(object$classify) {
+    if (object$classify) {
       cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$data[ss==i,], 
                                      type = "response", penalty.par.val = penalty.par.val)
     } else {
         cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$data[ss==i,], 
                                       penalty.par.val = penalty.par.val)
     }
-    if(verbose & i==k) {
+    if (verbose & i==k) {
       cat("done!\n")
     }
   }
   accuracy <- list()
-  if(object$classify) {
+  if (object$classify) {
     accuracy$SEL<- mean((as.numeric(object$data[,object$y_name]) - 1 - cvpreds)^2)
     accuracy$AEL <- mean(abs(as.numeric(object$data[,object$y_name]) - 1 - cvpreds))
     cvpredsd <- as.numeric(cvpreds > .5)
@@ -588,15 +604,15 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", print = FALSE, ...)
   coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
               Class = "matrix")
   # coefficients for normalized variables should be unnormalized: 
-  if(object$normalize & !is.null(object$x_scales) & object$type != "rules") {
+  if (object$normalize & !is.null(object$x_scales) & object$type != "rules") {
     coefs[names(object$x_scales),] <- coefs[names(object$x_scales),] /
       object$x_scales
   }
   coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs))
-  if(object$type != "linear") {
+  if (object$type != "linear") {
     coefs <- merge(coefs, object$rules, all.x=T)
   }
-  if(print) {
+  if (print) {
     nonzerocoefs <- coefs[coefs$coefficient != 0,]
     nonzerocoefs$coefficient <- round(nonzerocoefs$coefficient, digits = 4)
     print(nonzerocoefs[order(abs(nonzerocoefs$coefficient), decreasing = TRUE),], 
@@ -629,23 +645,25 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", print = FALSE, ...)
 #' @details When newdata is not provided, training data included in the specified 
 #' object is used.
 #' @examples \donttest{
-#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
-#' predict(airq.ens, newdata = airquality[complete.cases(airquality),])
-#' predict(airq.ens)}
+#' set.seed(42)
+#' train <- sample(1:length(complete.cases(airquality)), size = 120)
+#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,])
+#' predict(airq.ens)
+#' predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}
 #' @import Matrix
 #' @export
 #' @method predict pre 
 predict.pre <- function(object, newdata = NULL, type = "link", 
                          penalty.par.val = "lambda.1se", ...)
 {
-  if(is.null(newdata)) {
+  if (is.null(newdata)) {
     newdata <- object$modmat
   } else {
-    if(!is.data.frame(newdata)) {
+    if (!is.data.frame(newdata)) {
       stop("newdata should be a data frame.")
     }
     # check if newdata has the same columns as object$data:
-    if(!all(names(object$data) %in% c(names(newdata), object$y_name))) {
+    if (!all(names(object$data) %in% c(names(newdata), object$y_name))) {
       stop("newdata does not contain all predictor variables from the ensemble")
     } else {
       # take all input variables:
@@ -654,7 +672,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       newdata[,object$y_name] <- object$data[,object$y_name][1]
       newdata <- model.frame(object$call$formula, newdata)
       # check if all variables have the same levels: 
-      if(!all(unlist(sapply(object$data, levels)) == 
+      if (!all(unlist(sapply(object$data, levels)) == 
               unlist(sapply(newdata[names(object$data)], levels)))) {
         stop("At least one variable in newdata has different levels than the 
              variables used to create the ensemble")
@@ -663,30 +681,30 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val), 
                 Class = "matrix")
     # if there are rules in the ensemble, they should be evaluated:
-    if(object$type != "linear") {
+    if (object$type != "linear") {
       # get names of rules with nonzero and zero coefficients:
       nonzerorulenames <- names(coefs[coefs!=0,])[grep("rule", names(coefs[coefs!=0,]))]
       zerorulenames <- names(coefs[coefs==0,])[grep("rule", names(coefs[coefs==0,]))]
-      if(length(nonzerorulenames) > 0) {
+      if (length(nonzerorulenames) > 0) {
         nonzerorules <- as.character(
           object$rules$description[object$rules$rule %in% nonzerorulenames])
         newrulevars <- data.frame(r1 = as.numeric(with(newdata, eval(parse(
           text = nonzerorules[1])))))
         names(newrulevars) <- nonzerorulenames[1]
-        if(length(nonzerorulenames)>1) {
+        if (length(nonzerorulenames)>1) {
           for(i in 2:length(nonzerorules)) {
             newrulevars[,nonzerorulenames[i]] <- as.numeric(
               with(newdata, eval(parse(text = nonzerorules[i]))))
           }
         }
         # set all rules with zero coefficients to 0:
-        if(length(zerorulenames) > 0) {
+        if (length(zerorulenames) > 0) {
           for(i in zerorulenames) {
             newrulevars[,i] <- 0
           }
         }
       } else { # only check and assess rules with zero coefficients
-        if(length(zerorulenames) > 0) {
+        if (length(zerorulenames) > 0) {
           newrulevars <- data.frame(r1 = rep(0, times = nrow(newdata)))
           names(newrulevars) <- zerorulenames[1]
           for(i in zerorulenames[-1]) {
@@ -701,11 +719,11 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 
     # linear terms normalized before application of glmnet should also be 
     # normalized before applying predict.glmnet:
-    if(object$normalize & object$type != "rules") {
+    if (object$normalize & object$type != "rules") {
       newdata[,names(object$x_scales)] <- scale(
         newdata[,names(object$x_scales)], center = FALSE, scale = object$x_scales)
     }
-    if(object$type != "linear") {
+    if (object$type != "linear") {
       newdata <- cbind(newdata, newrulevars)
     }
     newdata <- MatrixModels::model.Matrix(object$modmat.formula, data = newdata,
@@ -761,20 +779,20 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                        nvals = NULL, type = "response") 
 {
   # preliminaries:
-  if(length(varname) != 1) {
+  if (length(varname) != 1) {
     stop("A partial dependence plot should be requested for 1 variable")
   }
-  if(!is.character(varname)) {
+  if (!is.character(varname)) {
     stop("Specified varname should be of mode character")
   }
-  if(is.factor(object$data[,varname]) & !is.null(nvals)) {
+  if (is.factor(object$data[,varname]) & !is.null(nvals)) {
     warning("Plot is requested for variable of class factor. Value specified for 
             nvars will be ignored.")
     nvals <- NULL
   }
   
   # Generate expanded dataset:
-  if(is.null(nvals)) {
+  if (is.null(nvals)) {
     newx <- unique(object$data[,varname])
   } else {
     newx <- seq(
@@ -870,21 +888,21 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
                      nticks = max(nvals), type = "response", ...) 
 {
   # preliminaries:
-  if(!("akima" %in% installed.packages()[,1])) {
+  if (!("akima" %in% installed.packages()[,1])) {
     stop("Function pairplot requires package akima. Download and install package 
          akima from CRAN, and run again.")    
   }
-  if(length(varnames) != 2) {
+  if (length(varnames) != 2) {
     stop("Partial dependence should be requested for 2 variables.")
   }
-  if(!is.character(varnames)) {
+  if (!is.character(varnames)) {
     stop("Specified varname should be of mode character.")
   }
-  if(any(sapply(object$data[,varnames], is.factor))) {
+  if (any(sapply(object$data[,varnames], is.factor))) {
     stop("3D partial dependence plots are currently not supported for factors.")
   }
   # generate expanded dataset: 
-  if(is.null(nvals)){
+  if (is.null(nvals)){
     newx1 <- unique(object$data[,varnames[1]])
     newx2 <- unique(object$data[,varnames[2]])
   } else {
@@ -906,7 +924,7 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
                             penalty.par.val = penalty.par.val)
 
   # create plot:
-  if(is.null(nvals)) nvals <- 3
+  if (is.null(nvals)) nvals <- 3
   xyz <- akima::interp(exp_dataset[,varnames[1]], exp_dataset[,varnames[2]], 
                        pred_vals, duplicate = "mean")
   persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y", 
@@ -971,19 +989,19 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     paste(as.character(coefs$rule)[is.na(coefs$description)], " ", sep = "")
   coefs <- coefs[order(coefs$rule),]
   # Get sds for every baselearner:
-  if(global) {
+  if (global) {
     sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))  
   } else {
     preds <- predict.pre(object, newdata = object$data, type = "response")
     local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) & 
                                preds <= quantile(preds, probs = quantprobs[2]),]
-    if(nrow(local_modmat) < 2) {stop("Requested range contains less than 2 
+    if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2 
                                 observations, importances cannot be calculated")}
     sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE)) 
   }
   names(sds)[1] <- "(Intercept)"
   sds <- sds[order(names(sds))]
-  if(all(names(sds) != coefs$rule)) {
+  if (all(names(sds) != coefs$rule)) {
     stop("There seems to be a problem with the ordering or size of the 
          coefficient and sd vectors. Importances cannot be calculated.")
   }
@@ -1008,7 +1026,7 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
   for(i in 1:nrow(baseimps)) {
     # If there is no "&" in rule description, there is only 1 term/variable in 
     # the base learner: 
-    if(gregexpr("&", baseimps$description)[[i]][1] == -1) {
+    if (gregexpr("&", baseimps$description)[[i]][1] == -1) {
         baseimps$nterms[i] <- 1 
     } else { # otherwise, the number of terms = the number of &-signs + 1 
       baseimps$nterms[i] <- length(gregexpr("&", baseimps$description)[[i]]) + 1
@@ -1021,7 +1039,7 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     # For every baselearner:
     for(j in 1:nrow(baseimps)) {
       # if the variable name appears in the rule:
-      if(gregexpr(paste(varimps$varname[i], " ", sep = ""), 
+      if (gregexpr(paste(varimps$varname[i], " ", sep = ""), 
                   baseimps$description[j])[[1]][1] != -1) {
         # then count the number of times it appears in the rule:
         n_occ <- length(
@@ -1038,7 +1056,7 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
   # if the variable appears several times in modframename, add those 
   # importances to the variable's importance:
   for(i in object$x_names) {
-    if(sum(i == baseimps$modframename, na.rm = TRUE) > 1) {
+    if (sum(i == baseimps$modframename, na.rm = TRUE) > 1) {
       varimps$imp[varimps$varname == i] <- sum(varimps$imp[varimps$varname == i],
                       baseimps$imp[i == baseimps$modframename], na.rm = TRUE)
     }
@@ -1049,11 +1067,11 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
   baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE),]
   varimps <- varimps[order(varimps$imp, decreasing = TRUE),]
   varimps <- varimps[varimps$imp != 0,]
-  if(plot == TRUE) {
+  if (plot == TRUE) {
     barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab, 
             main = main, col = col)
   }
-  if(!is.na(round)) {
+  if (!is.na(round)) {
     varimps[,"imp"] <- round(varimps[,"imp"], digits = round)
     baseimps[,c("imp", "coefficient", "sd")] <- round(
       baseimps[,c("imp", "coefficient", "sd")], digits = round)
@@ -1068,16 +1086,16 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 
 #' Compute boostrapped null interaction models
 #' 
-#' \code{bsnullinteract} calculates null interaction models on bootstrapped 
-#' datasets, for deriving a reference distribution of the test statistic 
-#' calculated with \code{\link{interact}}.
+#' \code{bsnullinteract} generates null interaction models from bootstrapped 
+#' datasets, which can be used to derive a reference distribution of the test 
+#' statistic calculated with \code{\link{interact}}.
 #' 
 #' @param object object of class \code{\link{pre}}.
 #' @param nsamp numeric. Number of bootstrapped null interaction models to be 
 #' derived.
 #' @param seed numeric. Random seed to be used (for reproducability).
-#' @return A list of null interaction models, to be used as input for 
-#' \code{\link{interact}}.
+#' @return A list of length \code{nsamp} with null interaction models, to be used 
+#' as input for \code{\link{interact}}.
 #' @examples \donttest{
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' nullmods <- bsnullinteract(airq.ens)}
@@ -1093,7 +1111,7 @@ bsnullinteract <- function(object, nsamp = 10, seed = 42) {
   # create call for model allowing for interactions, grown on bootstrapped 
   # datasets without interactions:
   bsintmodcall <- bsnullmodcall
-  if(is.null(object$call$maxdepth)) {
+  if (is.null(object$call$maxdepth)) {
     bsintmodcall$maxdepth <- 3
   } else {
     bsintmodcall$maxdepth <- object$call$maxdepth
@@ -1157,10 +1175,10 @@ Hsquaredj <- function(object, varname, k = 10) {
   preds_x <- scale(preds_x, center = TRUE, scale = FALSE)
   preds_xj <- scale(preds_xj, center = TRUE, scale = FALSE)
   preds_xnotj <- scale(preds_xnotj, center = TRUE, scale = FALSE)
-  if(sum(preds_x^2) > 0) {
+  if (sum(preds_x^2) > 0) {
     return(sum((preds_x - preds_xj - preds_xnotj)^2) / sum(preds_x^2))
   }
-  if(sum(preds_x^2) == 0) {
+  if (sum(preds_x^2) == 0) {
     warning("The denominator for calculating H squared was equal to zero. It was 
             set to 1e-10 to allow for calculation of H squared")
     return(sum((preds_x - preds_xj - preds_xnotj)^2) / 1e-10)
@@ -1179,15 +1197,16 @@ Hsquaredj <- function(object, varname, k = 10) {
 #' 
 #' @param object an object of class \code{\link{pre}}.
 #' @param varnames character vector. Names of variables for which interaction 
-#' statistics should be calculated.
+#' statistics should be calculated. If \code{NULL}, interaction statistics for 
+#' all predictor variables will be calculated (which may take a long time).
 #' @param k integer. Calculating interaction test statistics is a computationally 
 #' intensive, so  calculations are split up in several parts to prevent memory 
 #' allocation errors. If a memory allocation error still occurs, increase k.
 #' @param nullmods object with bootstrapped null interaction models, resulting 
 #' from application of \code{bsnullinteract}.
-#' @param plot logical Should the interaction statistics be plotted?
+#' @param plot logical Should interaction statistics be plotted?
 #' @param col character vector of length two. Color for plotting bars used. Only 
-#' used when plot = TRUE. Only first element of vector is used if 
+#' used when \code{plot = TRUE}. Only first element of vector is used if 
 #' \code{nullmods = NULL}.
 #' @param ylab character string. Label to be used for plotting y-axis.
 #' @param main character. Main title for the bar plot.
@@ -1209,10 +1228,10 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
                      col = c("yellow", "blue"), ylab = "Interaction strength", 
                      main = "Interaction test statistics", ...)
 {
-  if(is.null(varnames)) {
-    varnames <- as.character(importance(object, plot = FALSE)$varimps$varname)
+  if (is.null(varnames)) {
+    varnames <- object$x_names
   }
-  if(!all(varnames %in% object$x_names)) {
+  if (!all(varnames %in% object$x_names)) {
     stop("Interaction statistics requested for one or more unknown input variables")
   }
   cat("This will take a while (", 
@@ -1223,8 +1242,8 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
   colnames(nullH) <- varnames
   for(i in 1:length(varnames)) {
     H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k)    
-    # Calculate mean and sd of H_j for the bootstrapped null models  
-    if(!is.null(nullmods)) {
+    # Calculate mean and sd of H_j for the bootstrapped null models:  
+    if (!is.null(nullmods)) {
       for(j in 1:length(nullmods)) {
         nullH[j,i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i], 
                                 k = k)  
@@ -1232,15 +1251,12 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
     }
   }
   cat("\n")
-  if(is.null(nullmods)) {
-    if(plot) {
-      names(H) <- varnames # object$x_names
+  if (plot) {
+    if (is.null(nullmods)) {
+      names(H) <- varnames
       barplot(H, col = col[1], main = main, ...)
-    }
-    return(data.frame(varnames = varnames, trainingH2 = H))
-  }
-  if(!is.null(nullmods)) {
-    if(plot) {
+      return(data.frame(varnames = varnames, trainingH2 = H))
+    } else {
       nullmeans <- vector()
       for(i in 1:length(varnames)) {
         nullmeans[i] <- mean(nullH[,i])
@@ -1248,7 +1264,10 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
       H2s <- matrix(c(H, nullmeans), nrow = 2, byrow = T)
       colnames(H2s) <- varnames
       barplot(H2s, col = col, ylab = ylab, main = main, ...)
+      # FIX ME: Add legend to plot, depicting colors used for the generated pre 
+      # and the null models.
+      # FIX ME: bar plots should be opaque or non-overlapping
     }
-    return(list(trainingH2 = H, nullH2 = nullH))
-  }  
-}
+  }
+  return(list(trainingH2 = H, nullH2 = nullH))
+}  

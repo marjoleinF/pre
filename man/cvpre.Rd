@@ -27,16 +27,16 @@ or giving cv error that is within 1 standard error of minimum cv error
 ("\code{lambda.1se}")?}
 }
 \value{
-A list with three elements: cvpreds (a vector with cross-validated
-predicted y values), ss (a vector indicating the cross-validation subsample 
-each training observation was assigned to) and accuracy. For continuous 
-outputs, accuracy is a list with elements MSE (mean squared error on test 
-observations), MAE (mean absolute error on test observations) and 
-cor_true_pred_y, which is the correlation between the actual and predicted 
+A list with three elements: \code{$cvpreds} (a vector with cross-validated
+predicted y values), \code{$ss} (a vector indicating the cross-validation subsample 
+each training observation was assigned to) and \code{$accuracy}. For continuous 
+outputs, accuracy is a list with elements \code{$MSE} (mean squared error on test 
+observations), \code{$MAE} (mean absolute error on test observations) and 
+\code{$cor_true_pred_y}, which is the correlation between the actual and predicted 
 outcome variable values. For classification, accuracy is a list with elements 
-SEL (mean squared error on predicted probabilities), AEL (mean absolute 
-error on predicted probabilities), MCR (average misclassification error rate) 
-and table (a table with proportions of (in)correctly classified observations 
+\code{$SEL} (mean squared error on predicted probabilities), \code{$AEL} (mean absolute 
+error on predicted probabilities), \code{$MCR} (average misclassification error rate) 
+and \code{$table} (table with proportions of (in)correctly classified observations 
 per class).
 }
 \description{

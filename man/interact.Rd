@@ -12,7 +12,8 @@ interact(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE,
 \item{object}{an object of class \code{\link{pre}}.}
 
 \item{varnames}{character vector. Names of variables for which interaction 
-statistics should be calculated.}
+statistics should be calculated. If \code{NULL}, interaction statistics for 
+all predictor variables will be calculated (which may take a long time).}
 
 \item{nullmods}{object with bootstrapped null interaction models, resulting 
 from application of \code{bsnullinteract}.}
@@ -21,10 +22,10 @@ from application of \code{bsnullinteract}.}
 intensive, so  calculations are split up in several parts to prevent memory 
 allocation errors. If a memory allocation error still occurs, increase k.}
 
-\item{plot}{logical Should the interaction statistics be plotted?}
+\item{plot}{logical Should interaction statistics be plotted?}
 
 \item{col}{character vector of length two. Color for plotting bars used. Only 
-used when plot = TRUE. Only first element of vector is used if 
+used when \code{plot = TRUE}. Only first element of vector is used if 
 \code{nullmods = NULL}.}
 
 \item{ylab}{character string. Label to be used for plotting y-axis.}

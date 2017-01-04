@@ -5,7 +5,7 @@
 \title{Derive a prediction rule ensemble}
 \usage{
 pre(formula, data, type = "both", weights = rep(1, times = nrow(data)),
-  sampfrac = 0.5, seed = 42, maxdepth = 3, learnrate = 0.01,
+  sampfrac = 0.5, seed = 42, maxdepth = 3, learnrate = NULL,
   removeduplicates = TRUE, maxrules = 2000, mtry = Inf, thres = 1e-07,
   standardize = FALSE, winsfrac = 0.025, normalize = TRUE, nfolds = 10,
   mod.sel.crit = "deviance", verbose = FALSE,
@@ -51,7 +51,10 @@ bootstrap sampling.}
 resulting in trees with max 15 nodes (8 terminal and 7 inner nodes), and 
 therefore max 15 rules.}
 
-\item{learnrate}{numeric. Learning rate for sequentially induced trees.}
+\item{learnrate}{numeric. Learning rate for sequentially induced trees. If 
+not specified (default), the learnrate is set to .01 for regression and to 0 
+for classification. Setting the learning rate to values > 0 for classification 
+dramatically increases computation time.}
 
 \item{removeduplicates}{logical. Remove rules from the ensemble which have 
 the exact same support in training data?}
@@ -92,7 +95,7 @@ absolute error) measure the deviation from the fitted mean to the response.}
 be printed to the command line?}
 
 \item{ctreecontrol}{A list with control parameters, see 
-\code{link[partykit]{ctree_control}}. Ignored for nominal output variables 
+\code{\link[partykit]{ctree_control}}. Ignored for nominal output variables 
 when \code{learnrate} > 0.}
 
 \item{...}{Additional arguments to be passed to 

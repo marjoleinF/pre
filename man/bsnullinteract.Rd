@@ -15,13 +15,13 @@ derived.}
 \item{seed}{numeric. Random seed to be used (for reproducability).}
 }
 \value{
-A list of null interaction models, to be used as input for 
-\code{\link{interact}}.
+A list of length \code{nsamp} with null interaction models, to be used 
+as input for \code{\link{interact}}.
 }
 \description{
-\code{bsnullinteract} calculates null interaction models on bootstrapped 
-datasets, for deriving a reference distribution of the test statistic 
-calculated with \code{\link{interact}}.
+\code{bsnullinteract} generates null interaction models from bootstrapped 
+datasets, which can be used to derive a reference distribution of the test 
+statistic calculated with \code{\link{interact}}.
 }
 \details{
 Computationally intensive. Progress info is printed to command line.
