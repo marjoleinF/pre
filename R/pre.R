@@ -110,15 +110,12 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     stop("Bad value for 'verbose'.")
   }  
   set.seed(seed)
-
-  tmp_terms <- terms(formula, data = data)
-  y_name <- all.vars(tmp_terms)[[attr(tmp_terms, "response")]]
-  x_names <- attr(tmp_terms, "term.labels")
-  # data <- model.frame(formula, data, na.action = NULL)
-  # x_names <- attr(attr(data, "terms"), "term.labels")
-  # y_name <- names(data)[attr(attr(data, "terms"), "response")]
+  data <- model.frame(formula, data, na.action = NULL)
+  x_names <- attr(attr(data, "terms"), "term.labels")
+  y_name <- names(data)[attr(attr(data, "terms"), "response")]
+  formula <- formula(data)
   n <- nrow(data)
-  if (is.factor(data[,y_name]) || grepl("factor", formula[[2]][1])) {
+  if (is.factor(data[,y_name])) {
     classify <- TRUE
     if (is.null(learnrate)) {
       learnrate <- 0
@@ -251,7 +248,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
             rules and removed from the initial ensemble.")
     }
     # Create dataframe with 0-1 coded rules:
-    if (length(rules)>0) {
+    if (length(rules) > 0) {
       rulevars <- data.frame(
         rule1 = as.numeric(with(data, eval(parse(text = rules[[1]])))))
       for(i in 2:length(rules)) {
@@ -279,7 +276,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       }
     }
   }
-  if (length(rules)==0) {
+  if (length(rules) == 0) {
     type <- "linear"
     warning("No prediction rules could be derived from dataset. Final ensemble 
             will include linear terms only, type will be set to 'linear'.")
@@ -327,13 +324,10 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     }
   }
   modmat.formula <- formula(
-    paste(paste(y_name, " ~ -1 +"), paste(colnames(x), collapse = "+")))
-  x <- model.matrix(modmat.formula, data = data.frame(data[y_name], x))
-  #if (classify) {
-  #  y <- factor(data[,y_name])
-  #} else {
-    y <- data[,y_name]
-  #}
+    paste(" ~ -1 +", paste(colnames(x), collapse = "+")))
+  x <- model.matrix(modmat.formula, data = data.frame(x))
+  y <- data[,y_name]
+    
   ##################################################
   ## Perform penalized regression on the ensemble ##
   ##################################################
@@ -461,7 +455,7 @@ list.rules <- function (x, i = NULL, ...)
 #' @param x An object of class \code{\link{pre}}.
 #' @param penalty.par.val character. Information for which final prediction rule
 #' ensemble(s) should be printed? The ensemble with penalty parameter criterion 
-#' yielding minimum cv error (\code{"lambda.min"}) and/or penalty parameter 
+#' yielding minimum cv error (\code{"lambda.min"}) or penalty parameter 
 #' yielding error within 1 standard error of minimum cv error ("\code{lambda.1se}")?
 #' @param ... Additional arguments, currently not used.
 #' @return Prints information about the generated prediction rule ensembles, 
@@ -470,9 +464,8 @@ list.rules <- function (x, i = NULL, ...)
 #' coefs <- print(airq.ens)}
 #' @export
 #' @method print pre
-print.pre <- function(x, penalty.par.val = c("lambda.1se", "lambda.min"), 
-                      ...) {
-  if ("lambda.1se" %in% penalty.par.val) {
+print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
+  if (penalty.par.val == "lambda.1se") {
     l1se_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.1se)
     cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
       x$glmnet.fit$lambda[l1se_ind],  "\n  number of terms = ", 
@@ -481,7 +474,7 @@ print.pre <- function(x, penalty.par.val = c("lambda.1se", "lambda.min"),
       " (", x$glmnet.fit$cvsd[l1se_ind], ") \n\n", sep="")
     tmp <- coef(x, penalty.par.val = "lambda.1se", print = TRUE)
   }
-  if ("lambda.min" %in% penalty.par.val) {
+  if (penalty.par.val == "lambda.min") {
     lmin_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
     cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
       x$glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
