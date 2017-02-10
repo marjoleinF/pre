@@ -6,8 +6,9 @@
 variables}
 \usage{
 importance(object, plot = TRUE, ylab = "Importance",
-  main = "Variable importances", global = TRUE, quantprobs = c(0.75, 1),
-  col = "grey", round = NA, ...)
+  main = "Variable importances", global = TRUE,
+  penalty.par.val = "lambda.1se", quantprobs = c(0.75, 1), col = "grey",
+  round = NA, ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -23,6 +24,10 @@ importance(object, plot = TRUE, ylab = "Importance",
 \item{global}{logical. Should global importances be calculated? If FALSE, 
 local importances are calculated, given the quantiles of the predictions F(x) 
 in \code{quantprobs}.}
+
+\item{penalty.par.val}{character. Should model be selected with lambda giving 
+minimum cv error ("lambda.min"), or lambda giving cv error that is within 1 
+standard error of minimum cv error ("lambda.1se")?}
 
 \item{quantprobs}{optional numeric vector of length two. Only used when 
 \code{global = FALSE} (in which case specification of this argument is still 

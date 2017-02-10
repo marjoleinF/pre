@@ -32,11 +32,9 @@
 #' bootstrap sampling.
 #' @param seed numeric. Random seed to be used in deriving the final ensemble 
 #' (for reproducability).
-#' @param maxdepth numeric. Maximal depth of trees to be grown. Defaults to 3,
-#' resulting in trees with max 15 nodes (8 terminal and 7 inner nodes), and 
-#' therefore max 15 rules.
+#' @param maxdepth numeric. Maximal number of conditions in rules.
 #' @param learnrate numeric. Learning rate for sequentially induced trees. If 
-#' not specified (default), the learnrate is set to .01 for regression and to 0 
+#' \code{NULL} (default), the learnrate is set to .01 for regression and to 0 
 #' for classification. Setting the learning rate to values > 0 for classification 
 #' dramatically increases computation time.
 #' @param removeduplicates logical. Remove rules from the ensemble which have 
@@ -253,6 +251,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         rule1 = as.numeric(with(data, eval(parse(text = rules[[1]])))))
       for(i in 2:length(rules)) {
         rulevars[,paste("rule", i, sep="")] <- as.numeric(
+          # FIXME: if there are functions used for predictor variables, like exp() or factor(),
+          # FIXME: this seems to result in error
           with(data, eval(parse(text = rules[[i]]))))
       }
       if (removeduplicates) {
@@ -299,7 +299,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     if (winsfrac > 0) {
       for(i in 1:ncol(x)) {
         if (is.numeric(x[,i])) { 
-          lim <- quantile(x[,i], probs = c(winsfrac, 1-winsfrac))
+          lim <- quantile(x[,i], probs = c(winsfrac, 1 - winsfrac))
           x[x[,i] < lim[1],i] <- lim[1]
           x[x[,i] > lim[2],i] <- lim[2]
         }
@@ -309,7 +309,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     if (normalize) { 
       # Normalize linear terms (section 5 of F&P08), if there are any:
       if (sum(sapply(x, is.numeric)) > 0) {
-        x_scales <- sapply(x[,sapply(x, is.numeric)], sd, na.rm = TRUE)/0.4
+        x_scales <- sapply(x[sapply(x, is.numeric)], sd, na.rm = TRUE) / 0.4
         x[,sapply(x, is.numeric)] <- scale(x[,sapply(x, is.numeric)], 
                                            center = FALSE, scale = x_scales)
       } else {
@@ -361,8 +361,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   result <- list(glmnet.fit = glmnet.fit, call = match.call(), weights = weights, 
                  data = data, normalize = normalize, x_scales = x_scales, 
                  type = type, x_names = x_names, y_name = y_name, 
-                 winsfrac = winsfrac, modmat = x, classify = classify, 
-                 modmat.formula = modmat.formula)
+                 modmat = x, classify = classify, 
+                 modmat.formula = modmat.formula, formula = formula)
   if (type != "linear") {
     result$duplicates.removed <- duplicates.removed
     result$rules <- data.frame(rule = names(rulevars), description = rules)
@@ -581,7 +581,7 @@ cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5,
 #' lambda giving cv error that is within 1 standard error of minimum cv error 
 #' ("\code{lambda.1se}").
 #' @param print logical. Should coefficients of the base learners with non-zero 
-#' coeffcients in the final ensemble be printed to the command line?
+#' coefficients in the final ensemble be printed to the command line?
 #' @param ... additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.
 #' @return returns a dataframe with 3 columns: coefficients, rule (rule or 
 #' variable name) and description (\code{NA} for linear terms, conditions for 
@@ -655,6 +655,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     if (!is.data.frame(newdata)) {
       stop("newdata should be a data frame.")
     }
+    newdata <- model.frame(object$call$formula, newdata, na.action = NULL)
     # check if newdata has the same columns as object$data:
     if (!all(names(object$data) %in% c(names(newdata), object$y_name))) {
       stop("newdata does not contain all predictor variables from the ensemble")
@@ -664,6 +665,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       # add temporary y variable to create model.frame:
       newdata[,object$y_name] <- object$data[,object$y_name][1]
       newdata <- model.frame(object$call$formula, newdata)
+      
       # check if all variables have the same levels: 
       if (!all(unlist(sapply(object$data, levels)) == 
               unlist(sapply(newdata[names(object$data)], levels)))) {
@@ -954,6 +956,9 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' @param col character string. Plotting color to be used for bars in barplot.
 #' @param round integer. Number of decimal places to round numeric results to.
 #' If NA (default), no rounding is performed.
+#' @param penalty.par.val character. Should model be selected with lambda giving 
+#' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1 
+#' standard error of minimum cv error ("lambda.1se")?
 #' @param ... further arguments to be passed to \code{barplot} (only used 
 #' when \code{plot = TRUE}).
 #' @return A list with two dataframes: $baseimps, giving the importances for 
@@ -970,12 +975,13 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' @export
 importance <- function(object, plot = TRUE, ylab = "Importance", 
                        main = "Variable importances", global = TRUE, 
+                       penalty.par.val = "lambda.1se",
                        quantprobs = c(.75, 1), col = "grey", round = NA, ...) 
 {
   ## Step 1: Calculate the importances of the base learners:
   
   # get base learner coefficients (and 'unfactor'):
-  coefs <- coef.pre(object, print = FALSE)
+  coefs <- coef.pre(object, print = FALSE, penalty.par.val = penalty.par.val)
   coefs$description <- as.character(coefs$description)
   # give linear terms a description:
   coefs$description[is.na(coefs$description)] <- 
@@ -1086,6 +1092,10 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 #' @param object object of class \code{\link{pre}}.
 #' @param nsamp numeric. Number of bootstrapped null interaction models to be 
 #' derived.
+#' @param penalty.par.val character. Which value of the penalty parameter 
+#' criterion should be used? The value yielding minimum cv error 
+#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
+#' error of minimum cv error ("\code{lambda.1se}")?
 #' @param seed numeric. Random seed to be used (for reproducability).
 #' @return A list of length \code{nsamp} with null interaction models, to be used 
 #' as input for \code{\link{interact}}.
@@ -1094,7 +1104,9 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 #' nullmods <- bsnullinteract(airq.ens)}
 #' @details Computationally intensive. Progress info is printed to command line.
 #' @export
-bsnullinteract <- function(object, nsamp = 10, seed = 42) {
+bsnullinteract <- function(object, nsamp = 10, seed = 42, 
+                           penalty.par.val = "lambda.1se") 
+{
   # preliminaries:
   set.seed(seed)
   # create call for bootstrapped null model:
@@ -1121,8 +1133,9 @@ bsnullinteract <- function(object, nsamp = 10, seed = 42) {
     bsnullmodcall$data <- bsdataset
     bs.ens.null <- eval(bsnullmodcall)
     # step 3: Calculate residuals from predictions y^hat_ip using x_ip and F_null:
-    yhatip <- bsdataset[object$y_name] - predict.pre(bs.ens.null, 
-                                                      newdata = bsdataset) 
+    yhatip <- bsdataset[object$y_name] - 
+      predict.pre(bs.ens.null,vnewdata = bsdataset, 
+                  penalty.par.val = penalty.par.val) 
     # step 4: Calculate predictions for original x, using F_null:
     fipx <- predict.pre(bs.ens.null, newdata = object$data)
     # step 5: Calculate ybar, by adding residuals from step 3 to predictions from 
@@ -1142,9 +1155,9 @@ bsnullinteract <- function(object, nsamp = 10, seed = 42) {
 
 
 # Internal function for calculating H statistic (section 8.1, equation 45):
-Hsquaredj <- function(object, varname, k = 10) {
+Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL) {
   # Calculate the predicted value F(x) of the full model for each observation:
-  preds_x <- predict.pre(object, newdata = object$data)
+  preds_x <- predict.pre(object, newdata = object$data, penalty.par.val = penalty.par.val)
   # Calculate the expected value of F_j(x_j), over all observed values x_/j,
   # and the expected value of F_/j(x_/j), over all observed values x_j:
   exp_dataset <- object$data[rep(row.names(object$data), 
@@ -1156,7 +1169,8 @@ Hsquaredj <- function(object, varname, k = 10) {
   for(i in 1:k) {  
     cat(".")
     exp_dataset[exp_dataset$ids==i, "yhat"] <- predict.pre(
-      object, newdata = exp_dataset[exp_dataset$ids==i,])
+      object, newdata = exp_dataset[exp_dataset$ids==i,],
+      penalty.par.val = penalty.par.val)
   }
   # expected value of F_j(x_j), over all observed values x_/j:
   exp_dataset$i_xj <- rep(1:nrow(object$data), each = nrow(object$data))
@@ -1191,18 +1205,25 @@ Hsquaredj <- function(object, varname, k = 10) {
 #' @param object an object of class \code{\link{pre}}.
 #' @param varnames character vector. Names of variables for which interaction 
 #' statistics should be calculated. If \code{NULL}, interaction statistics for 
-#' all predictor variables will be calculated (which may take a long time).
+#' all predictor variables with non-zeor coefficients will be calculated (which 
+#' may take a long time).
 #' @param k integer. Calculating interaction test statistics is a computationally 
 #' intensive, so  calculations are split up in several parts to prevent memory 
 #' allocation errors. If a memory allocation error still occurs, increase k.
 #' @param nullmods object with bootstrapped null interaction models, resulting 
 #' from application of \code{bsnullinteract}.
+#' @param penalty.par.val character. Which value of the penalty parameter 
+#' criterion should be used? The value yielding minimum cv error 
+#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
+#' error of minimum cv error ("\code{lambda.1se}")?
 #' @param plot logical Should interaction statistics be plotted?
 #' @param col character vector of length two. Color for plotting bars used. Only 
 #' used when \code{plot = TRUE}. Only first element of vector is used if 
 #' \code{nullmods = NULL}.
 #' @param ylab character string. Label to be used for plotting y-axis.
 #' @param main character. Main title for the bar plot.
+#' @param legend logical. Should a legend be plotted in the top right corner of the 
+#' barplot?
 #' @param ... Additional arguments to be passed to \code{barplot}.
 #' @examples 
 #' \donttest{
@@ -1218,13 +1239,15 @@ Hsquaredj <- function(object, varname, k = 10) {
 #' blue is used for the mean in the bootstrapped null models.
 #' @export
 interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE, 
+                     penalty.par.val = "lambda.1se",
                      col = c("yellow", "blue"), ylab = "Interaction strength", 
-                     main = "Interaction test statistics", ...)
+                     main = "Interaction test statistics", legend = TRUE, ...)
 {
   if (is.null(varnames)) {
-    varnames <- object$x_names
-  }
-  if (!all(varnames %in% object$x_names)) {
+    # should only be variables with non-zero importances:
+    varnames <- as.character(importance(object, plot = FALSE,
+                           penalty.par.val = penalty.par.val)$varimps$varname)
+  } else if (!all(varnames %in% object$x_names)) {
     stop("Interaction statistics requested for one or more unknown input variables")
   }
   cat("This will take a while (", 
@@ -1234,12 +1257,13 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
   nullH <- data.frame(matrix(NA, nrow = length(nullmods), ncol = length(varnames)))
   colnames(nullH) <- varnames
   for(i in 1:length(varnames)) {
-    H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k)    
+    H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k, 
+                      penalty.par.val = penalty.par.val)    
     # Calculate mean and sd of H_j for the bootstrapped null models:  
     if (!is.null(nullmods)) {
       for(j in 1:length(nullmods)) {
         nullH[j,i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i], 
-                                k = k)  
+                                k = k, penalty.par.val = penalty.par.val)  
       }
     }
   }
@@ -1254,12 +1278,14 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
       for(i in 1:length(varnames)) {
         nullmeans[i] <- mean(nullH[,i])
       }
-      H2s <- matrix(c(H, nullmeans), nrow = 2, byrow = T)
-      colnames(H2s) <- varnames
-      barplot(H2s, col = col, ylab = ylab, main = main, ...)
-      # FIX ME: Add legend to plot, depicting colors used for the generated pre 
-      # and the null models.
-      # FIX ME: bar plots should be opaque or non-overlapping
+      H2s <- as.vector(rbind(H, nullmeans))
+      barplot(H2s, col = col, ylab = ylab, main = main, 
+        space = rep_len(1:0, length(H2s)), beside = TRUE, 
+        names.arg = rep(varnames, each = 2), ...)
+    }
+    if (legend & !(is.null(nullmods))) {
+      legend("topright", c("observed", "bs null mod mean"), bty = "n", 
+             col = col, pch = 15)
     }
   }
   return(list(trainingH2 = H, nullH2 = nullH))

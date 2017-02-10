@@ -2,7 +2,7 @@ pre is an R package for deriving prediction rule ensembles for binary and
 continuous outcome variables. Input variables may be numeric, ordinal and 
 nominal. The package implements the algorithm for deriving prediction rule 
 ensembles as described in Friedman & Popescu (2008), with some improvements
-and adjustments. The most important improvements or adjustments are: 
+and adjustments. The most important improvements and adjustments are: 
 
   1) The pre package is completely R based, allowing users better access to the 
 results and more control over the parameters used for generating the prediction 

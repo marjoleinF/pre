@@ -4,14 +4,14 @@
 \alias{print.pre}
 \title{Print method for objects of class pre}
 \usage{
-\method{print}{pre}(x, penalty.par.val = c("lambda.1se", "lambda.min"), ...)
+\method{print}{pre}(x, penalty.par.val = "lambda.1se", ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{pre}}.}
 
 \item{penalty.par.val}{character. Information for which final prediction rule
 ensemble(s) should be printed? The ensemble with penalty parameter criterion 
-yielding minimum cv error (\code{"lambda.min"}) and/or penalty parameter 
+yielding minimum cv error (\code{"lambda.min"}) or penalty parameter 
 yielding error within 1 standard error of minimum cv error ("\code{lambda.1se}")?}
 
 \item{...}{Additional arguments, currently not used.}

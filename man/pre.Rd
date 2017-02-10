@@ -52,7 +52,7 @@ resulting in trees with max 15 nodes (8 terminal and 7 inner nodes), and
 therefore max 15 rules.}
 
 \item{learnrate}{numeric. Learning rate for sequentially induced trees. If 
-not specified (default), the learnrate is set to .01 for regression and to 0 
+\code{NULL} (default), the learnrate is set to .01 for regression and to 0 
 for classification. Setting the learning rate to values > 0 for classification 
 dramatically increases computation time.}
 

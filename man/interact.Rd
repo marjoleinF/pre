@@ -6,7 +6,7 @@
 \usage{
 interact(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE,
   col = c("yellow", "blue"), ylab = "Interaction strength",
-  main = "Interaction test statistics", ...)
+  main = "Interaction test statistics", legend = TRUE, ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
@@ -31,6 +31,9 @@ used when \code{plot = TRUE}. Only first element of vector is used if
 \item{ylab}{character string. Label to be used for plotting y-axis.}
 
 \item{main}{character. Main title for the bar plot.}
+
+\item{legend}{logical. Should a legend be plotted in the top right corner of the 
+barplot?}
 
 \item{...}{Additional arguments to be passed to \code{barplot}.}
 }

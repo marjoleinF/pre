@@ -16,7 +16,7 @@ lambda giving cv error that is within 1 standard error of minimum cv error
 ("\code{lambda.1se}").}
 
 \item{print}{logical. Should coefficients of the base learners with non-zero 
-coeffcients in the final ensemble be printed to the command line?}
+coefficients in the final ensemble be printed to the command line?}
 
 \item{...}{additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.}
 }
