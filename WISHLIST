@@ -1,22 +1,17 @@
-- Include winsorizing points for linear variables in pre objects (first step already taken: pre 
-	objects now include winslim, an object with the winsorizing limits used)
+- Include winsorizing points for linear variables in pre objects
 
-- when functions of input variables are used in defining the pre formula, an error results when:
-	* in using scale function when using pre()
-	* in using predict.pre()
-	* .....
+- when functions of input variables are used in defining the pre formula, an error results when
+	using predict.pre()
 
 - Implement parallel computing for cv.glmnet function. Example:
 	require(doMC)
 	registerDoMC(cores=4)
 	x = matrix(rnorm(1e5 * 100), 1e5, 100)
-	y = rnorm(1e5)
+	y = rnorm(1ee5)
 	system.time(cv.glmnet(x,y))
 	system.time(cv.glmnet(x,y,parallel=TRUE))
 
 - Implement parallel computing for growing trees when learnrate == 0
-
-- Bar plots resulting from interact() should be opaque or non-overlapping
 
 - Plotting of interaction statistics should be separate from their calculation
 
@@ -24,6 +19,6 @@
 
 - Support for multivariate outcomes
 
-- Support for censored and poisson regression
+- Support for multinomial, censored and poisson regression
 
 - Support for multilevel data

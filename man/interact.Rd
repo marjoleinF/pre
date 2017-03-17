@@ -5,15 +5,17 @@
 \title{Calculate interaction statistics for user-specified variables}
 \usage{
 interact(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE,
-  col = c("yellow", "blue"), ylab = "Interaction strength",
-  main = "Interaction test statistics", legend = TRUE, ...)
+  penalty.par.val = "lambda.1se", col = c("yellow", "blue"),
+  ylab = "Interaction strength", main = "Interaction test statistics",
+  legend = TRUE, ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
 
 \item{varnames}{character vector. Names of variables for which interaction 
 statistics should be calculated. If \code{NULL}, interaction statistics for 
-all predictor variables will be calculated (which may take a long time).}
+all predictor variables with non-zeor coefficients will be calculated (which 
+may take a long time).}
 
 \item{nullmods}{object with bootstrapped null interaction models, resulting 
 from application of \code{bsnullinteract}.}
@@ -23,6 +25,11 @@ intensive, so  calculations are split up in several parts to prevent memory
 allocation errors. If a memory allocation error still occurs, increase k.}
 
 \item{plot}{logical Should interaction statistics be plotted?}
+
+\item{penalty.par.val}{character. Which value of the penalty parameter 
+criterion should be used? The value yielding minimum cv error 
+(\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
+error of minimum cv error ("\code{lambda.1se}")?}
 
 \item{col}{character vector of length two. Color for plotting bars used. Only 
 used when \code{plot = TRUE}. Only first element of vector is used if 

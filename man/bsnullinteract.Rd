@@ -4,7 +4,8 @@
 \alias{bsnullinteract}
 \title{Compute boostrapped null interaction models}
 \usage{
-bsnullinteract(object, nsamp = 10, seed = 42)
+bsnullinteract(object, nsamp = 10, seed = 42,
+  penalty.par.val = "lambda.1se")
 }
 \arguments{
 \item{object}{object of class \code{\link{pre}}.}
@@ -13,6 +14,11 @@ bsnullinteract(object, nsamp = 10, seed = 42)
 derived.}
 
 \item{seed}{numeric. Random seed to be used (for reproducability).}
+
+\item{penalty.par.val}{character. Which value of the penalty parameter 
+criterion should be used? The value yielding minimum cv error 
+(\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
+error of minimum cv error ("\code{lambda.1se}")?}
 }
 \value{
 A list of length \code{nsamp} with null interaction models, to be used 

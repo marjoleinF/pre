@@ -108,6 +108,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     stop("Bad value for 'verbose'.")
   }  
   set.seed(seed)
+  orig_data <- data
   data <- model.frame(formula, data, na.action = NULL)
   x_names <- attr(attr(data, "terms"), "term.labels")
   y_name <- names(data)[attr(attr(data, "terms"), "response")]
@@ -138,7 +139,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   }
   if (classify & learnrate != 0 & !is.infinite(mtry)) {
     warning("Value specified for mtry will not be used when the outcome variable
-            is binary and learnrate > 0")
+            is binary and learnrate > 0", immediate. = TRUE)
   }
   if (any(is.na(data))) {
     data <- data[complete.cases(data),]
@@ -148,7 +149,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   }
   if (verbose) {
     if (classify) {
-      cat("A rule ensemble for prediction of a binary output variable will be 
+      cat("A rule ensemble for prediction of a categorical output variable will be 
           created.\n")
     } else {
       cat("A rule ensemble for prediction of a continuous output variable will 
@@ -251,8 +252,6 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         rule1 = as.numeric(with(data, eval(parse(text = rules[[1]])))))
       for(i in 2:length(rules)) {
         rulevars[,paste("rule", i, sep="")] <- as.numeric(
-          # FIXME: if there are functions used for predictor variables, like exp() or factor(),
-          # FIXME: this seems to result in error
           with(data, eval(parse(text = rules[[i]]))))
       }
       if (removeduplicates) {
@@ -297,6 +296,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   } else { # if type is not rules, linear terms should be prepared:
     # Winsorize numeric variables (section 5 of F&P(2008)):
     if (winsfrac > 0) {
+      wins.points <- data.frame()
       for(i in 1:ncol(x)) {
         if (is.numeric(x[,i])) { 
           lim <- quantile(x[,i], probs = c(winsfrac, 1 - winsfrac))
@@ -325,7 +325,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   }
   modmat.formula <- formula(
     paste(" ~ -1 +", paste(colnames(x), collapse = "+")))
-  x <- model.matrix(modmat.formula, data = data.frame(x))
+  x <- model.matrix(modmat.formula, data = x)
   y <- data[,y_name]
     
   ##################################################
@@ -361,8 +361,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   result <- list(glmnet.fit = glmnet.fit, call = match.call(), weights = weights, 
                  data = data, normalize = normalize, x_scales = x_scales, 
                  type = type, x_names = x_names, y_name = y_name, 
-                 modmat = x, classify = classify, 
-                 modmat.formula = modmat.formula, formula = formula)
+                 modmat = x, modmat.formula = modmat.formula, 
+                 classify = classify, formula = formula, orig_data = orig_data)
   if (type != "linear") {
     result$duplicates.removed <- duplicates.removed
     result$rules <- data.frame(rule = names(rulevars), description = rules)
@@ -407,8 +407,9 @@ list.rules <- function (x, i = NULL, ...)
   }
   rule <- c()
   recFun <- function(node) {
-    if (id_node(node) == i) 
+    if (id_node(node) == i) {
       return(NULL)
+    }
     kid <- sapply(kids_node(node), id_node)
     whichkid <- max(which(kid <= i))
     split <- split_node(node)
@@ -424,19 +425,22 @@ list.rules <- function (x, i = NULL, ...)
                                                collapse = "\", \"", sep = ""), "\")", sep = "")
     }
     else {
-      if (is.null(index)) 
+      if (is.null(index)) {
         index <- 1:length(kid)
+      }
       breaks <- cbind(c(-Inf, breaks_split(split)), c(breaks_split(split), 
                                                       Inf))
       sbreak <- breaks[index == whichkid, ]
       right <- right_split(split)
       srule <- c()
-      if (is.finite(sbreak[1])) 
+      if (is.finite(sbreak[1])) {
         srule <- c(srule, paste(svar, ifelse(right, ">", 
                                              ">="), sbreak[1]))
-      if (is.finite(sbreak[2])) 
+      }
+      if (is.finite(sbreak[2])) { 
         srule <- c(srule, paste(svar, ifelse(right, "<=", 
                                              "<"), sbreak[2]))
+      }
       srule <- paste(srule, collapse = " & ")
     }
     rule <<- c(rule, srule)
@@ -472,7 +476,8 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
       x$glmnet.fit$nzero[l1se_ind], "\n  mean cv error (se) = ", 
       x$glmnet.fit$cvm[l1se_ind], 
       " (", x$glmnet.fit$cvsd[l1se_ind], ") \n\n", sep="")
-    tmp <- coef(x, penalty.par.val = "lambda.1se", print = TRUE)
+    tmp <- coef(x, penalty.par.val = "lambda.1se")
+    return(tmp[tmp$coefficient!=0,])
   }
   if (penalty.par.val == "lambda.min") {
     lmin_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
@@ -481,7 +486,8 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
       x$glmnet.fit$nzero[lmin_ind], "\n  mean cv error (se) = ", 
       x$glmnet.fit$cvm[lmin_ind], 
       " (", x$glmnet.fit$cvsd[lmin_ind], ") \n\n", sep = "")
-    tmp <- coef(x, penalty.par.val = "lambda.min", print = TRUE)
+    tmp <- coef(x, penalty.par.val = "lambda.min")
+    return(tmp[tmp$coefficient!=0,])
   }
 }
 
@@ -535,13 +541,13 @@ cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5,
     }
     cl <- object$call
     cl$verbose <- FALSE
-    cl$data <- object$data[ss!=i,]
+    cl$data <- object$orig_data[ss!=i,]
     cvobject[[i]] <- eval(cl)
     if (object$classify) {
-      cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$data[ss==i,], 
+      cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$orig_data[ss==i,], 
                                      type = "response", penalty.par.val = penalty.par.val)
     } else {
-        cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$data[ss==i,], 
+        cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$orig_data[ss==i,], 
                                       penalty.par.val = penalty.par.val)
     }
     if (verbose & i==k) {
@@ -580,19 +586,16 @@ cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5,
 #' selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or 
 #' lambda giving cv error that is within 1 standard error of minimum cv error 
 #' ("\code{lambda.1se}").
-#' @param print logical. Should coefficients of the base learners with non-zero 
-#' coefficients in the final ensemble be printed to the command line?
 #' @param ... additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.
 #' @return returns a dataframe with 3 columns: coefficients, rule (rule or 
 #' variable name) and description (\code{NA} for linear terms, conditions for 
-#' rules). In the command line, the non zero coefficients are printed (when 
-#' \code{print = TRUE}).
+#' rules).
 #' @examples \donttest{
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' coefs <- coef(airq.ens)}
 #' @export
 #' @method coef pre
-coef.pre <- function(object, penalty.par.val = "lambda.1se", print = FALSE, ...)
+coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 {
   coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
               Class = "matrix")
@@ -603,13 +606,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", print = FALSE, ...)
   }
   coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs))
   if (object$type != "linear") {
-    coefs <- merge(coefs, object$rules, all.x=T)
-  }
-  if (print) {
-    nonzerocoefs <- coefs[coefs$coefficient != 0,]
-    nonzerocoefs$coefficient <- round(nonzerocoefs$coefficient, digits = 4)
-    print(nonzerocoefs[order(abs(nonzerocoefs$coefficient), decreasing = TRUE),], 
-          row.names = FALSE)
+    coefs <- merge(coefs, object$rules, all.x = TRUE)
   }
   return(coefs[order(abs(coefs$coefficient), decreasing = TRUE),])
 }
@@ -664,7 +661,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       newdata <- newdata[,names(newdata) %in% object$x_names]
       # add temporary y variable to create model.frame:
       newdata[,object$y_name] <- object$data[,object$y_name][1]
-      newdata <- model.frame(object$call$formula, newdata)
+      newdata <- model.frame(object$formula, newdata)
       
       # check if all variables have the same levels: 
       if (!all(unlist(sapply(object$data, levels)) == 
@@ -686,7 +683,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
         newrulevars <- data.frame(r1 = as.numeric(with(newdata, eval(parse(
           text = nonzerorules[1])))))
         names(newrulevars) <- nonzerorulenames[1]
-        if (length(nonzerorulenames)>1) {
+        if (length(nonzerorulenames) > 1) {
           for(i in 2:length(nonzerorules)) {
             newrulevars[,nonzerorulenames[i]] <- as.numeric(
               with(newdata, eval(parse(text = nonzerorules[i]))))
@@ -698,7 +695,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
             newrulevars[,i] <- 0
           }
         }
-      } else { # only check and assess rules with zero coefficients
+      } else { # only check and assess rules with non-zero coefficients
         if (length(zerorulenames) > 0) {
           newrulevars <- data.frame(r1 = rep(0, times = nrow(newdata)))
           names(newrulevars) <- zerorulenames[1]
@@ -719,7 +716,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
         newdata[,names(object$x_scales)], center = FALSE, scale = object$x_scales)
     }
     if (object$type != "linear") {
-      newdata <- cbind(newdata, newrulevars)
+      newdata <- data.frame(newdata, newrulevars)
     }
     newdata <- MatrixModels::model.Matrix(object$modmat.formula, data = newdata,
                                           sparse = TRUE)    
@@ -1066,7 +1063,7 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
   baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE),]
   varimps <- varimps[order(varimps$imp, decreasing = TRUE),]
   varimps <- varimps[varimps$imp != 0,]
-  if (plot == TRUE) {
+  if (plot == TRUE & nrow(varimps) > 0) {
     barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab, 
             main = main, col = col)
   }

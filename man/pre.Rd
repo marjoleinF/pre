@@ -47,9 +47,7 @@ bootstrap sampling.}
 \item{seed}{numeric. Random seed to be used in deriving the final ensemble 
 (for reproducability).}
 
-\item{maxdepth}{numeric. Maximal depth of trees to be grown. Defaults to 3,
-resulting in trees with max 15 nodes (8 terminal and 7 inner nodes), and 
-therefore max 15 rules.}
+\item{maxdepth}{numeric. Maximal number of conditions in rules.}
 
 \item{learnrate}{numeric. Learning rate for sequentially induced trees. If 
 \code{NULL} (default), the learnrate is set to .01 for regression and to 0 

@@ -4,8 +4,7 @@
 \alias{coef.pre}
 \title{Coefficients for the final prediction rule ensemble}
 \usage{
-\method{coef}{pre}(object, penalty.par.val = "lambda.1se", print = FALSE,
-  ...)
+\method{coef}{pre}(object, penalty.par.val = "lambda.1se", ...)
 }
 \arguments{
 \item{object}{object of class \code{\link{pre}}}
@@ -15,16 +14,12 @@ selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or
 lambda giving cv error that is within 1 standard error of minimum cv error 
 ("\code{lambda.1se}").}
 
-\item{print}{logical. Should coefficients of the base learners with non-zero 
-coefficients in the final ensemble be printed to the command line?}
-
 \item{...}{additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.}
 }
 \value{
 returns a dataframe with 3 columns: coefficients, rule (rule or 
 variable name) and description (\code{NA} for linear terms, conditions for 
-rules). In the command line, the non zero coefficients are printed (when 
-\code{print = TRUE}).
+rules).
 }
 \description{
 \code{coef.pre} returns coefficients for prediction rules and linear terms in 
