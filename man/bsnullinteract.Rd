@@ -4,8 +4,8 @@
 \alias{bsnullinteract}
 \title{Compute boostrapped null interaction models}
 \usage{
-bsnullinteract(object, nsamp = 10, seed = 42,
-  penalty.par.val = "lambda.1se")
+bsnullinteract(object, nsamp = 10, parallel = FALSE,
+  penalty.par.val = "lambda.1se", verbose = FALSE)
 }
 \arguments{
 \item{object}{object of class \code{\link{pre}}.}
@@ -13,21 +13,24 @@ bsnullinteract(object, nsamp = 10, seed = 42,
 \item{nsamp}{numeric. Number of bootstrapped null interaction models to be 
 derived.}
 
-\item{seed}{numeric. Random seed to be used (for reproducability).}
+\item{parallel}{logical. Should parallel foreach be used to generate initial 
+ensemble? Must register parallel beforehand, such as doMC or others.}
 
 \item{penalty.par.val}{character. Which value of the penalty parameter 
 criterion should be used? The value yielding minimum cv error 
 (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
 error of minimum cv error ("\code{lambda.1se}")?}
+
+\item{verbose}{logical. should progress be printed to the command line?}
 }
 \value{
-A list of length \code{nsamp} with null interaction models, to be used 
-as input for \code{\link{interact}}.
+A list of length \code{nsamp} with null interaction datasets, to be 
+used as input for \code{\link{interact}}.
 }
 \description{
-\code{bsnullinteract} generates null interaction models from bootstrapped 
-datasets, which can be used to derive a reference distribution of the test 
-statistic calculated with \code{\link{interact}}.
+\code{bsnullinteract} generates bootstrapped null interaction models, 
+which can be used to derive a reference distribution of the test statistic 
+calculated with \code{\link{interact}}.
 }
 \details{
 Computationally intensive. Progress info is printed to command line.

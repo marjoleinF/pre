@@ -17,7 +17,7 @@ lambda giving cv error that is within 1 standard error of minimum cv error
 \item{...}{additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.}
 }
 \value{
-returns a dataframe with 3 columns: coefficients, rule (rule or 
+returns a dataframe with 3 columns: coefficient, rule (rule or 
 variable name) and description (\code{NA} for linear terms, conditions for 
 rules).
 }

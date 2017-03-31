@@ -30,8 +30,6 @@
 #' Setting this to values < 1 will result in subsamples being drawn without 
 #' replacement (i.e., subsampling). Setting this equal to 1 will result in 
 #' bootstrap sampling.
-#' @param seed numeric. Random seed to be used in deriving the final ensemble 
-#' (for reproducability).
 #' @param maxdepth numeric. Maximal number of conditions in rules.
 #' @param learnrate numeric. Learning rate for sequentially induced trees. If 
 #' \code{NULL} (default), the learnrate is set to .01 for regression and to 0 
@@ -39,9 +37,6 @@
 #' dramatically increases computation time.
 #' @param removeduplicates logical. Remove rules from the ensemble which have 
 #' the exact same support in training data?
-#' @param maxrules numeric. Approximate maximum number of rules to be generated. 
-#' The number of rules in the final ensemble will be smaller, due to the omission 
-#' of rules with identical conditions or support.
 #' @param mtry numeric. Number of randomly selected predictor variables for 
 #' creating each split in each tree. Ignored for nominal output variables if
 #' \code{learnrate} > 0.
@@ -59,15 +54,21 @@
 #' @param nfolds numeric. Number of folds to be used in performing cross 
 #' validation for determining penalty parameter.
 #' @param mod.sel.crit character. Model selection criterion to be used for 
-#' deriving the final ensemble. The default is \code{type.measure = "deviance"}, 
-#' which uses squared-error for gaussian models (a.k.a. \code{type.measure = 
-#' "mse"}). \code{type.measure = "mse"} or \code{type.measure = "mae"} (mean 
-#' absolute error) measure the deviation from the fitted mean to the response.
+#' deriving the final ensemble. The default is \code{"deviance"}, which uses 
+#' squared-error for gaussian models (a.k.a. \code{"mse"}) and binomial deviance 
+#' for logistic regression. \code{"class"} would give misclassification error, 
+#' \code{"auc"} would give area under the ROC curve. Further, \code{"mse"} or 
+#' \code{"mae"} (mean squared and mean absolute error) would measure the deviation 
+#' from the fitted mean to the binary or continuous response.
 #' @param verbose logical. Should information on the initial and final ensemble 
 #' be printed to the command line?
-#' @param ctreecontrol A list with control parameters, see 
-#' \code{\link[partykit]{ctree_control}}. Ignored for nominal output variables 
-#' when \code{learnrate} > 0.
+#' @param par.init logical. Should parallel foreach be used to generate initial 
+#' ensemble? Only used when \verb{learnrate == 0}. Must register parallel 
+#' beforehand, such as doMC or others.
+#' @param par.final logical. Should parallel foreach be used to perform cross 
+#' validation for selecting the final ensemble? Must register parallel beforehand, 
+#' such as doMC or others.
+#' @param ntrees numeric. Number of trees to generate for the initial ensemble.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' @note The code for deriving rules from the nodes of trees was taken from an 
@@ -81,14 +82,12 @@
 #' @import glmnet partykit datasets
 #' @export
 pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data)), 
-                 sampfrac = .5, seed = 42, maxdepth = 3, learnrate = NULL, 
-                 removeduplicates = TRUE, maxrules = 2000, mtry = Inf, 
+                 sampfrac = .5, maxdepth = 3L, learnrate = NULL, 
+                 removeduplicates = TRUE, mtry = Inf, ntrees = 500,
                  thres = 1e-07, standardize = FALSE, winsfrac = .025, 
-                 normalize = TRUE, nfolds = 10, mod.sel.crit = "deviance", 
-                 verbose = FALSE, ctreecontrol = ctree_control(),
-                 ...)   
-{
-  ###################
+                 normalize = TRUE, nfolds = 10L, mod.sel.crit = "deviance", 
+                 verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)   
+{ ###################
   ## Preliminaries ##
   ###################
   
@@ -107,7 +106,6 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   if (!is.logical(verbose)) {
     stop("Bad value for 'verbose'.")
   }  
-  set.seed(seed)
   orig_data <- data
   data <- model.frame(formula, data, na.action = NULL)
   x_names <- attr(attr(data, "terms"), "term.labels")
@@ -162,34 +160,50 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   #############################
   
   if (type != "linear") {
-    rules <- vector()
-    treecount <- 0
-    # If learning rate = 0, always use ctree():
-    if (learnrate == 0) {
-      while(length(rules) <= maxrules) {
-        # Take subsample of dataset
-        treecount <- treecount + 1
-        if (sampfrac == 1) { # then bootstrap
-          subsample <- sample(1:n, size = n, replace = TRUE)
-        } else { # else subsample
-          subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
+    if (learnrate == 0) { # always use ctree()
+      if(par.init) {
+        rules <- foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
+          # Take subsample of dataset
+          if (sampfrac == 1) { # then bootstrap
+            subsample <- sample(1:n, size = n, replace = TRUE)
+          } else { # else subsample
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
+          }
+          subsampledata <- data[subsample,]
+          # Make sure ctree() can find object specified by weights argument: 
+          environment(formula) <- environment()
+          # Grow ctree on subsample:
+          tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
+                        maxdepth = maxdepth, mtry = mtry)
+          # Collect rules from tree:
+          unlist(list.rules(tree))
         }
-        subsampledata <- data[subsample,]
-        # Make sure ctree() can find object specified by weights argument: 
-        environment(formula) <- environment()
-        # Grow ctree on subsample:
-        tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
-                      maxdepth = maxdepth, mtry = mtry)
-        # Collect rules from tree:
-        rules <- append(rules, unlist(list.rules(tree)))
+      } else {
+        rules <- c() 
+        for(i in 1:ntrees) {
+          # Take subsample of dataset
+          if (sampfrac == 1) { # then bootstrap
+            subsample <- sample(1:n, size = n, replace = TRUE)
+          } else { # else subsample
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
+          }
+          subsampledata <- data[subsample,]
+          # Make sure ctree() can find object specified by weights argument: 
+          environment(formula) <- environment()
+          # Grow tree on subsample:
+          tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
+                        maxdepth = maxdepth, mtry = mtry)
+          # Collect rules from tree:
+          rules <- append(rules, unlist(list.rules(tree)))
+        }
       }
     }
     if (learnrate > 0) {
+      rules <- c()
       if (!classify) {
         y_learn <- data[,y_name]
-        while(length(rules) <= maxrules) {
+        for(i in 1:ntrees) {
           # Take subsample of dataset
-          treecount <- treecount + 1
           if (sampfrac == 1) { # then bootstrap
             subsample <- sample(1:n, size = n, replace = TRUE)
           } else { # else subsample
@@ -199,7 +213,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           subsampledata[,y_name] <- y_learn[subsample]
           # Make sure ctree() can find object specified by weights argument: 
           environment(formula) <- environment()
-          # Grow ctree on subsample:
+          # Grow tree on subsample:
           tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
                         maxdepth = maxdepth, mtry = mtry)
           # Collect rules from tree:
@@ -210,22 +224,21 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       }
       if (classify) {
         data2 <- data.frame(data, offset = 0)
-        while(length(rules) <= maxrules) {
+        glmtreeformula <- formula(paste(paste(y_name, " ~ 1 |"), 
+                                        paste(x_names, collapse = "+")))
+        for(i in 1:ntrees) {
           # Take subsample of dataset:
-          treecount <- treecount + 1
           if (sampfrac == 1) { # then bootstrap:
             subsample <- sample(1:n, size = n, replace = TRUE)
           } else { # else subsample:
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
           }
           subsampledata <- data2[subsample,]
-          # Make sure ctree() can find object specified by weights argument: 
+          # Make sure glmtree() can find object specified by weights argument: 
           environment(formula) <- environment()
-          # Grow ctree on subsample:
-          tree <- glmtree(formula(paste(paste(y_name, " ~ 1 |"), 
-                                        paste(x_names, collapse = "+"))),
-                          data = subsampledata, family = "binomial",
-                          weights = weights[subsample], maxdepth = maxdepth+1,  
+          # Grow tree on subsample:
+          tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial",
+                          weights = weights[subsample], maxdepth = maxdepth + 1,  
                           offset = offset)
           # Collect rules from tree:
           rules <- append(rules, unlist(list.rules(tree)))
@@ -237,14 +250,14 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     }
     nrules <- length(rules)
     if (verbose){
-      cat("\nA total of", treecount, "trees were grown, and a total of", nrules, 
-          "rules were generated initially.")
+      cat("\nA total of", ntrees, "trees and ", nrules, "rules were 
+          generated initially.")
     }
     # Keep unique, non-empty rules only:
     rules <- unique(rules[!rules==""])
     if (verbose) {
-      cat("\n\nA total of", nrules - length(rules), "rules were duplicate or empty
-            rules and removed from the initial ensemble.")
+      cat("\n\nA total of", nrules - length(rules), "rules were empty
+            and removed from the initial ensemble.")
     }
     # Create dataframe with 0-1 coded rules:
     if (length(rules) > 0) {
@@ -266,19 +279,14 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
               support identical to earlier rules and were removed from the initial 
               ensemble ($duplicates.removed shows which, if any).")
         }
-      } else {
-        duplicates.removed <- NULL
       }
       if (verbose) {
         cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was 
             succesfully created.")  
       }
+    } else {
+      warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
     }
-  }
-  if (length(rules) == 0) {
-    type <- "linear"
-    warning("No prediction rules could be derived from dataset. Final ensemble 
-            will include linear terms only, type will be set to 'linear'.")
   }
   
   ######################################################
@@ -290,20 +298,23 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   # convert ordered categorical predictor variables to linear terms:
   x[,sapply(x, is.ordered)] <- as.numeric(as.character(x[,sapply(x, is.ordered)]))
 
-  if (type == "rules") {
+  if (type == "rules" & length(rules) > 0) {
     x <- rulevars
     x_scales <- NULL
   } else { # if type is not rules, linear terms should be prepared:
     # Winsorize numeric variables (section 5 of F&P(2008)):
     if (winsfrac > 0) {
-      wins.points <- data.frame()
+      wins_points <- data.frame(varname = names(x), value = NA)
       for(i in 1:ncol(x)) {
         if (is.numeric(x[,i])) { 
           lim <- quantile(x[,i], probs = c(winsfrac, 1 - winsfrac))
-          x[x[,i] < lim[1],i] <- lim[1]
-          x[x[,i] > lim[2],i] <- lim[2]
+          x[x[,i] < lim[1], i] <- lim[1]
+          x[x[,i] > lim[2], i] <- lim[2]
+          wins_points$value[i] <- paste(lim[1], "<=", names(x)[i], "<=", lim[2])
         }
       }
+    } else {
+      wins_points <- NULL 
     }
     # normalize numeric variables:
     if (normalize) { 
@@ -319,13 +330,13 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       x_scales <- NULL
     } 
     # If both rules and linear terms are in ensemble, combine both:
-    if (type == "both") {
+    if (type == "both" & length(rules) > 0) {
       x <- data.frame(x, rulevars)
     }
   }
-  modmat.formula <- formula(
+  modmat_formula <- formula(
     paste(" ~ -1 +", paste(colnames(x), collapse = "+")))
-  x <- model.matrix(modmat.formula, data = x)
+  x <- model.matrix(modmat_formula, data = x)
   y <- data[,y_name]
     
   ##################################################
@@ -340,7 +351,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   
   glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, standardize = standardize, 
                           type.measure = mod.sel.crit, thres = thres, 
-                          weights = weights, family = family, ...)
+                          weights = weights, family = family, parallel = par.final, 
+                          ...)
   
   ####################
   ## Return results ##
@@ -353,7 +365,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
         glmnet.fit$nzero[lmin_ind], "\n  mean cv error (se) = ", 
         glmnet.fit$cvm[lmin_ind], " (", glmnet.fit$cvsd[lmin_ind], ")", 
-        "\n\nEnsemble with cv error within 1se of minimum: \n  lambda = ", 
+        "\n\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
         glmnet.fit$lambda[l1se_ind],  "\n  number of terms = ", 
         glmnet.fit$nzero[l1se_ind], "\n  mean cv error (se) = ", 
         glmnet.fit$cvm[l1se_ind], " (", glmnet.fit$cvsd[l1se_ind], ")\n", sep="")
@@ -361,12 +373,17 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   result <- list(glmnet.fit = glmnet.fit, call = match.call(), weights = weights, 
                  data = data, normalize = normalize, x_scales = x_scales, 
                  type = type, x_names = x_names, y_name = y_name, 
-                 modmat = x, modmat.formula = modmat.formula, 
+                 modmat = x, modmat_formula = modmat_formula, 
+                 wins_points = wins_points,
                  classify = classify, formula = formula, orig_data = orig_data)
-  if (type != "linear") {
+  if (type != "linear" & length(rules) > 0) {
     result$duplicates.removed <- duplicates.removed
     result$rules <- data.frame(rule = names(rulevars), description = rules)
     result$rulevars <- rulevars 
+  } else {
+      result$duplicates.removed <- NULL
+      result$rules <- NULL
+      result$rulevars <- NULL
   }
   class(result) <- "pre"
   return(result)
@@ -380,7 +397,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
 list.rules <- function (x, i = NULL, ...) 
 {
   if (is.null(i)) 
-    i <- nodeids(x, terminal = TRUE)
+    i <- partykit::nodeids(x, terminal = TRUE)
   if (length(i) > 1) {
     ret <- sapply(i, list.rules, x = x)
     names(ret) <- if (is.character(i)) 
@@ -393,7 +410,7 @@ list.rules <- function (x, i = NULL, ...)
   stopifnot(length(i) == 1 & is.numeric(i))
   stopifnot(i <= length(x) & i >= 1)
   i <- as.integer(i)
-  dat <- data_party(x, i)
+  dat <- partykit::data_party(x, i)
   if (!is.null(x$fitted)) {
     findx <- which("(fitted)" == names(dat))[1]
     fit <- dat[, findx:ncol(dat), drop = FALSE]
@@ -407,18 +424,18 @@ list.rules <- function (x, i = NULL, ...)
   }
   rule <- c()
   recFun <- function(node) {
-    if (id_node(node) == i) {
+    if (partykit::id_node(node) == i) {
       return(NULL)
     }
-    kid <- sapply(kids_node(node), id_node)
+    kid <- sapply(partykit::kids_node(node), partykit::id_node)
     whichkid <- max(which(kid <= i))
-    split <- split_node(node)
-    ivar <- varid_split(split)
+    split <- partykit::split_node(node)
+    ivar <- partykit::varid_split(split)
     svar <- names(dat)[ivar]
-    index <- index_split(split)
+    index <- partykit::index_split(split)
     if (is.factor(dat[, svar])) {
       if (is.null(index)) 
-        index <- ((1:nlevels(dat[, svar])) > breaks_split(split)) + 
+        index <- ((1:nlevels(dat[, svar])) > partykit::breaks_split(split)) + 
           1
       slevels <- levels(dat[, svar])[index == whichkid]
       srule <- paste(svar, " %in% c(\"", paste(slevels, 
@@ -428,10 +445,10 @@ list.rules <- function (x, i = NULL, ...)
       if (is.null(index)) {
         index <- 1:length(kid)
       }
-      breaks <- cbind(c(-Inf, breaks_split(split)), c(breaks_split(split), 
+      breaks <- cbind(c(-Inf, partykit::breaks_split(split)), c(partykit::breaks_split(split), 
                                                       Inf))
       sbreak <- breaks[index == whichkid, ]
-      right <- right_split(split)
+      right <- partykit::right_split(split)
       srule <- c()
       if (is.finite(sbreak[1])) {
         srule <- c(srule, paste(svar, ifelse(right, ">", 
@@ -446,7 +463,7 @@ list.rules <- function (x, i = NULL, ...)
     rule <<- c(rule, srule)
     return(recFun(node[[whichkid]]))
   }
-  node <- recFun(node_party(x))
+  node <- recFun(partykit::node_party(x))
   paste(rule, collapse = " & ")
 }
 
@@ -477,7 +494,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
       x$glmnet.fit$cvm[l1se_ind], 
       " (", x$glmnet.fit$cvsd[l1se_ind], ") \n\n", sep="")
     tmp <- coef(x, penalty.par.val = "lambda.1se")
-    return(tmp[tmp$coefficient!=0,])
+    return(tmp[tmp$coefficient != 0, ])
   }
   if (penalty.par.val == "lambda.min") {
     lmin_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
@@ -487,7 +504,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
       x$glmnet.fit$cvm[lmin_ind], 
       " (", x$glmnet.fit$cvsd[lmin_ind], ") \n\n", sep = "")
     tmp <- coef(x, penalty.par.val = "lambda.min")
-    return(tmp[tmp$coefficient!=0,])
+    return(tmp[tmp$coefficient != 0, ])
   }
 }
 
@@ -501,8 +518,6 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
 #' 
 #' @param object An object of class \code{\link{pre}}.
 #' @param k integer. The number of cross validation folds to be used.
-#' @param seed integer. Random seed to be used for generating 
-#' cross-validation subsamples.
 #' @param verbose logical. Should progress of the cross validation be printed 
 #' to the command line?
 #' @param pclass numeric. Only used for classification. Cut-off value between 
@@ -511,13 +526,14 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
 #' with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
 #' or giving cv error that is within 1 standard error of minimum cv error 
 #' ("\code{lambda.1se}")?
+#' @param parallel logical. Should parallel foreach be used? Must register parallel 
+#' beforehand, such as doMC or others.
 #' @return A list with three elements: \code{$cvpreds} (a vector with cross-validated
 #' predicted y values), \code{$ss} (a vector indicating the cross-validation subsample 
 #' each training observation was assigned to) and \code{$accuracy}. For continuous 
 #' outputs, accuracy is a list with elements \code{$MSE} (mean squared error on test 
-#' observations), \code{$MAE} (mean absolute error on test observations) and 
-#' \code{$cor_true_pred_y}, which is the correlation between the actual and predicted 
-#' outcome variable values. For classification, accuracy is a list with elements 
+#' observations), \code{$MAE} (mean absolute error on test observations). For 
+#' classification, accuracy is a list with elements 
 #' \code{$SEL} (mean squared error on predicted probabilities), \code{$AEL} (mean absolute 
 #' error on predicted probabilities), \code{$MCR} (average misclassification error rate) 
 #' and \code{$table} (table with proportions of (in)correctly classified observations 
@@ -525,50 +541,72 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
 #' @examples \donttest{
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' airq.cv <- cvpre(airq.ens)}
-cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5, 
-                  penalty.par.val = "lambda.1se") {
-  set.seed(seed)
-  ss <- sample(rep(1:k, length.out = nrow(object$data)), 
-               size = nrow(object$data), replace = FALSE)
-  cvobject <- list()
-  cvpreds <- rep(NA, times = nrow(object$data))
-  if (verbose) {
-    cat("Running cross validation in fold ")
-  }
-  for (i in 1:k){
+cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5, 
+                  penalty.par.val = "lambda.1se", parallel = FALSE) {
+  folds <- sample(rep(1:k, length.out = nrow(object$orig_data)), 
+               size = nrow(object$orig_data), replace = FALSE)
+  if (parallel) {
+    cvpreds_unsorted <- foreach(i = 1:k, .combine = "rbind") %dopar% {
+      cl <- object$call
+      cl$verbose <- FALSE
+      cl$data <- object$orig_data[folds != i,]
+      cvobject <- eval(cl)
+      if (object$classify) {
+        data.frame(fold = rep(i, times = length(folds) - nrow(cvobject$orig_data)), 
+                   preds = predict.pre(cvobject, type = "response", 
+                                       newdata = object$orig_data[folds == i,], 
+                                       penalty.par.val = penalty.par.val))
+      } else {
+        data.frame(fold = rep(i, times = length(folds) - nrow(cvobject$orig_data)),
+                   preds = predict.pre(cvobject, penalty.par.val = penalty.par.val,
+                                       newdata = object$orig_data[folds == i,]))
+      }
+    }
+    cvpreds <- rep(NA, times = nrow(object$orig_data))
+    for (i in 1:k) {
+      cvpreds[folds == i] <- cvpreds_unsorted[cvpreds_unsorted$fold ==i, "preds"]
+    }
+  } else {
     if (verbose) {
-      cat(i, " of ", k, ", ", sep = "")
+      cat("Running cross validation in fold ")
     }
-    cl <- object$call
-    cl$verbose <- FALSE
-    cl$data <- object$orig_data[ss!=i,]
-    cvobject[[i]] <- eval(cl)
-    if (object$classify) {
-      cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$orig_data[ss==i,], 
-                                     type = "response", penalty.par.val = penalty.par.val)
-    } else {
-        cvpreds[ss==i] <- predict.pre(cvobject[[i]], newdata = object$orig_data[ss==i,], 
-                                      penalty.par.val = penalty.par.val)
-    }
-    if (verbose & i==k) {
-      cat("done!\n")
+    cvpreds <- rep(NA, times = nrow(object$orig_data))
+    for (i in 1:k) {
+      if (verbose) {
+        cat(i, " of ", k, ", ", sep = "")
+      }
+      cl <- object$call
+      cl$verbose <- FALSE
+      cl$data <- object$orig_data[folds != i,]
+      cvobject <- eval(cl)
+      if (object$classify) {
+        cvpreds[folds == i] <- predict.pre(
+          cvobject, newdata = object$orig_data[folds == i,], type = "response", 
+          penalty.par.val = penalty.par.val)
+      } else {
+          cvpreds[folds == i] <- predict.pre(
+            cvobject, newdata = object$orig_data[folds == i,], 
+            penalty.par.val = penalty.par.val)
+      }
+      if (verbose & i == k) {
+        cat("done!\n")
+      }
     }
   }
   accuracy <- list()
   if (object$classify) {
     accuracy$SEL<- mean((as.numeric(object$data[,object$y_name]) - 1 - cvpreds)^2)
     accuracy$AEL <- mean(abs(as.numeric(object$data[,object$y_name]) - 1 - cvpreds))
-    cvpredsd <- as.numeric(cvpreds > .5)
-    accuracy$MCR <- 1 - sum(diag(prop.table(table(cvpredsd, 
+    cvpreds_d <- as.numeric(cvpreds > .5)
+    accuracy$MCR <- 1 - sum(diag(prop.table(table(cvpreds_d, 
                                                   object$data[,object$y_name]))))
-    accuracy$table <- prop.table(table(cvpredsd, object$data[,object$y_name]))
+    accuracy$table <- prop.table(table(cvpreds_d, object$data[,object$y_name]))
   }
   else {
     accuracy$MSE <- mean((object$data[,object$y_name] - cvpreds)^2)
     accuracy$MAE <- mean(abs(object$data[,object$y_name] - cvpreds))
-    accuracy$cor_true_pred_y <- cor(cvpreds, object$data[,object$y_name])
   }
-  result <- list(cvpreds = cvpreds, ss_indicators = ss, accuracy = accuracy)
+  result <- list(cvpreds = cvpreds, fold_indicators = folds, accuracy = accuracy)
   return(result)
 }
 
@@ -587,7 +625,7 @@ cvpre <- function(object, k = 10, seed = 42, verbose = TRUE, pclass = .5,
 #' lambda giving cv error that is within 1 standard error of minimum cv error 
 #' ("\code{lambda.1se}").
 #' @param ... additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.
-#' @return returns a dataframe with 3 columns: coefficients, rule (rule or 
+#' @return returns a dataframe with 3 columns: coefficient, rule (rule or 
 #' variable name) and description (\code{NA} for linear terms, conditions for 
 #' rules).
 #' @examples \donttest{
@@ -605,8 +643,20 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
       object$x_scales
   }
   coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs))
-  if (object$type != "linear") {
+  if (object$type != "linear" & !is.null(object$rules)) {
     coefs <- merge(coefs, object$rules, all.x = TRUE)
+    coefs$description <- as.character(coefs$description)
+  } else {
+    coefs <- data.frame(rule = coefs$rule, 
+                        description = rep(NA, times = nrow(coefs)), 
+                        coefficient = coefs[,1])
+  }
+  if(!is.null(object$wins_points)) { # include winsorizing points in the 
+    # description if they were used in generating the ensemble:
+    wp <- object$wins_points[!is.na(object$wins_points$value), ]
+    coefs[coefs$rule %in% wp$varname, ][
+      order(coefs[coefs$rule %in% wp$varname,]$rule), ]$description <- 
+      wp[order(wp$varname), ]$value  
   }
   return(coefs[order(abs(coefs$coefficient), decreasing = TRUE),])
 }
@@ -653,16 +703,15 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       stop("newdata should be a data frame.")
     }
     newdata <- model.frame(object$call$formula, newdata, na.action = NULL)
-    # check if newdata has the same columns as object$data:
+    # check if newdata has the same columns as object$orig_data:
     if (!all(names(object$data) %in% c(names(newdata), object$y_name))) {
       stop("newdata does not contain all predictor variables from the ensemble")
     } else {
       # take all input variables:
       newdata <- newdata[,names(newdata) %in% object$x_names]
       # add temporary y variable to create model.frame:
-      newdata[,object$y_name] <- object$data[,object$y_name][1]
+      newdata[,object$y_name] <- object$orig_data[,object$y_name][1]
       newdata <- model.frame(object$formula, newdata)
-      
       # check if all variables have the same levels: 
       if (!all(unlist(sapply(object$data, levels)) == 
               unlist(sapply(newdata[names(object$data)], levels)))) {
@@ -718,7 +767,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     if (object$type != "linear") {
       newdata <- data.frame(newdata, newrulevars)
     }
-    newdata <- MatrixModels::model.Matrix(object$modmat.formula, data = newdata,
+    newdata <- MatrixModels::model.Matrix(object$modmat_formula, data = newdata,
                                           sparse = TRUE)    
   }
   
@@ -777,21 +826,21 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   if (!is.character(varname)) {
     stop("Specified varname should be of mode character")
   }
-  if (is.factor(object$data[,varname]) & !is.null(nvals)) {
+  if (is.factor(object$orig_data[,varname]) & !is.null(nvals)) {
     warning("Plot is requested for variable of class factor. Value specified for 
-            nvars will be ignored.")
+            nvars will be ignored.", immediate. = TRUE)
     nvals <- NULL
   }
   
   # Generate expanded dataset:
   if (is.null(nvals)) {
-    newx <- unique(object$data[,varname])
+    newx <- unique(object$orig_data[,varname])
   } else {
     newx <- seq(
-      min(object$data[,varname]), max(object$data[,varname]), length = nvals)
+      min(object$orig_data[,varname]), max(object$orig_data[,varname]), length = nvals)
   }
-  exp_dataset <- object$data[rep(row.names(object$data), times = length(newx)),]
-  exp_dataset[,varname] <- rep(newx, each = nrow(object$data))
+  exp_dataset <- object$orig_data[rep(row.names(object$orig_data), times = length(newx)),]
+  exp_dataset[,varname] <- rep(newx, each = nrow(object$orig_data))
 
   # get predictions:
   exp_dataset$predy <- predict.pre(object, newdata = exp_dataset, type = type,
@@ -890,25 +939,25 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
   if (!is.character(varnames)) {
     stop("Specified varname should be of mode character.")
   }
-  if (any(sapply(object$data[,varnames], is.factor))) {
+  if (any(sapply(object$orig_data[,varnames], is.factor))) {
     stop("3D partial dependence plots are currently not supported for factors.")
   }
   # generate expanded dataset: 
   if (is.null(nvals)){
-    newx1 <- unique(object$data[,varnames[1]])
-    newx2 <- unique(object$data[,varnames[2]])
+    newx1 <- unique(object$orig_data[,varnames[1]])
+    newx2 <- unique(object$orig_data[,varnames[2]])
   } else {
-    newx1 <- seq(min(object$data[,varnames[1]]), max(object$data[,varnames[1]]), 
+    newx1 <- seq(min(object$orig_data[,varnames[1]]), max(object$orig_data[,varnames[1]]), 
                  length = nvals[1])
-    newx2 <- seq(min(object$data[,varnames[2]]), max(object$data[,varnames[2]]), 
+    newx2 <- seq(min(object$orig_data[,varnames[2]]), max(object$orig_data[,varnames[2]]), 
                  length = nvals[2])
   }
   nobs1 <- length(newx1)
   nobs2 <- length(newx2)
   nobs <- nobs1*nobs2
-  exp_dataset <- object$data[rep(row.names(object$data), times = nobs),]
-  exp_dataset[,varnames[1]] <- rep(newx1, each = nrow(object$data)*nobs2)
-  exp_dataset[,varnames[2]] <- rep(rep(newx2, each = nrow(object$data)), 
+  exp_dataset <- object$orig_data[rep(row.names(object$orig_data), times = nobs),]
+  exp_dataset[,varnames[1]] <- rep(newx1, each = nrow(object$orig_data)*nobs2)
+  exp_dataset[,varnames[2]] <- rep(rep(newx2, each = nrow(object$orig_data)), 
                                    times = nobs1)
   
   # get predictions:  
@@ -977,10 +1026,9 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 {
   ## Step 1: Calculate the importances of the base learners:
   
-  # get base learner coefficients (and 'unfactor'):
+  # get base learner coefficients:
   coefs <- coef.pre(object, print = FALSE, penalty.par.val = penalty.par.val)
-  coefs$description <- as.character(coefs$description)
-  # give linear terms a description:
+  # give factors a description:
   coefs$description[is.na(coefs$description)] <- 
     paste(as.character(coefs$rule)[is.na(coefs$description)], " ", sep = "")
   coefs <- coefs[order(coefs$rule),]
@@ -988,7 +1036,7 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
   if (global) {
     sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))  
   } else {
-    preds <- predict.pre(object, newdata = object$data, type = "response")
+    preds <- predict.pre(object, newdata = object$orig_data, type = "response")
     local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) & 
                                preds <= quantile(preds, probs = quantprobs[2]),]
     if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2 
@@ -1082,9 +1130,9 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 
 #' Compute boostrapped null interaction models
 #' 
-#' \code{bsnullinteract} generates null interaction models from bootstrapped 
-#' datasets, which can be used to derive a reference distribution of the test 
-#' statistic calculated with \code{\link{interact}}.
+#' \code{bsnullinteract} generates bootstrapped null interaction models, 
+#' which can be used to derive a reference distribution of the test statistic 
+#' calculated with \code{\link{interact}}.
 #' 
 #' @param object object of class \code{\link{pre}}.
 #' @param nsamp numeric. Number of bootstrapped null interaction models to be 
@@ -1093,57 +1141,80 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 #' criterion should be used? The value yielding minimum cv error 
 #' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
 #' error of minimum cv error ("\code{lambda.1se}")?
-#' @param seed numeric. Random seed to be used (for reproducability).
-#' @return A list of length \code{nsamp} with null interaction models, to be used 
-#' as input for \code{\link{interact}}.
+#' @param parallel logical. Should parallel foreach be used to generate initial 
+#' ensemble? Must register parallel beforehand, such as doMC or others.
+#' @param verbose logical. should progress be printed to the command line?
+#' @return A list of length \code{nsamp} with null interaction datasets, to be 
+#' used as input for \code{\link{interact}}.
 #' @examples \donttest{
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' nullmods <- bsnullinteract(airq.ens)}
 #' @details Computationally intensive. Progress info is printed to command line.
 #' @export
-bsnullinteract <- function(object, nsamp = 10, seed = 42, 
-                           penalty.par.val = "lambda.1se") 
+bsnullinteract <- function(object, nsamp = 10, parallel = FALSE, 
+                           penalty.par.val = "lambda.1se", verbose = FALSE) 
 {
-  # preliminaries:
-  set.seed(seed)
-  # create call for bootstrapped null model:
+  # create call for generating bootstrapped null models:
   bsnullmodcall <- object$call
   bsnullmodcall$maxdepth <- 1
   bsnullmodcall$verbose <- FALSE  
   # create call for model allowing for interactions, grown on bootstrapped 
   # datasets without interactions:
-  bsintmodcall <- bsnullmodcall
-  if (is.null(object$call$maxdepth)) {
-    bsintmodcall$maxdepth <- 3
+  bsintmodcall <- object$call
+  bsintmodcall$verbose <- FALSE 
+  # compute boostrapped null datasets (i.e., datasets with no interactions):
+  if (parallel) {
+    if (verbose) cat("This may take a while.")
+    bs.ens <- foreach(i = 1:nsamp) %dopar% {
+      # step 1: Take bootstrap sample {x_p, y_p}:
+      bsdataset <- object$orig_data[sample(1:nrow(object$orig_data), 
+                                           nrow(object$orig_data), replace = TRUE),]
+      # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
+      bsnullmodcall$data <- bsdataset
+      bs.ens.null <- eval(bsnullmodcall)
+      # step 3: first part of formula 47 of F&P2008:
+      # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
+      F_a_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
+      # step 4: third part of formula 47 of F&P2008:
+      # Calculate predictions F_A(x_p):
+      F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset, 
+                            penalty.par.val = penalty.par.val)
+      # step 5: Calculate ytilde of formula 47 of F&P2008:
+      ytilde <- F_a_of_x + bsdataset[,object$y_name] - F_A_of_x_p
+      # step 6: Build a model using (x,ytilde), using the same procedure as was 
+      # originally applied to (x,y):
+      bsintmodcall$data <- object$orig_data
+      bsintmodcall$data[,object$y_name] <- ytilde 
+      eval(match.call(pre, call = bsintmodcall))
+    }
   } else {
-    bsintmodcall$maxdepth <- object$call$maxdepth
+    bs.ens <- list()
+    if (verbose) cat("This may take a while. Computing null model ")
+    for(i in 1:nsamp) {
+      if (verbose) {cat(i, "of", nsamp, ", ")}
+      # step 1: Take bootstrap sample {x_p, y_p}:
+      bsdataset <- object$orig_data[sample(1:nrow(object$orig_data), 
+                                           nrow(object$orig_data), replace = TRUE),]
+      # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
+      bsnullmodcall$data <- bsdataset
+      bs.ens.null <- eval(bsnullmodcall)
+      # step 3: first part of formula 47 of F&P2008:
+      # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
+      F_a_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
+      # step 4: third part of formula 47 of F&P2008:
+      # Calculate predictions F_A(x_p):
+      F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset, 
+                                penalty.par.val = penalty.par.val)
+      # step 5: Calculate ytilde of formula 47 of F&P2008:
+      ytilde <- F_a_of_x + bsdataset[,object$y_name] - F_A_of_x_p
+      # step 6: Build a model using (x,ytilde), using the same procedure as was 
+      # originally applied to (x,y):
+      bsintmodcall$data <- object$orig_data
+      bsintmodcall$data[,object$y_name] <- ytilde 
+      bs.ens[[i]] <- eval(match.call(pre, call = bsintmodcall))
+    }
+    if (verbose) cat("done!\n")
   }
-  # compute boostrapped null dataset (i.e., dataset with no interactions):
-  bs.ens <- list()
-  cat("This may take a while. Computing null model ")
-  for(i in 1:nsamp) {
-    cat(i, "of", nsamp, "... ")
-    # step 1: Take bootstrap sample {x_ip, y_ip}:
-    bsdataset <- object$data[sample(1:nrow(object$data), nrow(object$data), 
-                                    replace = TRUE),]
-    # step 2: Build F_null, a model involving main effects only using {x_ip, y_ip}:
-    bsnullmodcall$data <- bsdataset
-    bs.ens.null <- eval(bsnullmodcall)
-    # step 3: Calculate residuals from predictions y^hat_ip using x_ip and F_null:
-    yhatip <- bsdataset[object$y_name] - 
-      predict.pre(bs.ens.null,vnewdata = bsdataset, 
-                  penalty.par.val = penalty.par.val) 
-    # step 4: Calculate predictions for original x, using F_null:
-    fipx <- predict.pre(bs.ens.null, newdata = object$data)
-    # step 5: Calculate ybar, by adding residuals from step 3 to predictions from 
-    # step 4:
-    bsdataset[,object$y_name] <- yhatip + fipx
-    # step 6: Build a model using (x,ybar), using the same procedure as was 
-    # originally applied to (x,y):
-    bsintmodcall$data <- bsdataset
-    bs.ens[[i]] <- eval(match.call(pre, call = bsintmodcall))
-  }
-  cat("Done!")
   return(bs.ens)
 }
 
@@ -1152,28 +1223,28 @@ bsnullinteract <- function(object, nsamp = 10, seed = 42,
 
 
 # Internal function for calculating H statistic (section 8.1, equation 45):
-Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL) {
+Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose = FALSE) {
   # Calculate the predicted value F(x) of the full model for each observation:
-  preds_x <- predict.pre(object, newdata = object$data, penalty.par.val = penalty.par.val)
+  preds_x <- predict.pre(object, newdata = object$orig_data, penalty.par.val = penalty.par.val)
   # Calculate the expected value of F_j(x_j), over all observed values x_/j,
   # and the expected value of F_/j(x_/j), over all observed values x_j:
-  exp_dataset <- object$data[rep(row.names(object$data), 
-                                 times = nrow(object$data)),]
-  exp_dataset[,varname] <- rep(object$data[,varname], each = nrow(object$data))
+  exp_dataset <- object$orig_data[rep(row.names(object$orig_data), 
+                                 times = nrow(object$orig_data)),]
+  exp_dataset[,varname] <- rep(object$orig_data[,varname], each = nrow(object$orig_data))
   # using predict.pre for a hughe dataset may lead to errors, so split 
-  # computations up in 10 parts:
+  # computations up in k parts:
   exp_dataset$ids <- sample(1:k, nrow(exp_dataset), replace = TRUE)
   for(i in 1:k) {  
-    cat(".")
+    if (verbose) cat(".")
     exp_dataset[exp_dataset$ids==i, "yhat"] <- predict.pre(
       object, newdata = exp_dataset[exp_dataset$ids==i,],
       penalty.par.val = penalty.par.val)
   }
   # expected value of F_j(x_j), over all observed values x_/j:
-  exp_dataset$i_xj <- rep(1:nrow(object$data), each = nrow(object$data))
+  exp_dataset$i_xj <- rep(1:nrow(object$orig_data), each = nrow(object$orig_data))
   preds_xj <- aggregate(yhat ~ i_xj, data = exp_dataset, FUN = mean)$yhat
   # expected value of F_/j(x_/j), over all observed values x_j:
-  exp_dataset$i_xnotj <-  rep(1:nrow(object$data), times = nrow(object$data))
+  exp_dataset$i_xnotj <-  rep(1:nrow(object$orig_data), times = nrow(object$orig_data))
   preds_xnotj <- aggregate(yhat ~ i_xnotj, data = exp_dataset, FUN = mean)$yhat
   # H should be calculated based on centered functions:
   preds_x <- scale(preds_x, center = TRUE, scale = FALSE)
@@ -1183,8 +1254,8 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL) {
     return(sum((preds_x - preds_xj - preds_xnotj)^2) / sum(preds_x^2))
   }
   if (sum(preds_x^2) == 0) {
-    warning("The denominator for calculating H squared was equal to zero. It was 
-            set to 1e-10 to allow for calculation of H squared")
+    #warning("The denominator for calculating H squared was equal to zero. It was 
+    #        set to 1e-10 to allow for calculation of H squared", immediate. = TRUE)
     return(sum((preds_x - preds_xj - preds_xnotj)^2) / 1e-10)
   }
 }
@@ -1195,7 +1266,7 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL) {
 
 #' Calculate interaction statistics for user-specified variables
 #' 
-#' \code{interact} calculates a statistic for assessing the presence of 
+#' \code{interact} calculates test statistics for assessing the strength of 
 #' interactions between the input variable(s) specified, and all other input
 #' variables.
 #' 
@@ -1213,6 +1284,8 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL) {
 #' criterion should be used? The value yielding minimum cv error 
 #' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
 #' error of minimum cv error ("\code{lambda.1se}")?
+#' @param parallel logical. Should parallel foreach be used? Must register 
+#' parallel beforehand, such as doMC or others.
 #' @param plot logical Should interaction statistics be plotted?
 #' @param col character vector of length two. Color for plotting bars used. Only 
 #' used when \code{plot = TRUE}. Only first element of vector is used if 
@@ -1221,12 +1294,15 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL) {
 #' @param main character. Main title for the bar plot.
 #' @param legend logical. Should a legend be plotted in the top right corner of the 
 #' barplot?
+#' @param verbose logical. Should progress information be printed to the 
+#' command line?
 #' @param ... Additional arguments to be passed to \code{barplot}.
 #' @examples 
 #' \donttest{
 #'  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #'  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
-#' @details Can be computationally intensive, especially when nullmods is specified.
+#' @details Can be computationally intensive, especially when nullmods is specified,
+#' in which case setting \verb{parallel = TRUE} may improve speed.
 #' @return If nullmods is not specified, the function returns the interaction 
 #' test statistic. If nullmods is specified, the function returns a list, 
 #' with elements \code{$H}, which is the test statistic of the interaction 
@@ -1236,9 +1312,10 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL) {
 #' blue is used for the mean in the bootstrapped null models.
 #' @export
 interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE, 
-                     penalty.par.val = "lambda.1se",
-                     col = c("yellow", "blue"), ylab = "Interaction strength", 
-                     main = "Interaction test statistics", legend = TRUE, ...)
+                     penalty.par.val = "lambda.1se", col = c("yellow", "blue"), 
+                     ylab = "Interaction strength", parallel = FALSE,
+                     main = "Interaction test statistics", legend = TRUE, 
+                     verbose = FALSE, ...)
 {
   if (is.null(varnames)) {
     # should only be variables with non-zero importances:
@@ -1247,29 +1324,57 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
   } else if (!all(varnames %in% object$x_names)) {
     stop("Interaction statistics requested for one or more unknown input variables")
   }
-  cat("This will take a while (", 
-      k*(length(nullmods)+1)*length(varnames), "dots ). ")
-  # Calculate H_j for the original dataset:
-  H <- rep(NA, length(varnames))
-  nullH <- data.frame(matrix(NA, nrow = length(nullmods), ncol = length(varnames)))
-  colnames(nullH) <- varnames
-  for(i in 1:length(varnames)) {
-    H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k, 
-                      penalty.par.val = penalty.par.val)    
-    # Calculate mean and sd of H_j for the bootstrapped null models:  
-    if (!is.null(nullmods)) {
-      for(j in 1:length(nullmods)) {
-        nullH[j,i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i], 
-                                k = k, penalty.par.val = penalty.par.val)  
-      }
-    }
+  if (verbose) {
+    cat("This will take a while (", 
+        k * (length(nullmods) + 1) * length(varnames), "dots ). ")
   }
-  cat("\n")
+  if (parallel) {
+      H <- foreach(i = 1:length(varnames), .combine = "c") %dopar% {
+        # Calculate H_j for the original dataset:
+        Hsquaredj(object = object, varname = varnames[i], k = k, 
+                  penalty.par.val = penalty.par.val, verbose = verbose)
+      }
+      names(H) <- varnames
+      if (!is.null(nullmods)) {
+        nullH <- foreach(i = 1:length(varnames), .combine = "cbind") %dopar% {
+          # Calculate H_j for the bootstrapped null models:
+          nullH <- c()
+          for(j in 1:length(nullmods)) {
+           nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i], 
+                                  k = k, penalty.par.val = penalty.par.val, 
+                                  verbose = verbose)
+           }
+          nullH
+        }
+        nullH <- data.frame(nullH)
+        names(H) <- colnames(nullH) <- varnames
+      }
+    } else { # if not parallel computation:
+     H <- c()
+     if (is.null(nullmods)) {
+       for(i in 1:length(varnames)) {
+         H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k, 
+                           penalty.par.val = penalty.par.val, verbose = verbose)
+       }
+     } else { # Calculate H values for the training data and bootstrapped null models:  
+       nullH <- data.frame()
+       for(i in 1:length(varnames)) {
+         H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k, 
+                           penalty.par.val = penalty.par.val, verbose = verbose)
+         for(j in 1:length(nullmods)) {
+           nullH[j,i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i], 
+                                   k = k, penalty.par.val = penalty.par.val,
+                                   verbose = verbose)  
+         }
+       }
+       colnames(nullH) <- varnames
+    }
+    names(H) <- varnames
+  }
+  if (verbose) cat("\n")
   if (plot) {
     if (is.null(nullmods)) {
-      names(H) <- varnames
       barplot(H, col = col[1], main = main, ...)
-      return(data.frame(varnames = varnames, trainingH2 = H))
     } else {
       nullmeans <- vector()
       for(i in 1:length(varnames)) {
@@ -1277,13 +1382,153 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
       }
       H2s <- as.vector(rbind(H, nullmeans))
       barplot(H2s, col = col, ylab = ylab, main = main, 
-        space = rep_len(1:0, length(H2s)), beside = TRUE, 
-        names.arg = rep(varnames, each = 2), ...)
-    }
-    if (legend & !(is.null(nullmods))) {
-      legend("topright", c("observed", "bs null mod mean"), bty = "n", 
-             col = col, pch = 15)
+              space = rep_len(1:0, length(H2s)), beside = TRUE, 
+              names.arg = rep(varnames, each = 2), ...)
+       if (legend) {
+        legend("topright", c("observed", "bs null mod mean"), bty = "n", 
+               col = col, pch = 15)
+      }
     }
   }
-  return(list(trainingH2 = H, nullH2 = nullH))
-}  
+  if(is.null(nullmods)) {
+    return(H)
+  } else {
+    return(list(trainingH2 = H, nullH2 = nullH))
+  }
+}
+
+
+
+
+
+
+#' Plot method for class pre
+#'
+#' \code{plot.pre} creates one or more plots depicting the rules in the final
+#' ensemble as simple decision trees.
+#'
+#' @param x an object of class \code{\link{pre}}.
+#' @param penalty.par.val character. Which value of the penalty parameter
+#' criterion should be used? The value yielding minimum cv error
+#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
+#' error of minimum cv error ("\code{lambda.1se}")?
+#' @param plot.dim numeric vector of length two, number of rows and columns of
+#' the plotting window in which the rules should be plotted.
+#' @param ... Currently not used.
+#' @examples
+#' \donttest{
+#'  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+#'  plot(airq.ens)}
+#' @export
+#' @method plot pre
+plot.pre <- function(x, penalty.par.val = "lambda.1se", plot.dim = NULL, ...) {
+  # Preliminaries:
+  if (!("grid" %in% installed.packages()[,1])) {
+    stop("Function plot.pre requires package grid. Download and install package
+         grid from CRAN, and run again.")
+  }
+  # Get rules in final ensemble:
+  coefs <- coef(x)
+  coefs <- coefs[coefs$coefficient != 0,]
+  nonzerorules <- coefs[grep("rule", coefs$rule),]
+  if(is.null(plot.dim)) {
+    plot.dim <- rep(ceiling(sqrt(nrow(nonzerorules))), times = 2)
+  }
+  conditions <- list()
+  for(i in 1:nrow(nonzerorules)) { # i is a counter for rules
+    if (length(grep("&", nonzerorules$description[i], )) > 0) {
+      conditions[[i]] <- unlist(strsplit(nonzerorules$description[i], split = " & "))
+    } else {
+      conditions[[i]] <- nonzerorules$description[i]
+    }
+  }
+  # Create plotting regions:
+  grid::grid.newpage()
+  grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
+  # Generate a tree for every rule:
+  for(i in 1:nrow(nonzerorules)) {
+    # Create lists of arguments and operators for every condition:
+    tmp <- list()
+    # check whether ?plot.the operator is " < ", " <= " or "%in%  "
+    # split the string using the operator, into the variable name and splitting value, which is used to define split = partysplit(id, value)
+    # make it a list:
+    for (j in 1:length(conditions[[i]])) {
+      condition_j <- conditions[[i]][[j]]
+      tmp[[j]] <- character()
+      if (length(grep(" > ", condition_j)) > 0) {
+        tmp[[j]][1] <- unlist(strsplit(condition_j, " > "))[1]
+        tmp[[j]][2] <- " > "
+        tmp[[j]][3] <- unlist(strsplit(condition_j, " > "))[2]
+      }
+      if (length(grep(" <= ", condition_j)) > 0) {
+        tmp[[j]][1] <- unlist(strsplit(condition_j, " <= "))[1]
+        tmp[[j]][2] <- " <= "
+        tmp[[j]][3] <- unlist(strsplit(condition_j, " <= "))[2]
+      }
+      if (length(grep(" %in% ", condition_j)) > 0) {
+        tmp[[j]][1] <- unlist(strsplit(condition_j, " %in% "))[1]
+        tmp[[j]][2] <- " %in% "
+        tmp[[j]][3] <- unlist(strsplit(condition_j, " %in% "))[2]
+      }
+    }
+    ncond <- length(tmp)
+    # generate empty datasets for all the variables appearing in the rules:
+    treeplotdata <- data.frame(matrix(ncol = ncond))
+    for (j in 1:ncond) {
+      names(treeplotdata)[j] <- tmp[[j]][1]
+      if (tmp[[j]][2] == " %in% ") {
+        treeplotdata[,j] <- factor(treeplotdata[,j])
+        faclevels <- substring(tmp[[j]][3], first = 2)
+        faclevels <- gsub(pattern = "\"", replacement = "", x = faclevels, fixed = TRUE)
+        faclevels <- gsub(pattern = "(", replacement = "", x = faclevels, fixed = TRUE)
+        faclevels <- gsub(pattern = ")", replacement = "", x = faclevels, fixed = TRUE)
+        faclevels <- unlist(strsplit(faclevels, ", ",))
+        levels(treeplotdata[,j]) <- c(
+          levels(x$data[,tmp[[j]][1]])[levels(x$data[,tmp[[j]][1]]) %in% faclevels],
+          levels(x$data[,tmp[[j]][1]])[!(levels(x$data[,tmp[[j]][1]]) %in% faclevels)])
+        tmp[[j]][3] <- length(faclevels)
+      }
+    }
+
+    # generate partynode objects for plotting:
+    nodes <- list()
+    # Construct level 0 of tree (the two terminal nodes), conditional on operator of last condition:
+    if (tmp[[ncond]][2] == " > ") { # If condition involves " > ", the tree continues right:
+      nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL, info = "exit")
+      nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL, info = round(nonzerorules$coefficient[i], digits = 3))
+    } else { # If condition involves " <= " or " %in% " the tree continues left:
+      nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL, info = round(nonzerorules$coefficient[i], digits = 3))
+      nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL, info = "exit")
+    }
+    class(nodes[[1]]) <- class(nodes[[2]]) <- "partynode"
+
+    # if there are > 1 conditions in rule, loop for (nconditions - 1) times:
+    if (ncond > 1) {
+      for (lev in 1L:(ncond - 1)) { # lev is a counter for the level in the tree
+        if (tmp[[lev + 1]][2] == " > ") { # If condition involves " > ", the tree continues right:
+          nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+                                       kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
+                                       surrogates = NULL, info = NULL)
+          nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = NULL, kids = NULL, surrogates = NULL, info = "exit")
+        } else { # If condition involves " <= " or " %in% " the tree continues left:
+          nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = NULL, kids = NULL, surrogates = NULL, info = "exit")
+          nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+                                       kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
+                                       surrogates = NULL, info = NULL)
+        }
+        class(nodes[[lev * 2 + 1]]) <- class(nodes[[lev * 2 + 2]]) <- "partynode"
+      }
+    }
+    # Construct root node:
+    lev <- ncond
+    nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 2), split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+                                 kids = list(nodes[[lev * 2]], nodes[[lev * 2 - 1]]),
+                                 surrogates = NULL, info = NULL)
+    class(nodes[[lev * 2 + 1]]) <- "partynode"
+
+    # Plot the rule:
+    grid::pushViewport(grid::viewport(layout.pos.col = rep(1:3, times = i)[i], layout.pos.row = ceiling(i/3)))
+    plot(party(nodes[[lev * 2 + 1]], data = treeplotdata), main = nonzerorules$rule[i], newpage = FALSE)
+    grid::popViewport()
+  }
+}

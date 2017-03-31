@@ -6,8 +6,9 @@
 \usage{
 interact(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE,
   penalty.par.val = "lambda.1se", col = c("yellow", "blue"),
-  ylab = "Interaction strength", main = "Interaction test statistics",
-  legend = TRUE, ...)
+  ylab = "Interaction strength", parallel = FALSE,
+  main = "Interaction test statistics", legend = TRUE, verbose = FALSE,
+  ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
@@ -37,10 +38,16 @@ used when \code{plot = TRUE}. Only first element of vector is used if
 
 \item{ylab}{character string. Label to be used for plotting y-axis.}
 
+\item{parallel}{logical. Should parallel foreach be used? Must register 
+parallel beforehand, such as doMC or others.}
+
 \item{main}{character. Main title for the bar plot.}
 
 \item{legend}{logical. Should a legend be plotted in the top right corner of the 
 barplot?}
+
+\item{verbose}{logical. Should progress information be printed to the 
+command line?}
 
 \item{...}{Additional arguments to be passed to \code{barplot}.}
 }
@@ -54,12 +61,13 @@ yellow is used for plotting the interaction test statistic. When applicable,
 blue is used for the mean in the bootstrapped null models.
 }
 \description{
-\code{interact} calculates a statistic for assessing the presence of 
+\code{interact} calculates test statistics for assessing the strength of 
 interactions between the input variable(s) specified, and all other input
 variables.
 }
 \details{
-Can be computationally intensive, especially when nullmods is specified.
+Can be computationally intensive, especially when nullmods is specified,
+in which case setting \verb{parallel = TRUE} may improve speed.
 }
 \examples{
 \donttest{
