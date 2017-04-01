@@ -11,12 +11,12 @@ pairplot(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
 
-\item{varnames}{character vector of length two. Currently, pairplots can only 
+\item{varnames}{character vector of length two. Currently, pairplots can only
 be requested for non-nominal variables. If varnames specifies the name(s) of
 variables of class \code{"factor"}, an error will be printed.}
 
-\item{penalty.par.val}{character. Should model be selected with lambda giving 
-minimum cv error ("lambda.min"), or lambda giving cv error that is within 1 
+\item{penalty.par.val}{character. Should model be selected with lambda giving
+minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
 standard error of minimum cv error ("lambda.1se")?}
 
 \item{phi}{numeric. See \code{persp()} documentation.}
@@ -25,52 +25,53 @@ standard error of minimum cv error ("lambda.1se")?}
 
 \item{col}{character. Optional color to be used for surface in 3D plot.}
 
-\item{nvals}{optional numeric vector of length 2. For how many values of 
-x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed 
+\item{nvals}{optional numeric vector of length 2. For how many values of
+x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed
 values for the two predictor variables specified will be used (see details).}
 
-\item{ticktype}{character string. If \code{"simple"} draws just an arrow 
-parallel to the axis to indicate direction of increase; \code{"detailed"} 
-draws normal ticks as per 2D plots.}
+\item{ticktype}{character string. If \code{"simple"} draws an arrow parallel
+to the axes to indicate direction of increase; \code{"detailed"} draws ticks 
+on the axes as in 2D plots.}
 
-\item{nticks}{the (approximate) number of tick marks to draw on the axes. Has 
+\item{nticks}{the (approximate) number of tick marks to draw on the axes. Has
 no effect if \code{ticktype = "simple"}.}
 
-\item{type}{character string. Type of prediction to be plotted on z-axis. 
-\code{type = "response"} gives fitted values for continuous outputs and 
+\item{type}{character string. Type of prediction to be plotted on z-axis.
+\code{type = "response"} gives fitted values for continuous outputs and
 fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 values for continuous outputs and linear predictor values for nominal outputs.}
 
 \item{...}{Additional arguments to be passed to \code{\link[graphics]{persp}}.}
 }
 \description{
-\code{pairplot} creates a partial dependence plot to assess the effects of a 
+\code{pairplot} creates a partial dependence plot to assess the effects of a
 pair of predictor variables on the predictions of the ensemble
 }
 \details{
-By default, partial dependence will be plotted for each combination 
-of 20 values of the specified predictor variables. When \code{nvals = NULL} is 
-specified a dependence plot will be created for every combination of the unique 
-observed values of the two predictor variables specified. Therefore, using 
-\code{nvals = NULL} will often result in long computation times, and / or 
-memory allocation errors. Also, \code{\link{pre}} ensembles derived 
-from training datasets that are very wide or long may result in long 
-computation times and / or memory allocation errors. In such cases, reducing 
-the values supplied to \code{nvals} will reduce computation time and / or 
-memory allocation errors. When the nvals argument is supplied, values for the 
-minimum, maximum, and nvals - 2 intermediate values of the predictor variable 
-will be plotted. Furthermore, if none of the variables specified appears in 
+By default, partial dependence will be plotted for each combination
+of 20 values of the specified predictor variables. When \code{nvals = NULL} is
+specified a dependence plot will be created for every combination of the unique
+observed values of the two predictor variables specified. Therefore, using
+\code{nvals = NULL} will often result in long computation times, and / or
+memory allocation errors. Also, \code{\link{pre}} ensembles derived
+from training datasets that are very wide or long may result in long
+computation times and / or memory allocation errors. In such cases, reducing
+the values supplied to \code{nvals} will reduce computation time and / or
+memory allocation errors. When the nvals argument is supplied, values for the
+minimum, maximum, and nvals - 2 intermediate values of the predictor variable
+will be plotted. Furthermore, if none of the variables specified appears in
 the final prediction rule ensemble, an error will occur.
 }
 \note{
 The \code{pairplot} function uses the akima package to construct
-interpolated surfaces and  has an ACM license that restricts applications 
-to non-commercial usage, see 
+interpolated surfaces and  has an ACM license that restricts applications
+to non-commercial usage, see
 \url{https://www.acm.org/publications/policies/software-copyright-notice}
 The \code{pairplot} function prints a note refering to this ACM licence.
 }
 \examples{
 \donttest{
+set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 pairplot(airq.ens, c("Temp", "Wind"))}
 }

@@ -1,3 +1,5 @@
+utils::globalVariables("%dopar%")
+
 #' Derive a prediction rule ensemble
 #'
 #' \code{pre} derives a sparse ensemble of rules and/or linear functions for 
@@ -91,6 +93,13 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   ## Preliminaries ##
   ###################
   
+  if(par.init | par.final) {
+    if (!("foreach" %in% installed.packages()[,1])) {
+      warning("Parallel computation requires package foreach, which is not installed. Argument parallel will be set to FALSE. 
+              To run in parallel, download and install package foreach from CRAN, and run again.")   
+      par.init <- par.final <- FALSE
+    }
+  }
   if (!is.data.frame(data)) {
     stop("data should be a data frame.")
   }
@@ -162,7 +171,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   if (type != "linear") {
     if (learnrate == 0) { # always use ctree()
       if(par.init) {
-        rules <- foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
+        rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
             subsample <- sample(1:n, size = n, replace = TRUE)
@@ -481,6 +490,7 @@ list.rules <- function (x, i = NULL, ...)
 #' @param ... Additional arguments, currently not used.
 #' @return Prints information about the generated prediction rule ensembles, 
 #' @examples \donttest{
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' coefs <- print(airq.ens)}
 #' @export
@@ -539,6 +549,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
 #' and \code{$table} (table with proportions of (in)correctly classified observations 
 #' per class).
 #' @examples \donttest{
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' airq.cv <- cvpre(airq.ens)}
 cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5, 
@@ -546,7 +557,7 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
   folds <- sample(rep(1:k, length.out = nrow(object$orig_data)), 
                size = nrow(object$orig_data), replace = FALSE)
   if (parallel) {
-    cvpreds_unsorted <- foreach(i = 1:k, .combine = "rbind") %dopar% {
+    cvpreds_unsorted <- foreach::foreach(i = 1:k, .combine = "rbind") %dopar% {
       cl <- object$call
       cl$verbose <- FALSE
       cl$data <- object$orig_data[folds != i,]
@@ -629,6 +640,7 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
 #' variable name) and description (\code{NA} for linear terms, conditions for 
 #' rules).
 #' @examples \donttest{
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' coefs <- coef(airq.ens)}
 #' @export
@@ -667,33 +679,34 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 
 #' Predicted values based on final unbiased prediction rule ensemble
 #'
-#' \code{predict.pre} generates predictions based on the final prediction rule 
+#' \code{predict.pre} generates predictions based on the final prediction rule
 #' ensemble, for training or new (test) observations
-#' 
+#'
 #' @param object object of class \code{\link{pre}}.
-#' @param newdata optional dataframe of new (test) observations, including all 
+#' @param newdata optional dataframe of new (test) observations, including all
 #' predictor variables used for deriving the prediction rule ensemble.
-#' @param penalty.par.val character. Penalty parameter criterion to be used for 
-#' selecting final model: lambda giving minimum cv error ("lambda.min") or lambda 
-#' giving cv error that is within 1 standard error of minimum cv error 
-#' ("lambda.1se"). 
+#' @param penalty.par.val character. Penalty parameter criterion to be used for
+#' selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
+#' giving cv error that is within 1 standard error of minimum cv error
+#' ("lambda.1se").
 #' @param type character string. The type of prediction required; the default
 #' \code{type = "link"} is on the scale of the linear predictors. Alternatively,
 #' for nominal outputs, \code{type = "response"} gives the fitted probabilities
 #' and \code{type = "class"} gives the predicted class membership.
 #' @param ... currently not used.
-#' @details When newdata is not provided, training data included in the specified 
+#' @details When newdata is not provided, training data included in the specified
 #' object is used.
 #' @examples \donttest{
-#' set.seed(42)
+#' set.seed(1)
 #' train <- sample(1:length(complete.cases(airquality)), size = 120)
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,])
 #' predict(airq.ens)
 #' predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}
 #' @import Matrix
 #' @export
-#' @method predict pre 
-predict.pre <- function(object, newdata = NULL, type = "link", 
+#' @method predict pre
+predict.pre <- function(object, newdata = NULL, type = "link",
                          penalty.par.val = "lambda.1se", ...)
 {
   if (is.null(newdata)) {
@@ -712,14 +725,14 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       # add temporary y variable to create model.frame:
       newdata[,object$y_name] <- object$orig_data[,object$y_name][1]
       newdata <- model.frame(object$formula, newdata)
-      # check if all variables have the same levels: 
-      if (!all(unlist(sapply(object$data, levels)) == 
+      # check if all variables have the same levels:
+      if (!all(unlist(sapply(object$data, levels)) ==
               unlist(sapply(newdata[names(object$data)], levels)))) {
-        stop("At least one variable in newdata has different levels than the 
+        stop("At least one variable in newdata has different levels than the
              variables used to create the ensemble")
       }
     }
-    coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val), 
+    coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val),
                 Class = "matrix")
     # if there are rules in the ensemble, they should be evaluated:
     if (object$type != "linear") {
@@ -758,7 +771,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     newdata[,sapply(newdata, is.ordered)] <- as.numeric(as.character(
       newdata[,sapply(newdata, is.ordered)]))
 
-    # linear terms normalized before application of glmnet should also be 
+    # linear terms normalized before application of glmnet should also be
     # normalized before applying predict.glmnet:
     if (object$normalize & object$type != "rules") {
       newdata[,names(object$x_scales)] <- scale(
@@ -768,11 +781,11 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       newdata <- data.frame(newdata, newrulevars)
     }
     newdata <- MatrixModels::model.Matrix(object$modmat_formula, data = newdata,
-                                          sparse = TRUE)    
+                                          sparse = TRUE)
   }
-  
+
   # Get predictions:
-  preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, s = penalty.par.val, 
+  preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, s = penalty.par.val,
                              type = type)[,1]
   return(preds)
 }
@@ -782,42 +795,43 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 
 
 #' Create partial dependence plot for a single variable
-#' 
-#' \code{singleplot} creates a partial dependence plot, which shows the effect of 
+#'
+#' \code{singleplot} creates a partial dependence plot, which shows the effect of
 #' a predictor variable on the ensemble's predictions
-#' 
+#'
 #' @param object an object of class \code{\link{pre}}
-#' @param varname character vector of length one, specifying the variable for 
+#' @param varname character vector of length one, specifying the variable for
 #' which the partial dependence plot should be created.
-#' penalty.par.val character. Penalty parameter criterion to be used for 
-#' selecting final model: lambda giving minimum cv error ("lambda.min") or lambda 
-#' giving cv error that is within 1 standard error of minimum cv error 
-#' ("lambda.1se"). 
-#' @param nvals optional numeric vector of length one. For how many values of x 
+#' penalty.par.val character. Penalty parameter criterion to be used for
+#' selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
+#' giving cv error that is within 1 standard error of minimum cv error
+#' ("lambda.1se").
+#' @param nvals optional numeric vector of length one. For how many values of x
 #' should the partial dependence plot be created?
-#' @param type character string. Type of prediction to be plotted on y-axis. 
-#' \code{type = "response"} gives fitted values for continuous outputs and 
+#' @param type character string. Type of prediction to be plotted on y-axis.
+#' \code{type = "response"} gives fitted values for continuous outputs and
 #' fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 #' values for continuous outputs and linear predictor values for nominal outputs.
-#' @param penalty.par.val character. Penalty parameter criterion to be used for 
-#' selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or 
-#' lambda giving cv error that is within 1 standard error of minimum cv error 
+#' @param penalty.par.val character. Penalty parameter criterion to be used for
+#' selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or
+#' lambda giving cv error that is within 1 standard error of minimum cv error
 #' ("\code{lambda.1se}").
-#' @details By default, a partial dependence plot will be created for each unique 
-#' observed value of the specified predictor variable. When the number of unique 
-#' observed values is large, this may take a long time to compute. In that case, 
-#' specifying the nvals argument can substantially reduce computing time. When the 
-#' nvals argument is supplied, values for the minimum, maximum, and (nvals - 2) 
+#' @details By default, a partial dependence plot will be created for each unique
+#' observed value of the specified predictor variable. When the number of unique
+#' observed values is large, this may take a long time to compute. In that case,
+#' specifying the nvals argument can substantially reduce computing time. When the
+#' nvals argument is supplied, values for the minimum, maximum, and (nvals - 2)
 #' intermediate values of the predictor variable will be plotted. Note that nvals
 #' can be specified only for numeric and ordered input variables. If the plot is
-#' requested for a nominal input variable, the \code{nvals} argument will be 
+#' requested for a nominal input variable, the \code{nvals} argument will be
 #' ignored and a warning is printed.
 #' @examples \donttest{
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' singleplot(airq.ens, "Temp")}
 #' @export
-singleplot <- function(object, varname, penalty.par.val = "lambda.1se", 
-                       nvals = NULL, type = "response") 
+singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
+                       nvals = NULL, type = "response")
 {
   # preliminaries:
   if (length(varname) != 1) {
@@ -827,11 +841,11 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
     stop("Specified varname should be of mode character")
   }
   if (is.factor(object$orig_data[,varname]) & !is.null(nvals)) {
-    warning("Plot is requested for variable of class factor. Value specified for 
+    warning("Plot is requested for variable of class factor. Value specified for
             nvars will be ignored.", immediate. = TRUE)
     nvals <- NULL
   }
-  
+
   # Generate expanded dataset:
   if (is.null(nvals)) {
     newx <- unique(object$orig_data[,varname])
@@ -846,10 +860,10 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   exp_dataset$predy <- predict.pre(object, newdata = exp_dataset, type = type,
                                     penalty.par.val = penalty.par.val)
 
-  # create plot:  
+  # create plot:
   plot(aggregate(
-    exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean), 
-    type = "l", ylab = "predicted y", xlab = varname, main = 
+    exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean),
+    type = "l", ylab = "predicted y", xlab = varname, main =
       paste("partial dependence on", varname))
   # To be implemented:
   # qntl = trimming factor for plotting numeric variables. Plots are shown for variable values in the range [quantile (qntl) - quantile(1-qntl)]. (Ignored for categorical variables (factors).)
@@ -866,7 +880,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   # cex.names = expansion factor for axis names (bar labels) for categorical variable barplots
   # col = color of barplot for categorical variables
   # denqnt = quantile for data density tick marks along upper plot boundary  for numeric variables ( < 1)
-  # denqnt <= 0 => no data density tick marks displayed 
+  # denqnt <= 0 => no data density tick marks displayed
 }
 
 
@@ -874,64 +888,65 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 
 
 #' Create partial dependence plot for a pair of predictor variables
-#' 
-#' \code{pairplot} creates a partial dependence plot to assess the effects of a 
+#'
+#' \code{pairplot} creates a partial dependence plot to assess the effects of a
 #' pair of predictor variables on the predictions of the ensemble
-#' 
+#'
 #' @param object an object of class \code{\link{pre}}
-#' @param varnames character vector of length two. Currently, pairplots can only 
+#' @param varnames character vector of length two. Currently, pairplots can only
 #' be requested for non-nominal variables. If varnames specifies the name(s) of
 #' variables of class \code{"factor"}, an error will be printed.
-#' @param penalty.par.val character. Should model be selected with lambda giving 
-#' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1 
+#' @param penalty.par.val character. Should model be selected with lambda giving
+#' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
 #' standard error of minimum cv error ("lambda.1se")?
 #' @param phi numeric. See \code{persp()} documentation.
 #' @param theta numeric. See \code{persp()} documentation.
 #' @param col character. Optional color to be used for surface in 3D plot.
-#' @param nvals optional numeric vector of length 2. For how many values of 
-#' x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed 
-#' values for the two predictor variables specified will be used (see details). 
-#' @param ticktype character string. If \code{"simple"} draws just an arrow 
-#' parallel to the axis to indicate direction of increase; \code{"detailed"} 
-#' draws normal ticks as per 2D plots.
-#' @param nticks the (approximate) number of tick marks to draw on the axes. Has 
+#' @param nvals optional numeric vector of length 2. For how many values of
+#' x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed
+#' values for the two predictor variables specified will be used (see details).
+#' @param ticktype character string. If \code{"simple"} draws an arrow parallel
+#' to the axes to indicate direction of increase; \code{"detailed"} draws ticks 
+#' on the axes as in 2D plots.
+#' @param nticks the (approximate) number of tick marks to draw on the axes. Has
 #' no effect if \code{ticktype = "simple"}.
-#' @param type character string. Type of prediction to be plotted on z-axis. 
-#' \code{type = "response"} gives fitted values for continuous outputs and 
+#' @param type character string. Type of prediction to be plotted on z-axis.
+#' \code{type = "response"} gives fitted values for continuous outputs and
 #' fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 #' values for continuous outputs and linear predictor values for nominal outputs.
 #' @param ... Additional arguments to be passed to \code{\link[graphics]{persp}}.
-#' @details By default, partial dependence will be plotted for each combination 
-#' of 20 values of the specified predictor variables. When \code{nvals = NULL} is 
-#' specified a dependence plot will be created for every combination of the unique 
-#' observed values of the two predictor variables specified. Therefore, using 
-#' \code{nvals = NULL} will often result in long computation times, and / or 
-#' memory allocation errors. Also, \code{\link{pre}} ensembles derived 
-#' from training datasets that are very wide or long may result in long 
-#' computation times and / or memory allocation errors. In such cases, reducing 
-#' the values supplied to \code{nvals} will reduce computation time and / or 
-#' memory allocation errors. When the nvals argument is supplied, values for the 
-#' minimum, maximum, and nvals - 2 intermediate values of the predictor variable 
-#' will be plotted. Furthermore, if none of the variables specified appears in 
+#' @details By default, partial dependence will be plotted for each combination
+#' of 20 values of the specified predictor variables. When \code{nvals = NULL} is
+#' specified a dependence plot will be created for every combination of the unique
+#' observed values of the two predictor variables specified. Therefore, using
+#' \code{nvals = NULL} will often result in long computation times, and / or
+#' memory allocation errors. Also, \code{\link{pre}} ensembles derived
+#' from training datasets that are very wide or long may result in long
+#' computation times and / or memory allocation errors. In such cases, reducing
+#' the values supplied to \code{nvals} will reduce computation time and / or
+#' memory allocation errors. When the nvals argument is supplied, values for the
+#' minimum, maximum, and nvals - 2 intermediate values of the predictor variable
+#' will be plotted. Furthermore, if none of the variables specified appears in
 #' the final prediction rule ensemble, an error will occur.
 #' @note The \code{pairplot} function uses the akima package to construct
-#' interpolated surfaces and  has an ACM license that restricts applications 
-#' to non-commercial usage, see 
+#' interpolated surfaces and  has an ACM license that restricts applications
+#' to non-commercial usage, see
 #' \url{https://www.acm.org/publications/policies/software-copyright-notice}
 #' The \code{pairplot} function prints a note refering to this ACM licence.
 #' @examples \donttest{
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
 #' @import graphics
-pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45, 
+pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
                      theta = 315, col = "cyan", nvals = c(20, 20), ticktype = "detailed",
-                     nticks = max(nvals), type = "response", ...) 
+                     nticks = max(nvals), type = "response", ...)
 {
   # preliminaries:
   if (!("akima" %in% installed.packages()[,1])) {
-    stop("Function pairplot requires package akima. Download and install package 
-         akima from CRAN, and run again.")    
+    stop("Function pairplot requires package akima. Download and install package
+         akima from CRAN, and run again.")
   }
   if (length(varnames) != 2) {
     stop("Partial dependence should be requested for 2 variables.")
@@ -942,14 +957,14 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
   if (any(sapply(object$orig_data[,varnames], is.factor))) {
     stop("3D partial dependence plots are currently not supported for factors.")
   }
-  # generate expanded dataset: 
+  # generate expanded dataset:
   if (is.null(nvals)){
     newx1 <- unique(object$orig_data[,varnames[1]])
     newx2 <- unique(object$orig_data[,varnames[2]])
   } else {
-    newx1 <- seq(min(object$orig_data[,varnames[1]]), max(object$orig_data[,varnames[1]]), 
+    newx1 <- seq(min(object$orig_data[,varnames[1]]), max(object$orig_data[,varnames[1]]),
                  length = nvals[1])
-    newx2 <- seq(min(object$orig_data[,varnames[2]]), max(object$orig_data[,varnames[2]]), 
+    newx2 <- seq(min(object$orig_data[,varnames[2]]), max(object$orig_data[,varnames[2]]),
                  length = nvals[2])
   }
   nobs1 <- length(newx1)
@@ -957,19 +972,19 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
   nobs <- nobs1*nobs2
   exp_dataset <- object$orig_data[rep(row.names(object$orig_data), times = nobs),]
   exp_dataset[,varnames[1]] <- rep(newx1, each = nrow(object$orig_data)*nobs2)
-  exp_dataset[,varnames[2]] <- rep(rep(newx2, each = nrow(object$orig_data)), 
+  exp_dataset[,varnames[2]] <- rep(rep(newx2, each = nrow(object$orig_data)),
                                    times = nobs1)
-  
-  # get predictions:  
-  pred_vals <- predict.pre(object, newdata = exp_dataset, type = type, 
+
+  # get predictions:
+  pred_vals <- predict.pre(object, newdata = exp_dataset, type = type,
                             penalty.par.val = penalty.par.val)
 
   # create plot:
   if (is.null(nvals)) nvals <- 3
-  xyz <- akima::interp(exp_dataset[,varnames[1]], exp_dataset[,varnames[2]], 
+  xyz <- akima::interp(exp_dataset[,varnames[1]], exp_dataset[,varnames[2]],
                        pred_vals, duplicate = "mean")
-  persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y", 
-        phi = phi, theta = theta, col = col, ticktype = ticktype, 
+  persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y",
+        phi = phi, theta = theta, col = col, ticktype = ticktype,
         nticks = nticks, ...)
   cat("NOTE: function pairplot uses package 'akima', which has an ACM license.
     See also https://www.acm.org/publications/policies/software-copyright-notice.")
@@ -979,100 +994,101 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 
 
 
-#' Calculate importances of base learners (rules and linear terms) and input 
+#' Calculate importances of base learners (rules and linear terms) and input
 #' variables
-#' 
-#' \code{importance} calculates importances for rules, linear terms and input 
+#'
+#' \code{importance} calculates importances for rules, linear terms and input
 #' variables in the ensemble, and provides a bar plot of variable importances.
-#' 
+#'
 #' @param object an object of class \code{\link{pre}}
 #' @param plot logical. Should variable importances be plotted?
-#' @param ylab character string. Plotting label for y-axis. Only used when 
-#' \code{plot = TRUE}. 
-#' @param main character string. Main title of the plot. Only used when 
-#' \code{plot = TRUE}. 
-#' @param global logical. Should global importances be calculated? If FALSE, 
-#' local importances are calculated, given the quantiles of the predictions F(x) 
+#' @param ylab character string. Plotting label for y-axis. Only used when
+#' \code{plot = TRUE}.
+#' @param main character string. Main title of the plot. Only used when
+#' \code{plot = TRUE}.
+#' @param global logical. Should global importances be calculated? If FALSE,
+#' local importances are calculated, given the quantiles of the predictions F(x)
 #' in \code{quantprobs}.
-#' @param quantprobs optional numeric vector of length two. Only used when 
-#' \code{global = FALSE} (in which case specification of this argument is still 
-#' optional). Probabilities for calculating sample quantiles of the range of F(X), 
-#' over which local importances are calculated. The default provides variable 
+#' @param quantprobs optional numeric vector of length two. Only used when
+#' \code{global = FALSE} (in which case specification of this argument is still
+#' optional). Probabilities for calculating sample quantiles of the range of F(X),
+#' over which local importances are calculated. The default provides variable
 #' importances calculated over the 25\% highest values of F(X).
 #' @param col character string. Plotting color to be used for bars in barplot.
 #' @param round integer. Number of decimal places to round numeric results to.
 #' If NA (default), no rounding is performed.
-#' @param penalty.par.val character. Should model be selected with lambda giving 
-#' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1 
+#' @param penalty.par.val character. Should model be selected with lambda giving
+#' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
 #' standard error of minimum cv error ("lambda.1se")?
-#' @param ... further arguments to be passed to \code{barplot} (only used 
+#' @param ... further arguments to be passed to \code{barplot} (only used
 #' when \code{plot = TRUE}).
-#' @return A list with two dataframes: $baseimps, giving the importances for 
-#' baselearners in the ensemble, and $varimps, giving the importances for 
+#' @return A list with two dataframes: $baseimps, giving the importances for
+#' baselearners in the ensemble, and $varimps, giving the importances for
 #' variables that appear and do not appear in the ensemble.
 #' @examples \donttest{
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' # calculate global importances:
-#' importance(airq.ens) 
+#' importance(airq.ens)
 #' # calculate local importances (default: over 25% highest predicted values):
-#' importance(airq.ens, global = FALSE) 
+#' importance(airq.ens, global = FALSE)
 #' # calculate local importances (custom: over 25% highest predicted values):
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 #' @export
-importance <- function(object, plot = TRUE, ylab = "Importance", 
-                       main = "Variable importances", global = TRUE, 
+importance <- function(object, plot = TRUE, ylab = "Importance",
+                       main = "Variable importances", global = TRUE,
                        penalty.par.val = "lambda.1se",
-                       quantprobs = c(.75, 1), col = "grey", round = NA, ...) 
+                       quantprobs = c(.75, 1), col = "grey", round = NA, ...)
 {
   ## Step 1: Calculate the importances of the base learners:
-  
+
   # get base learner coefficients:
   coefs <- coef.pre(object, print = FALSE, penalty.par.val = penalty.par.val)
   # give factors a description:
-  coefs$description[is.na(coefs$description)] <- 
+  coefs$description[is.na(coefs$description)] <-
     paste(as.character(coefs$rule)[is.na(coefs$description)], " ", sep = "")
   coefs <- coefs[order(coefs$rule),]
   # Get sds for every baselearner:
   if (global) {
-    sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))  
+    sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))
   } else {
     preds <- predict.pre(object, newdata = object$orig_data, type = "response")
-    local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) & 
+    local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
                                preds <= quantile(preds, probs = quantprobs[2]),]
-    if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2 
+    if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2
                                 observations, importances cannot be calculated")}
-    sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE)) 
+    sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
   }
   names(sds)[1] <- "(Intercept)"
   sds <- sds[order(names(sds))]
   if (all(names(sds) != coefs$rule)) {
-    stop("There seems to be a problem with the ordering or size of the 
+    stop("There seems to be a problem with the ordering or size of the
          coefficient and sd vectors. Importances cannot be calculated.")
   }
-  
+
   # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
   baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
 
-  
+
   ## Step 2: Calculate variable importances:
-  
+
   # For factors, importances for each level should be added together.
   # first get indicators for assignments in modmat which are not rules:
   inds <- attr(object$modmat, "assign")[-grep("rule", colnames(object$modmat))]
   # add names in modelframe and modelmatrix to baselearner importances:
   frame.mat.conv <- data.frame(
-    modmatname = colnames(object$modmat)[-grep("rule", colnames(object$modmat))], 
+    modmatname = colnames(object$modmat)[-grep("rule", colnames(object$modmat))],
     modframename = attr(attr(object$data, "terms"), "term.labels")[inds])
-  baseimps <- merge(frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule", 
+  baseimps <- merge(frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule",
                     all.x = TRUE, all.y = TRUE)
   # For rules, calculate the number of terms in each rule:
   baseimps$nterms <- NA
   for(i in 1:nrow(baseimps)) {
-    # If there is no "&" in rule description, there is only 1 term/variable in 
-    # the base learner: 
+    # If there is no "&" in rule description, there is only 1 term/variable in
+    # the base learner:
     if (gregexpr("&", baseimps$description)[[i]][1] == -1) {
-        baseimps$nterms[i] <- 1 
-    } else { # otherwise, the number of terms = the number of &-signs + 1 
+        baseimps$nterms[i] <- 1
+    } else { # otherwise, the number of terms = the number of &-signs + 1
       baseimps$nterms[i] <- length(gregexpr("&", baseimps$description)[[i]]) + 1
     }
   }
@@ -1083,21 +1099,21 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     # For every baselearner:
     for(j in 1:nrow(baseimps)) {
       # if the variable name appears in the rule:
-      if (gregexpr(paste(varimps$varname[i], " ", sep = ""), 
+      if (gregexpr(paste(varimps$varname[i], " ", sep = ""),
                   baseimps$description[j])[[1]][1] != -1) {
         # then count the number of times it appears in the rule:
         n_occ <- length(
-          gregexpr(paste(varimps$varname[i], " ", sep = ""), 
+          gregexpr(paste(varimps$varname[i], " ", sep = ""),
                    baseimps$description[j])[[1]]
         )
         # and add it to the importance of the variable:
-        varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] / 
+        varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] /
                                               baseimps$nterms[j])
       }
     }
   }
   # Get importances for factor variables:
-  # if the variable appears several times in modframename, add those 
+  # if the variable appears several times in modframename, add those
   # importances to the variable's importance:
   for(i in object$x_names) {
     if (sum(i == baseimps$modframename, na.rm = TRUE) > 1) {
@@ -1105,14 +1121,14 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
                       baseimps$imp[i == baseimps$modframename], na.rm = TRUE)
     }
   }
-  
+
   ## Step 3: return (and plot) importances:
   baseimps <- baseimps[baseimps$imp != 0,]
   baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE),]
   varimps <- varimps[order(varimps$imp, decreasing = TRUE),]
   varimps <- varimps[varimps$imp != 0,]
   if (plot == TRUE & nrow(varimps) > 0) {
-    barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab, 
+    barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
             main = main, col = col)
   }
   if (!is.na(round)) {
@@ -1120,8 +1136,8 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     baseimps[,c("imp", "coefficient", "sd")] <- round(
       baseimps[,c("imp", "coefficient", "sd")], digits = round)
   }
-  return(list(varimps = varimps, baseimps = baseimps[
-    baseimps$description != "(Intercept) ", c("description", "imp", "coefficient", "sd")]))
+  return(list(varimps = varimps, baseimps = data.frame(rule = baseimps$modmatname,
+    baseimps[baseimps$description != "(Intercept) ", c("description", "imp", "coefficient", "sd")])))
 }
 
 
@@ -1129,45 +1145,54 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 
 
 #' Compute boostrapped null interaction models
-#' 
-#' \code{bsnullinteract} generates bootstrapped null interaction models, 
-#' which can be used to derive a reference distribution of the test statistic 
+#'
+#' \code{bsnullinteract} generates bootstrapped null interaction models,
+#' which can be used to derive a reference distribution of the test statistic
 #' calculated with \code{\link{interact}}.
-#' 
+#'
 #' @param object object of class \code{\link{pre}}.
-#' @param nsamp numeric. Number of bootstrapped null interaction models to be 
+#' @param nsamp numeric. Number of bootstrapped null interaction models to be
 #' derived.
-#' @param penalty.par.val character. Which value of the penalty parameter 
-#' criterion should be used? The value yielding minimum cv error 
-#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
+#' @param penalty.par.val character. Which value of the penalty parameter
+#' criterion should be used? The value yielding minimum cv error
+#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
 #' error of minimum cv error ("\code{lambda.1se}")?
-#' @param parallel logical. Should parallel foreach be used to generate initial 
+#' @param parallel logical. Should parallel foreach be used to generate initial
 #' ensemble? Must register parallel beforehand, such as doMC or others.
 #' @param verbose logical. should progress be printed to the command line?
-#' @return A list of length \code{nsamp} with null interaction datasets, to be 
+#' @return A list of length \code{nsamp} with null interaction datasets, to be
 #' used as input for \code{\link{interact}}.
 #' @examples \donttest{
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' nullmods <- bsnullinteract(airq.ens)}
 #' @details Computationally intensive. Progress info is printed to command line.
 #' @export
-bsnullinteract <- function(object, nsamp = 10, parallel = FALSE, 
-                           penalty.par.val = "lambda.1se", verbose = FALSE) 
+bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
+                           penalty.par.val = "lambda.1se", verbose = FALSE)
 {
+  # Preliminaries:
+  if(parallel) {
+    if (!("foreach" %in% installed.packages()[,1])) {
+    warning("Parallel computating of function bsnullinteract() requires package foreach,
+          which is currently not installed. Argument parallel will be set to FALSE.
+          To run in parallel, download and install package foreach from CRAN, and run again.")
+      parallel <- FALSE
+    }
+  }
   # create call for generating bootstrapped null models:
   bsnullmodcall <- object$call
   bsnullmodcall$maxdepth <- 1
-  bsnullmodcall$verbose <- FALSE  
-  # create call for model allowing for interactions, grown on bootstrapped 
+  # create call for model allowing for interactions, grown on bootstrapped
   # datasets without interactions:
   bsintmodcall <- object$call
-  bsintmodcall$verbose <- FALSE 
+  bsintmodcall$verbose <- FALSE
   # compute boostrapped null datasets (i.e., datasets with no interactions):
   if (parallel) {
     if (verbose) cat("This may take a while.")
-    bs.ens <- foreach(i = 1:nsamp) %dopar% {
+    bs.ens <- foreach::foreach(i = 1:nsamp) %dopar% {
       # step 1: Take bootstrap sample {x_p, y_p}:
-      bsdataset <- object$orig_data[sample(1:nrow(object$orig_data), 
+      bsdataset <- object$orig_data[sample(1:nrow(object$orig_data),
                                            nrow(object$orig_data), replace = TRUE),]
       # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
       bsnullmodcall$data <- bsdataset
@@ -1177,14 +1202,14 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       F_a_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
-      F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset, 
+      F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
                             penalty.par.val = penalty.par.val)
       # step 5: Calculate ytilde of formula 47 of F&P2008:
       ytilde <- F_a_of_x + bsdataset[,object$y_name] - F_A_of_x_p
-      # step 6: Build a model using (x,ytilde), using the same procedure as was 
+      # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
       bsintmodcall$data <- object$orig_data
-      bsintmodcall$data[,object$y_name] <- ytilde 
+      bsintmodcall$data[,object$y_name] <- ytilde
       eval(match.call(pre, call = bsintmodcall))
     }
   } else {
@@ -1193,7 +1218,7 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
     for(i in 1:nsamp) {
       if (verbose) {cat(i, "of", nsamp, ", ")}
       # step 1: Take bootstrap sample {x_p, y_p}:
-      bsdataset <- object$orig_data[sample(1:nrow(object$orig_data), 
+      bsdataset <- object$orig_data[sample(1:nrow(object$orig_data),
                                            nrow(object$orig_data), replace = TRUE),]
       # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
       bsnullmodcall$data <- bsdataset
@@ -1203,14 +1228,14 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       F_a_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
-      F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset, 
+      F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
                                 penalty.par.val = penalty.par.val)
       # step 5: Calculate ytilde of formula 47 of F&P2008:
       ytilde <- F_a_of_x + bsdataset[,object$y_name] - F_A_of_x_p
-      # step 6: Build a model using (x,ytilde), using the same procedure as was 
+      # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
       bsintmodcall$data <- object$orig_data
-      bsintmodcall$data[,object$y_name] <- ytilde 
+      bsintmodcall$data[,object$y_name] <- ytilde
       bs.ens[[i]] <- eval(match.call(pre, call = bsintmodcall))
     }
     if (verbose) cat("done!\n")
@@ -1228,13 +1253,13 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
   preds_x <- predict.pre(object, newdata = object$orig_data, penalty.par.val = penalty.par.val)
   # Calculate the expected value of F_j(x_j), over all observed values x_/j,
   # and the expected value of F_/j(x_/j), over all observed values x_j:
-  exp_dataset <- object$orig_data[rep(row.names(object$orig_data), 
+  exp_dataset <- object$orig_data[rep(row.names(object$orig_data),
                                  times = nrow(object$orig_data)),]
   exp_dataset[,varname] <- rep(object$orig_data[,varname], each = nrow(object$orig_data))
-  # using predict.pre for a hughe dataset may lead to errors, so split 
+  # using predict.pre for a hughe dataset may lead to errors, so split
   # computations up in k parts:
   exp_dataset$ids <- sample(1:k, nrow(exp_dataset), replace = TRUE)
-  for(i in 1:k) {  
+  for(i in 1:k) {
     if (verbose) cat(".")
     exp_dataset[exp_dataset$ids==i, "yhat"] <- predict.pre(
       object, newdata = exp_dataset[exp_dataset$ids==i,],
@@ -1254,7 +1279,7 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
     return(sum((preds_x - preds_xj - preds_xnotj)^2) / sum(preds_x^2))
   }
   if (sum(preds_x^2) == 0) {
-    #warning("The denominator for calculating H squared was equal to zero. It was 
+    #warning("The denominator for calculating H squared was equal to zero. It was
     #        set to 1e-10 to allow for calculation of H squared", immediate. = TRUE)
     return(sum((preds_x - preds_xj - preds_xnotj)^2) / 1e-10)
   }
@@ -1265,58 +1290,68 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 
 
 #' Calculate interaction statistics for user-specified variables
-#' 
-#' \code{interact} calculates test statistics for assessing the strength of 
+#'
+#' \code{interact} calculates test statistics for assessing the strength of
 #' interactions between the input variable(s) specified, and all other input
 #' variables.
-#' 
+#'
 #' @param object an object of class \code{\link{pre}}.
-#' @param varnames character vector. Names of variables for which interaction 
-#' statistics should be calculated. If \code{NULL}, interaction statistics for 
-#' all predictor variables with non-zeor coefficients will be calculated (which 
+#' @param varnames character vector. Names of variables for which interaction
+#' statistics should be calculated. If \code{NULL}, interaction statistics for
+#' all predictor variables with non-zeor coefficients will be calculated (which
 #' may take a long time).
-#' @param k integer. Calculating interaction test statistics is a computationally 
-#' intensive, so  calculations are split up in several parts to prevent memory 
+#' @param k integer. Calculating interaction test statistics is a computationally
+#' intensive, so  calculations are split up in several parts to prevent memory
 #' allocation errors. If a memory allocation error still occurs, increase k.
-#' @param nullmods object with bootstrapped null interaction models, resulting 
+#' @param nullmods object with bootstrapped null interaction models, resulting
 #' from application of \code{bsnullinteract}.
-#' @param penalty.par.val character. Which value of the penalty parameter 
-#' criterion should be used? The value yielding minimum cv error 
-#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard 
+#' @param penalty.par.val character. Which value of the penalty parameter
+#' criterion should be used? The value yielding minimum cv error
+#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
 #' error of minimum cv error ("\code{lambda.1se}")?
-#' @param parallel logical. Should parallel foreach be used? Must register 
+#' @param parallel logical. Should parallel foreach be used? Must register
 #' parallel beforehand, such as doMC or others.
 #' @param plot logical Should interaction statistics be plotted?
-#' @param col character vector of length two. Color for plotting bars used. Only 
-#' used when \code{plot = TRUE}. Only first element of vector is used if 
+#' @param col character vector of length two. Color for plotting bars used. Only
+#' used when \code{plot = TRUE}. Only first element of vector is used if
 #' \code{nullmods = NULL}.
 #' @param ylab character string. Label to be used for plotting y-axis.
 #' @param main character. Main title for the bar plot.
-#' @param legend logical. Should a legend be plotted in the top right corner of the 
+#' @param legend logical. Should a legend be plotted in the top right corner of the
 #' barplot?
-#' @param verbose logical. Should progress information be printed to the 
+#' @param verbose logical. Should progress information be printed to the
 #' command line?
 #' @param ... Additional arguments to be passed to \code{barplot}.
-#' @examples 
+#' @examples
 #' \donttest{
+#'  set.seed(42)
 #'  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #'  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
 #' @details Can be computationally intensive, especially when nullmods is specified,
 #' in which case setting \verb{parallel = TRUE} may improve speed.
-#' @return If nullmods is not specified, the function returns the interaction 
-#' test statistic. If nullmods is specified, the function returns a list, 
-#' with elements \code{$H}, which is the test statistic of the interaction 
-#' strength, and \code{$nullH}, which is a vector of test statistics of the 
+#' @return If nullmods is not specified, the function returns the interaction
+#' test statistic. If nullmods is specified, the function returns a list,
+#' with elements \code{$H}, which is the test statistic of the interaction
+#' strength, and \code{$nullH}, which is a vector of test statistics of the
 #' interaction in each of the bootstrapped null interaction models. In the barplot,
-#' yellow is used for plotting the interaction test statistic. When applicable, 
+#' yellow is used for plotting the interaction test statistic. When applicable,
 #' blue is used for the mean in the bootstrapped null models.
 #' @export
-interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE, 
-                     penalty.par.val = "lambda.1se", col = c("yellow", "blue"), 
+interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE,
+                     penalty.par.val = "lambda.1se", col = c("yellow", "blue"),
                      ylab = "Interaction strength", parallel = FALSE,
-                     main = "Interaction test statistics", legend = TRUE, 
+                     main = "Interaction test statistics", legend = TRUE,
                      verbose = FALSE, ...)
-{
+{ # Preliminaries:
+  # Preliminaries:
+  if(parallel) {
+    if (!("foreach" %in% installed.packages()[,1])) {
+      warning("Parallel computating of function bsnullinteract() requires package foreach,
+              which is currently not installed. Argument parallel will be set to FALSE.
+              To run in parallel, download and install package foreach from CRAN, and run again.")
+      parallel <- FALSE
+    }
+  }
   if (is.null(varnames)) {
     # should only be variables with non-zero importances:
     varnames <- as.character(importance(object, plot = FALSE,
@@ -1325,23 +1360,23 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
     stop("Interaction statistics requested for one or more unknown input variables")
   }
   if (verbose) {
-    cat("This will take a while (", 
+    cat("This will take a while (",
         k * (length(nullmods) + 1) * length(varnames), "dots ). ")
   }
   if (parallel) {
-      H <- foreach(i = 1:length(varnames), .combine = "c") %dopar% {
+      H <- foreach::foreach(i = 1:length(varnames), .combine = "c") %dopar% {
         # Calculate H_j for the original dataset:
-        Hsquaredj(object = object, varname = varnames[i], k = k, 
+        Hsquaredj(object = object, varname = varnames[i], k = k,
                   penalty.par.val = penalty.par.val, verbose = verbose)
       }
       names(H) <- varnames
       if (!is.null(nullmods)) {
-        nullH <- foreach(i = 1:length(varnames), .combine = "cbind") %dopar% {
+        nullH <- foreach::foreach(i = 1:length(varnames), .combine = "cbind") %dopar% {
           # Calculate H_j for the bootstrapped null models:
           nullH <- c()
           for(j in 1:length(nullmods)) {
-           nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i], 
-                                  k = k, penalty.par.val = penalty.par.val, 
+           nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+                                  k = k, penalty.par.val = penalty.par.val,
                                   verbose = verbose)
            }
           nullH
@@ -1353,18 +1388,18 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
      H <- c()
      if (is.null(nullmods)) {
        for(i in 1:length(varnames)) {
-         H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k, 
+         H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k,
                            penalty.par.val = penalty.par.val, verbose = verbose)
        }
-     } else { # Calculate H values for the training data and bootstrapped null models:  
+     } else { # Calculate H values for the training data and bootstrapped null models:
        nullH <- data.frame()
        for(i in 1:length(varnames)) {
-         H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k, 
+         H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k,
                            penalty.par.val = penalty.par.val, verbose = verbose)
          for(j in 1:length(nullmods)) {
-           nullH[j,i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i], 
+           nullH[j,i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
                                    k = k, penalty.par.val = penalty.par.val,
-                                   verbose = verbose)  
+                                   verbose = verbose)
          }
        }
        colnames(nullH) <- varnames
@@ -1381,11 +1416,11 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
         nullmeans[i] <- mean(nullH[,i])
       }
       H2s <- as.vector(rbind(H, nullmeans))
-      barplot(H2s, col = col, ylab = ylab, main = main, 
-              space = rep_len(1:0, length(H2s)), beside = TRUE, 
+      barplot(H2s, col = col, ylab = ylab, main = main,
+              space = rep_len(1:0, length(H2s)), beside = TRUE,
               names.arg = rep(varnames, each = 2), ...)
        if (legend) {
-        legend("topright", c("observed", "bs null mod mean"), bty = "n", 
+        legend("topright", c("observed", "bs null mod mean"), bty = "n",
                col = col, pch = 15)
       }
     }
@@ -1417,6 +1452,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
 #' @param ... Currently not used.
 #' @examples
 #' \donttest{
+#'  set.seed(42)
 #'  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #'  plot(airq.ens)}
 #' @export
@@ -1428,7 +1464,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", plot.dim = NULL, ...) {
          grid from CRAN, and run again.")
   }
   # Get rules in final ensemble:
-  coefs <- coef(x)
+  coefs <- importance(x, plot = FALSE, global = TRUE)$baseimps
   coefs <- coefs[coefs$coefficient != 0,]
   nonzerorules <- coefs[grep("rule", coefs$rule),]
   if(is.null(plot.dim)) {
@@ -1494,11 +1530,15 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", plot.dim = NULL, ...) {
     nodes <- list()
     # Construct level 0 of tree (the two terminal nodes), conditional on operator of last condition:
     if (tmp[[ncond]][2] == " > ") { # If condition involves " > ", the tree continues right:
-      nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL, info = "exit")
-      nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL, info = round(nonzerorules$coefficient[i], digits = 3))
+      nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
+                         info = "exit")
+      nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
+                         info = round(nonzerorules$coefficient[i], digits = 3))
     } else { # If condition involves " <= " or " %in% " the tree continues left:
-      nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL, info = round(nonzerorules$coefficient[i], digits = 3))
-      nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL, info = "exit")
+      nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
+                         info = round(nonzerorules$coefficient[i], digits = 3))
+      nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
+                         info = "exit")
     }
     class(nodes[[1]]) <- class(nodes[[2]]) <- "partynode"
 
@@ -1506,13 +1546,19 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", plot.dim = NULL, ...) {
     if (ncond > 1) {
       for (lev in 1L:(ncond - 1)) { # lev is a counter for the level in the tree
         if (tmp[[lev + 1]][2] == " > ") { # If condition involves " > ", the tree continues right:
-          nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+          nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1),
+                                       split = partysplit(
+                                         as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
                                        kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
                                        surrogates = NULL, info = NULL)
-          nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = NULL, kids = NULL, surrogates = NULL, info = "exit")
+          nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = NULL,
+                                       kids = NULL, surrogates = NULL, info = "exit")
         } else { # If condition involves " <= " or " %in% " the tree continues left:
-          nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = NULL, kids = NULL, surrogates = NULL, info = "exit")
-          nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+          nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = NULL,
+                                       kids = NULL, surrogates = NULL, info = "exit")
+          nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2),
+                                       split = partysplit(
+                                         as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
                                        kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
                                        surrogates = NULL, info = NULL)
         }
@@ -1521,14 +1567,20 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", plot.dim = NULL, ...) {
     }
     # Construct root node:
     lev <- ncond
-    nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 2), split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+    nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 2),
+                                 split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
                                  kids = list(nodes[[lev * 2]], nodes[[lev * 2 - 1]]),
                                  surrogates = NULL, info = NULL)
     class(nodes[[lev * 2 + 1]]) <- "partynode"
 
     # Plot the rule:
-    grid::pushViewport(grid::viewport(layout.pos.col = rep(1:3, times = i)[i], layout.pos.row = ceiling(i/3)))
-    plot(party(nodes[[lev * 2 + 1]], data = treeplotdata), main = nonzerorules$rule[i], newpage = FALSE)
+    grid::pushViewport(grid::viewport(layout.pos.col = rep(1:plot.dim[2], times = i)[i],
+                                      layout.pos.row = ceiling(i/plot.dim[1])))
+    fftree <- party(nodes[[lev * 2 + 1]], data = treeplotdata)
+    plot(fftree, newpage = FALSE,
+         main = paste(nonzerorules$rule[i], ": Importance", round(nonzerorules$imp[i], digits = 3), sep = ""),
+         inner_panel = node_inner(fftree, id = FALSE),
+         terminal_panel = node_terminal(fftree, id = FALSE))
     grid::popViewport()
   }
 }

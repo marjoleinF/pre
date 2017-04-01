@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{importance}
 \alias{importance}
-\title{Calculate importances of base learners (rules and linear terms) and input 
+\title{Calculate importances of base learners (rules and linear terms) and input
 variables}
 \usage{
 importance(object, plot = TRUE, ylab = "Importance",
@@ -15,24 +15,24 @@ importance(object, plot = TRUE, ylab = "Importance",
 
 \item{plot}{logical. Should variable importances be plotted?}
 
-\item{ylab}{character string. Plotting label for y-axis. Only used when 
+\item{ylab}{character string. Plotting label for y-axis. Only used when
 \code{plot = TRUE}.}
 
-\item{main}{character string. Main title of the plot. Only used when 
+\item{main}{character string. Main title of the plot. Only used when
 \code{plot = TRUE}.}
 
-\item{global}{logical. Should global importances be calculated? If FALSE, 
-local importances are calculated, given the quantiles of the predictions F(x) 
+\item{global}{logical. Should global importances be calculated? If FALSE,
+local importances are calculated, given the quantiles of the predictions F(x)
 in \code{quantprobs}.}
 
-\item{penalty.par.val}{character. Should model be selected with lambda giving 
-minimum cv error ("lambda.min"), or lambda giving cv error that is within 1 
+\item{penalty.par.val}{character. Should model be selected with lambda giving
+minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
 standard error of minimum cv error ("lambda.1se")?}
 
-\item{quantprobs}{optional numeric vector of length two. Only used when 
-\code{global = FALSE} (in which case specification of this argument is still 
-optional). Probabilities for calculating sample quantiles of the range of F(X), 
-over which local importances are calculated. The default provides variable 
+\item{quantprobs}{optional numeric vector of length two. Only used when
+\code{global = FALSE} (in which case specification of this argument is still
+optional). Probabilities for calculating sample quantiles of the range of F(X),
+over which local importances are calculated. The default provides variable
 importances calculated over the 25\% highest values of F(X).}
 
 \item{col}{character string. Plotting color to be used for bars in barplot.}
@@ -40,25 +40,26 @@ importances calculated over the 25\% highest values of F(X).}
 \item{round}{integer. Number of decimal places to round numeric results to.
 If NA (default), no rounding is performed.}
 
-\item{...}{further arguments to be passed to \code{barplot} (only used 
+\item{...}{further arguments to be passed to \code{barplot} (only used
 when \code{plot = TRUE}).}
 }
 \value{
-A list with two dataframes: $baseimps, giving the importances for 
-baselearners in the ensemble, and $varimps, giving the importances for 
+A list with two dataframes: $baseimps, giving the importances for
+baselearners in the ensemble, and $varimps, giving the importances for
 variables that appear and do not appear in the ensemble.
 }
 \description{
-\code{importance} calculates importances for rules, linear terms and input 
+\code{importance} calculates importances for rules, linear terms and input
 variables in the ensemble, and provides a bar plot of variable importances.
 }
 \examples{
 \donttest{
+set.seed(42)
 airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 # calculate global importances:
-importance(airq.ens) 
+importance(airq.ens)
 # calculate local importances (default: over 25\% highest predicted values):
-importance(airq.ens, global = FALSE) 
+importance(airq.ens, global = FALSE)
 # calculate local importances (custom: over 25\% highest predicted values):
 importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 }

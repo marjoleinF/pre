@@ -10,7 +10,7 @@
 \arguments{
 \item{object}{object of class \code{\link{pre}}.}
 
-\item{newdata}{optional dataframe of new (test) observations, including all 
+\item{newdata}{optional dataframe of new (test) observations, including all
 predictor variables used for deriving the prediction rule ensemble.}
 
 \item{type}{character string. The type of prediction required; the default
@@ -18,25 +18,26 @@ predictor variables used for deriving the prediction rule ensemble.}
 for nominal outputs, \code{type = "response"} gives the fitted probabilities
 and \code{type = "class"} gives the predicted class membership.}
 
-\item{penalty.par.val}{character. Penalty parameter criterion to be used for 
-selecting final model: lambda giving minimum cv error ("lambda.min") or lambda 
-giving cv error that is within 1 standard error of minimum cv error 
+\item{penalty.par.val}{character. Penalty parameter criterion to be used for
+selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
+giving cv error that is within 1 standard error of minimum cv error
 ("lambda.1se").}
 
 \item{...}{currently not used.}
 }
 \description{
-\code{predict.pre} generates predictions based on the final prediction rule 
+\code{predict.pre} generates predictions based on the final prediction rule
 ensemble, for training or new (test) observations
 }
 \details{
-When newdata is not provided, training data included in the specified 
+When newdata is not provided, training data included in the specified
 object is used.
 }
 \examples{
 \donttest{
-set.seed(42)
+set.seed(1)
 train <- sample(1:length(complete.cases(airquality)), size = 120)
+set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,])
 predict(airq.ens)
 predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}

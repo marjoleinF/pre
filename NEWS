@@ -1,0 +1,16 @@
+Changes in Version 0.1.1 (2017-..-.)
+
+  - Added plot() methods for objects of class pre.
+  - Removed all occurrences of set.seed() in function's code.
+  - Added support for using functions like factor() and log() in formula 
+      statement of function pre().
+  - Added support for parallel computating in functions pre(), cvpre(), 
+      bsnullinteract() and interact(). 
+  - Fixed bug in ...
+  - Cleaned up ....
+  
+    
+  
+Changes in Version 0.1 (2016-12-23)
+
+  First CRAN release.
