@@ -12,15 +12,15 @@ rule ensemble
 Friedman & Popescu used the classification and regression tree (CART) algorithm, 
 but this suffers from biased variable selection.
 
-  3) The initial ensemble of prediction rules can be generated as a bagged, 
+  3) The package allows for plotting the final rule ensemble as a collection of 
+  simple decision trees.
+  
+  4) The initial ensemble of prediction rules can be generated as a bagged, 
 boosted and/or random forest ensemble.
 
 The pre package is developed to provide useRs a completely R based implementation
 of the algorithm described by Friedman & Popescu (2008). However, note that pre 
 is under development, and much work still needs to be done.
-
-Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. 
-The Annals of Applied Statistics, 2(3), pp. 916-954 916-954.
 
 To get a first impression of how pre works, consider the following example of 
 prediction rule ensemble, using the airquality dataset: 
@@ -31,11 +31,12 @@ print(airq.ens, penalty.par.val = "lambda.1se")
 print(airq.ens, penalty.par.val = "lambda.min")
 
 # Let's take the smallest ensemble yielding a cross-validated error within 1se 
-# of the minimum (this is the default of all pre functions): 
+# of the minimum (this is the default in all pre functions): 
 
 # Inspect the prediction rule ensemble:
 coef(airq.ens)
 importance(airq.ens)
+plot(airq.ens)
 pairplot(airq.ens, varnames = c("Temp", "Wind", "Solar.R"))
 singleplot(airq.ens, varname = "Temp")
 
@@ -50,3 +51,35 @@ aiq.cv$accuracy
 # Assess interaction effects of predictor variables:
 nullmods <- bsnullinteract(airq.ens)
 interact(airq.ens, varnames = c("Temp", "Wind", "Solar.R"), nullmods = nullmods)
+
+
+References
+
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. 
+The Annals of Applied Statistics, 2(3), 916-954.
+
+Fokkema, M., Smits, N., Kelderman, H., & Penninx, B. W. (2015). Connecting 
+clinical and actuarial prediction with rule-based methods. Psychological 
+assessment, 27(2), 636.
+
+
+Licence:
+
+pre, an R package for fitting prediction rule ensembles
+
+Copyright (C) 2016,2017  Marjolein Fokkema
+
+This file is part of the R package pre.
+
+The R package pre is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+The R package pre is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+A copy of the GNU General Public License can be found in the LICENCE file
+contained in the package, or obtained from <http://www.gnu.org/licenses/>.

@@ -12,7 +12,11 @@
 \item{penalty.par.val}{character. Information for which final prediction rule
 ensemble(s) should be printed? The ensemble with penalty parameter criterion 
 yielding minimum cv error (\code{"lambda.min"}) or penalty parameter 
-yielding error within 1 standard error of minimum cv error ("\code{lambda.1se}")?}
+yielding error within 1 standard error of minimum cv error 
+("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
+corresponding to one of the values of lambda in the sequence used by glmnet,
+for which estimated cv error can be inspected by running \code{x$glmnet.fit}
+and \code{plot(x$glmnet.fit)}.}
 
 \item{...}{Additional arguments, currently not used.}
 }

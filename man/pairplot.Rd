@@ -17,7 +17,10 @@ variables of class \code{"factor"}, an error will be printed.}
 
 \item{penalty.par.val}{character. Should model be selected with lambda giving
 minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-standard error of minimum cv error ("lambda.1se")?}
+standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
+value may be specified, corresponding to one of the values of lambda in the 
+sequence used by glmnet, for which estimated cv error can be inspected by 
+running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
 \item{phi}{numeric. See \code{persp()} documentation.}
 

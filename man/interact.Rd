@@ -30,7 +30,10 @@ allocation errors. If a memory allocation error still occurs, increase k.}
 \item{penalty.par.val}{character. Which value of the penalty parameter
 criterion should be used? The value yielding minimum cv error
 (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-error of minimum cv error ("\code{lambda.1se}")?}
+error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
+value may be specified, corresponding to one of the values of lambda in the 
+sequence used by glmnet, for which estimated cv error can be inspected by 
+running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
 \item{col}{character vector of length two. Color for plotting bars used. Only
 used when \code{plot = TRUE}. Only first element of vector is used if

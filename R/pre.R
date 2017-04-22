@@ -27,11 +27,11 @@ utils::globalVariables("%dopar%")
 #' linear functions only).
 #' @param weights an optional vector of observation weights to be used for 
 #' deriving the ensemble.
-#' @param sampfrac numeric value greater than 0, and smaller than or equal to 1. 
-#' Fraction of randomly selected training observations used to produce each tree. 
-#' Setting this to values < 1 will result in subsamples being drawn without 
-#' replacement (i.e., subsampling). Setting this equal to 1 will result in 
-#' bootstrap sampling.
+#' @param sampfrac numeric value greater than 0 and smaller than or equal to 1. 
+#' Fraction of randomly selected training observations used to produce each 
+#' tree. Values smaller than 1 will result in subsamples being drawn without 
+#' replacement (i.e., subsampling), value equal to 1 will result in bootstrap 
+#' sampling.
 #' @param maxdepth numeric. Maximal number of conditions in rules.
 #' @param learnrate numeric. Learning rate for sequentially induced trees. If 
 #' \code{NULL} (default), the learnrate is set to .01 for regression and to 0 
@@ -39,6 +39,8 @@ utils::globalVariables("%dopar%")
 #' dramatically increases computation time.
 #' @param removeduplicates logical. Remove rules from the ensemble which have 
 #' the exact same support in training data?
+#' @param removecomplements logical. Remove rules from the ensemble which have
+#' the same support in the training data as the inverse of other rules? 
 #' @param mtry numeric. Number of randomly selected predictor variables for 
 #' creating each split in each tree. Ignored for nominal output variables if
 #' \code{learnrate} > 0.
@@ -76,19 +78,20 @@ utils::globalVariables("%dopar%")
 #' @note The code for deriving rules from the nodes of trees was taken from an 
 #' internal function of the \code{partykit} package of Achim Zeileis and Torsten 
 #' Hothorn.
-#' @return an object of class \code{pre}, which is a list with many elements 
-#' @details Inputs can be continuous, ordered or factor variables. Continuous 
-#' variables
+#' @return an object of class \code{pre} 
+#' @details Inputs can be continuous, ordered or factor variables. Output can be
+#' continuous or binary categorical.
 #' @examples \donttest{
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 #' @import glmnet partykit datasets
 #' @export
 pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data)), 
-                 sampfrac = .5, maxdepth = 3L, learnrate = NULL, 
-                 removeduplicates = TRUE, mtry = Inf, ntrees = 500,
-                 thres = 1e-07, standardize = FALSE, winsfrac = .025, 
-                 normalize = TRUE, nfolds = 10L, mod.sel.crit = "deviance", 
-                 verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)   
+                sampfrac = .5, maxdepth = 3L, learnrate = NULL, 
+                removeduplicates = TRUE, mtry = Inf, ntrees = 500,
+                removecomplements = TRUE,
+                thres = 1e-07, standardize = FALSE, winsfrac = .025, 
+                normalize = TRUE, nfolds = 10L, mod.sel.crit = "deviance", 
+                verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)   
 { ###################
   ## Preliminaries ##
   ###################
@@ -288,6 +291,34 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
               support identical to earlier rules and were removed from the initial 
               ensemble ($duplicates.removed shows which, if any).")
         }
+      } else {
+        duplicates.removed <- NULL
+      }
+      if (removecomplements) { 
+        # remove rules with complement support:
+        removed_complement_rules <- c()
+        # for rule that has support identical to some earlier rule(s):
+        for(i in which(duplicated(apply(rulevars, 2, sd)))) {
+          # check whether the rule is a complement of any of the earlier unique rules:
+          for(j in 1:i) {
+            if (all(rulevars[,i] == (1 - rulevars[,j]))) {
+              # add it's name to the list of complement rules:
+              removed_complement_rules <- c(removed_complement_rules, names(rulevars)[j])
+            }
+          }
+        }
+        # rules with their name in removed_complement_rules should be removed from rulevars and rules
+        # and also, some message about the number of rules for which this was the case should be printed if verbose
+        complements <- !(names(rulevars) %in% removed_complement_rules)
+        rulevars <- rulevars[,!complements]
+        rules <- rules[!complements]
+        if (verbose) {
+          cat("\n\nA total of", length(removed_complement_rules), "generated rules had 
+              support that was the complement of the support of earlier rules and were removed from the initial 
+              ensemble ($removed_complement_rules shows which, if any).")
+        }
+      } else {
+        removed_complent_rules <- NULL
       }
       if (verbose) {
         cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was 
@@ -386,13 +417,15 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                  wins_points = wins_points,
                  classify = classify, formula = formula, orig_data = orig_data)
   if (type != "linear" & length(rules) > 0) {
+    result$removed_complement_rules <- removed_complement_rules
     result$duplicates.removed <- duplicates.removed
     result$rules <- data.frame(rule = names(rulevars), description = rules)
     result$rulevars <- rulevars 
   } else {
-      result$duplicates.removed <- NULL
-      result$rules <- NULL
-      result$rulevars <- NULL
+    result$removed_complement_rules <- NULL
+    result$duplicates.removed <- NULL
+    result$rules <- NULL
+    result$rulevars <- NULL
   }
   class(result) <- "pre"
   return(result)
@@ -486,7 +519,11 @@ list.rules <- function (x, i = NULL, ...)
 #' @param penalty.par.val character. Information for which final prediction rule
 #' ensemble(s) should be printed? The ensemble with penalty parameter criterion 
 #' yielding minimum cv error (\code{"lambda.min"}) or penalty parameter 
-#' yielding error within 1 standard error of minimum cv error ("\code{lambda.1se}")?
+#' yielding error within 1 standard error of minimum cv error 
+#' ("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
+#' corresponding to one of the values of lambda in the sequence used by glmnet,
+#' for which estimated cv error can be inspected by running \code{x$glmnet.fit}
+#' and \code{plot(x$glmnet.fit)}.
 #' @param ... Additional arguments, currently not used.
 #' @return Prints information about the generated prediction rule ensembles, 
 #' @examples \donttest{
@@ -497,26 +534,26 @@ list.rules <- function (x, i = NULL, ...)
 #' @method print pre
 print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
   if (penalty.par.val == "lambda.1se") {
-    l1se_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.1se)
+    lambda_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.1se)
     cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
-      x$glmnet.fit$lambda[l1se_ind],  "\n  number of terms = ", 
-      x$glmnet.fit$nzero[l1se_ind], "\n  mean cv error (se) = ", 
-      x$glmnet.fit$cvm[l1se_ind], 
-      " (", x$glmnet.fit$cvsd[l1se_ind], ") \n\n", sep="")
-    tmp <- coef(x, penalty.par.val = "lambda.1se")
-    return(tmp[tmp$coefficient != 0, ])
+      x$glmnet.fit$lambda[lambda_ind])
   }
   if (penalty.par.val == "lambda.min") {
-    lmin_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
+    lambda_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
     cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
-      x$glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
-      x$glmnet.fit$nzero[lmin_ind], "\n  mean cv error (se) = ", 
-      x$glmnet.fit$cvm[lmin_ind], 
-      " (", x$glmnet.fit$cvsd[lmin_ind], ") \n\n", sep = "")
-    tmp <- coef(x, penalty.par.val = "lambda.min")
-    return(tmp[tmp$coefficient != 0, ])
+        x$glmnet.fit$lambda[lambda_ind])
   }
+  if (is.numeric(penalty.par.val)) {
+    lambda_ind <- which(round(x$glmnet.fit$lambda, digits = 3) == round(penalty.par.val, digits = 3))
+    cat("Final ensemble with lambda = ", round(penalty.par.val, digits = 3))
+  }
+  cat("\n  number of terms = ", x$glmnet.fit$nzero[lambda_ind], 
+      "\n  mean cv error (se) = ", x$glmnet.fit$cvm[lambda_ind], 
+        " (", x$glmnet.fit$cvsd[lambda_ind], ") \n\n", sep = "")
+  tmp <- coef(x, penalty.par.val = penalty.par.val)
+  return(tmp[tmp$coefficient != 0, ])
 }
+
 
 
 
@@ -535,7 +572,10 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
 #' @param penalty.par.val character. Calculate cross-validated error for ensembles 
 #' with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
 #' or giving cv error that is within 1 standard error of minimum cv error 
-#' ("\code{lambda.1se}")?
+#' ("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
+#' corresponding to one of the values of lambda in the sequence used by glmnet,
+#' for which estimated cv error can be inspected by running 
+#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param parallel logical. Should parallel foreach be used? Must register parallel 
 #' beforehand, such as doMC or others.
 #' @return A list with three elements: \code{$cvpreds} (a vector with cross-validated
@@ -634,7 +674,10 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
 #' @param penalty.par.val character. Penalty parameter criterion to be used for 
 #' selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or 
 #' lambda giving cv error that is within 1 standard error of minimum cv error 
-#' ("\code{lambda.1se}").
+#' ("\code{lambda.1se}"). Alternatively, a numeric value may be specified, 
+#' corresponding to one of the values of lambda in the sequence used by glmnet,
+#' for which estimated cv error can be inspected by running 
+#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param ... additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.
 #' @return returns a dataframe with 3 columns: coefficient, rule (rule or 
 #' variable name) and description (\code{NA} for linear terms, conditions for 
@@ -688,7 +731,10 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' @param penalty.par.val character. Penalty parameter criterion to be used for
 #' selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
 #' giving cv error that is within 1 standard error of minimum cv error
-#' ("lambda.1se").
+#' ("lambda.1se"). Alternatively, a numeric value may be specified, 
+#' corresponding to one of the values of lambda in the sequence used by glmnet,
+#' for which estimated cv error can be inspected by running 
+#' \code{object$glmnet.fit} and \code{plot(pbject$glmnet.fit)}.
 #' @param type character string. The type of prediction required; the default
 #' \code{type = "link"} is on the scale of the linear predictors. Alternatively,
 #' for nominal outputs, \code{type = "response"} gives the fitted probabilities
@@ -698,7 +744,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' object is used.
 #' @examples \donttest{
 #' set.seed(1)
-#' train <- sample(1:length(complete.cases(airquality)), size = 120)
+#' train <- sample(1:sum(complete.cases(airquality)), size = 100)
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,])
 #' predict(airq.ens)
@@ -740,15 +786,15 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       nonzerorulenames <- names(coefs[coefs!=0,])[grep("rule", names(coefs[coefs!=0,]))]
       zerorulenames <- names(coefs[coefs==0,])[grep("rule", names(coefs[coefs==0,]))]
       if (length(nonzerorulenames) > 0) {
-        nonzerorules <- as.character(
+        nonzeroterms <- as.character(
           object$rules$description[object$rules$rule %in% nonzerorulenames])
         newrulevars <- data.frame(r1 = as.numeric(with(newdata, eval(parse(
-          text = nonzerorules[1])))))
+          text = nonzeroterms[1])))))
         names(newrulevars) <- nonzerorulenames[1]
         if (length(nonzerorulenames) > 1) {
-          for(i in 2:length(nonzerorules)) {
+          for(i in 2:length(nonzeroterms)) {
             newrulevars[,nonzerorulenames[i]] <- as.numeric(
-              with(newdata, eval(parse(text = nonzerorules[i]))))
+              with(newdata, eval(parse(text = nonzeroterms[i]))))
           }
         }
         # set all rules with zero coefficients to 0:
@@ -805,7 +851,10 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' penalty.par.val character. Penalty parameter criterion to be used for
 #' selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
 #' giving cv error that is within 1 standard error of minimum cv error
-#' ("lambda.1se").
+#' ("lambda.1se"). Alternatively, a numeric value may be specified, 
+#' corresponding to one of the values of lambda in the sequence used by glmnet,
+#' for which estimated cv error can be inspected by running 
+#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param nvals optional numeric vector of length one. For how many values of x
 #' should the partial dependence plot be created?
 #' @param type character string. Type of prediction to be plotted on y-axis.
@@ -815,7 +864,10 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' @param penalty.par.val character. Penalty parameter criterion to be used for
 #' selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or
 #' lambda giving cv error that is within 1 standard error of minimum cv error
-#' ("\code{lambda.1se}").
+#' ("\code{lambda.1se}"). Alternatively, a numeric value may be specified, 
+#' corresponding to one of the values of lambda in the sequence used by glmnet,
+#' for which estimated cv error can be inspected by running 
+#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @details By default, a partial dependence plot will be created for each unique
 #' observed value of the specified predictor variable. When the number of unique
 #' observed values is large, this may take a long time to compute. In that case,
@@ -898,7 +950,10 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' variables of class \code{"factor"}, an error will be printed.
 #' @param penalty.par.val character. Should model be selected with lambda giving
 #' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-#' standard error of minimum cv error ("lambda.1se")?
+#' standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
+#' value may be specified, corresponding to one of the values of lambda in the 
+#' sequence used by glmnet, for which estimated cv error can be inspected by 
+#' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param phi numeric. See \code{persp()} documentation.
 #' @param theta numeric. See \code{persp()} documentation.
 #' @param col character. Optional color to be used for surface in 3D plot.
@@ -1019,7 +1074,10 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' If NA (default), no rounding is performed.
 #' @param penalty.par.val character. Should model be selected with lambda giving
 #' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-#' standard error of minimum cv error ("lambda.1se")?
+#' standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
+#' value may be specified, corresponding to one of the values of lambda in the 
+#' sequence used by glmnet, for which estimated cv error can be inspected by 
+#' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param ... further arguments to be passed to \code{barplot} (only used
 #' when \code{plot = TRUE}).
 #' @return A list with two dataframes: $baseimps, giving the importances for
@@ -1032,7 +1090,7 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' importance(airq.ens)
 #' # calculate local importances (default: over 25% highest predicted values):
 #' importance(airq.ens, global = FALSE)
-#' # calculate local importances (custom: over 25% highest predicted values):
+#' # calculate local importances (custom: over 25% lowest predicted values):
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 #' @export
 importance <- function(object, plot = TRUE, ylab = "Importance",
@@ -1043,7 +1101,7 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
   ## Step 1: Calculate the importances of the base learners:
 
   # get base learner coefficients:
-  coefs <- coef.pre(object, print = FALSE, penalty.par.val = penalty.par.val)
+  coefs <- coef.pre(object, penalty.par.val = penalty.par.val)
   # give factors a description:
   coefs$description[is.na(coefs$description)] <-
     paste(as.character(coefs$rule)[is.na(coefs$description)], " ", sep = "")
@@ -1052,7 +1110,8 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
   if (global) {
     sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))
   } else {
-    preds <- predict.pre(object, newdata = object$orig_data, type = "response")
+    preds <- predict.pre(object, newdata = object$orig_data, type = "response",
+                         penalty.par.val = penalty.par.val)
     local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
                                preds <= quantile(preds, probs = quantprobs[2]),]
     if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2
@@ -1081,15 +1140,17 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     modframename = attr(attr(object$data, "terms"), "term.labels")[inds])
   baseimps <- merge(frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule",
                     all.x = TRUE, all.y = TRUE)
+  baseimps <- baseimps[baseimps$coefficient != 0,] # helps?
+  baseimps <- baseimps[baseimps$description != "(Intercept) ",] # helps?
   # For rules, calculate the number of terms in each rule:
   baseimps$nterms <- NA
   for(i in 1:nrow(baseimps)) {
-    # If there is no "&" in rule description, there is only 1 term/variable in
-    # the base learner:
-    if (gregexpr("&", baseimps$description)[[i]][1] == -1) {
-        baseimps$nterms[i] <- 1
-    } else { # otherwise, the number of terms = the number of &-signs + 1
+    # If there is " & " in rule description, there are at least 2 terms/variables 
+    # in the base learner:
+    if (grepl(" & ", baseimps$description[i])) {
       baseimps$nterms[i] <- length(gregexpr("&", baseimps$description)[[i]]) + 1
+    } else {
+      baseimps$nterms[i] <- 1 # if not, the number of terms = 1
     }
   }
   # Calculate variable importances:
@@ -1099,13 +1160,13 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     # For every baselearner:
     for(j in 1:nrow(baseimps)) {
       # if the variable name appears in the rule:
-      if (gregexpr(paste(varimps$varname[i], " ", sep = ""),
-                  baseimps$description[j])[[1]][1] != -1) {
+      #   (Note: EXACT matches are needed, so 1) there should be a space before 
+      #     and after the variable name in the rule and thus 2) there should be 
+      #     a space added before the description of the rule)
+      if(grepl(paste(" ", varimps$varname[i], " ", sep = ""), paste(" ", baseimps$description[j], sep =""))) {
         # then count the number of times it appears in the rule:
-        n_occ <- length(
-          gregexpr(paste(varimps$varname[i], " ", sep = ""),
-                   baseimps$description[j])[[1]]
-        )
+        n_occ <- length(gregexpr(paste(" ", varimps$varname[i], " ", sep = ""),
+          paste(" ", baseimps$description[j], sep =""), fixed = TRUE)[[1]])
         # and add it to the importance of the variable:
         varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] /
                                               baseimps$nterms[j])
@@ -1156,7 +1217,10 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 #' @param penalty.par.val character. Which value of the penalty parameter
 #' criterion should be used? The value yielding minimum cv error
 #' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-#' error of minimum cv error ("\code{lambda.1se}")?
+#' error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
+#' value may be specified, corresponding to one of the values of lambda in the 
+#' sequence used by glmnet, for which estimated cv error can be inspected by 
+#' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param parallel logical. Should parallel foreach be used to generate initial
 #' ensemble? Must register parallel beforehand, such as doMC or others.
 #' @param verbose logical. should progress be printed to the command line?
@@ -1308,7 +1372,10 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' @param penalty.par.val character. Which value of the penalty parameter
 #' criterion should be used? The value yielding minimum cv error
 #' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-#' error of minimum cv error ("\code{lambda.1se}")?
+#' error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
+#' value may be specified, corresponding to one of the values of lambda in the 
+#' sequence used by glmnet, for which estimated cv error can be inspected by 
+#' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param parallel logical. Should parallel foreach be used? Must register
 #' parallel beforehand, such as doMC or others.
 #' @param plot logical Should interaction statistics be plotted?
@@ -1446,9 +1513,22 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
 #' @param penalty.par.val character. Which value of the penalty parameter
 #' criterion should be used? The value yielding minimum cv error
 #' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-#' error of minimum cv error ("\code{lambda.1se}")?
-#' @param plot.dim numeric vector of length two, number of rows and columns of
-#' the plotting window in which the rules should be plotted.
+#' error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
+#' value may be specified, corresponding to one of the values of lambda in the 
+#' sequence used by glmnet, for which estimated cv error can be inspected by 
+#' running \code{x$glmnet.fit} and \code{plot(x$glmnet.fit)}.
+#' @param linear.terms logical. Should linear terms be included in the plot?
+#' @param nterms numeric. The total number of terms (or rules, if 
+#' \code{linear.terms = FALSE}) to be plotted. Default is \code{NULL}, 
+#' resulting in all terms of the final ensemble to be plotted.
+#' @param max.terms.plot numeric. The maximum number of terms per plot. Rules 
+#' are plotted in a square pattern, so \code{is.integer(sqrt(max.terms.plot))} 
+#' should return \code{TRUE}, otherwise max.terms.plot will be set to the next 
+#' higher value which returns true. The default \code{max.terms.plot = 16} 
+#' results in max. 4x4 rules per plot. If the number of terms exceeds the value 
+#' specified for max.rules.plot, multiple pages of plots will be created.   
+#' @param ask logical. Should user be prompted before starting a new page of
+#' plots?
 #' @param ... Currently not used.
 #' @examples
 #' \donttest{
@@ -1457,130 +1537,158 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
 #'  plot(airq.ens)}
 #' @export
 #' @method plot pre
-plot.pre <- function(x, penalty.par.val = "lambda.1se", plot.dim = NULL, ...) {
+plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
+                     nterms = NULL, max.terms.plot = 16, ask = FALSE, ...) {
   # Preliminaries:
   if (!("grid" %in% installed.packages()[,1])) {
     stop("Function plot.pre requires package grid. Download and install package
          grid from CRAN, and run again.")
   }
-  # Get rules in final ensemble:
-  coefs <- importance(x, plot = FALSE, global = TRUE)$baseimps
-  coefs <- coefs[coefs$coefficient != 0,]
-  nonzerorules <- coefs[grep("rule", coefs$rule),]
-  if(is.null(plot.dim)) {
-    plot.dim <- rep(ceiling(sqrt(nrow(nonzerorules))), times = 2)
+  max.terms.plot <- ceiling(sqrt(max.terms.plot))^2
+  # Get nonzero terms from final ensemble:
+  nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
+                      penalty.par.val = penalty.par.val)$baseimps
+  if (!linear.terms) {
+    nonzeroterms <- nonzeroterms[grep("rule", nonzeroterms$rule),]
   }
+  if (!is.null(nterms)) {
+    nonzeroterms <- nonzeroterms[1:nterms,]
+  }
+  plot.dim <- rep(min(ceiling(sqrt(nrow(nonzeroterms))), sqrt(max.terms.plot)), times = 2)
   conditions <- list()
-  for(i in 1:nrow(nonzerorules)) { # i is a counter for rules
-    if (length(grep("&", nonzerorules$description[i], )) > 0) {
-      conditions[[i]] <- unlist(strsplit(nonzerorules$description[i], split = " & "))
+  for(i in 1:nrow(nonzeroterms)) { # i is a counter for terms
+    if (length(grep("&", nonzeroterms$description[i], )) > 0) { # get rules with multiple conditions:
+      conditions[[i]] <- unlist(strsplit(nonzeroterms$description[i], split = " & "))
+    } else if (!grepl("rule", nonzeroterms$rule[i])) {
+      conditions[[i]] <- "linear" # flag linear terms:
     } else {
-      conditions[[i]] <- nonzerorules$description[i]
+      conditions[[i]] <- nonzeroterms$description[i] # get rules with only one condition:
     }
   }
-  # Create plotting regions:
-  grid::grid.newpage()
-  grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
-  # Generate a tree for every rule:
-  for(i in 1:nrow(nonzerorules)) {
-    # Create lists of arguments and operators for every condition:
-    tmp <- list()
-    # check whether ?plot.the operator is " < ", " <= " or "%in%  "
-    # split the string using the operator, into the variable name and splitting value, which is used to define split = partysplit(id, value)
-    # make it a list:
-    for (j in 1:length(conditions[[i]])) {
-      condition_j <- conditions[[i]][[j]]
-      tmp[[j]] <- character()
-      if (length(grep(" > ", condition_j)) > 0) {
-        tmp[[j]][1] <- unlist(strsplit(condition_j, " > "))[1]
-        tmp[[j]][2] <- " > "
-        tmp[[j]][3] <- unlist(strsplit(condition_j, " > "))[2]
+  # Generate a plot for every term:
+  for(i in 1:nrow(nonzeroterms)) {
+    # track number of plotting page:
+    nplot <- floor((i - 1) / max.terms.plot)
+    if (conditions[[i]][1] == "linear") { # create plot for linear terms:
+      i_plot <- i - nplot * max.terms.plot
+      grid::pushViewport(grid::viewport(layout.pos.col = rep(1:plot.dim[2], times = i_plot)[i_plot],
+                                        layout.pos.row = ceiling(i_plot/plot.dim[1])))
+      grid::grid.text(paste("Linear effect of ", nonzeroterms$rule[i], 
+                      "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3), 
+                      sep = ""))
+      grid::popViewport()
+      if((i-1) %% (plot.dim[1]*plot.dim[2]) == 0) {
+        grid::grid.newpage()
+        grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
       }
-      if (length(grep(" <= ", condition_j)) > 0) {
-        tmp[[j]][1] <- unlist(strsplit(condition_j, " <= "))[1]
-        tmp[[j]][2] <- " <= "
-        tmp[[j]][3] <- unlist(strsplit(condition_j, " <= "))[2]
-      }
-      if (length(grep(" %in% ", condition_j)) > 0) {
-        tmp[[j]][1] <- unlist(strsplit(condition_j, " %in% "))[1]
-        tmp[[j]][2] <- " %in% "
-        tmp[[j]][3] <- unlist(strsplit(condition_j, " %in% "))[2]
-      }
-    }
-    ncond <- length(tmp)
-    # generate empty datasets for all the variables appearing in the rules:
-    treeplotdata <- data.frame(matrix(ncol = ncond))
-    for (j in 1:ncond) {
-      names(treeplotdata)[j] <- tmp[[j]][1]
-      if (tmp[[j]][2] == " %in% ") {
-        treeplotdata[,j] <- factor(treeplotdata[,j])
-        faclevels <- substring(tmp[[j]][3], first = 2)
-        faclevels <- gsub(pattern = "\"", replacement = "", x = faclevels, fixed = TRUE)
-        faclevels <- gsub(pattern = "(", replacement = "", x = faclevels, fixed = TRUE)
-        faclevels <- gsub(pattern = ")", replacement = "", x = faclevels, fixed = TRUE)
-        faclevels <- unlist(strsplit(faclevels, ", ",))
-        levels(treeplotdata[,j]) <- c(
-          levels(x$data[,tmp[[j]][1]])[levels(x$data[,tmp[[j]][1]]) %in% faclevels],
-          levels(x$data[,tmp[[j]][1]])[!(levels(x$data[,tmp[[j]][1]]) %in% faclevels)])
-        tmp[[j]][3] <- length(faclevels)
-      }
-    }
-
-    # generate partynode objects for plotting:
-    nodes <- list()
-    # Construct level 0 of tree (the two terminal nodes), conditional on operator of last condition:
-    if (tmp[[ncond]][2] == " > ") { # If condition involves " > ", the tree continues right:
-      nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
-                         info = "exit")
-      nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
-                         info = round(nonzerorules$coefficient[i], digits = 3))
-    } else { # If condition involves " <= " or " %in% " the tree continues left:
-      nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
-                         info = round(nonzerorules$coefficient[i], digits = 3))
-      nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
-                         info = "exit")
-    }
-    class(nodes[[1]]) <- class(nodes[[2]]) <- "partynode"
-
-    # if there are > 1 conditions in rule, loop for (nconditions - 1) times:
-    if (ncond > 1) {
-      for (lev in 1L:(ncond - 1)) { # lev is a counter for the level in the tree
-        if (tmp[[lev + 1]][2] == " > ") { # If condition involves " > ", the tree continues right:
-          nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1),
-                                       split = partysplit(
-                                         as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
-                                       kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
-                                       surrogates = NULL, info = NULL)
-          nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = NULL,
-                                       kids = NULL, surrogates = NULL, info = "exit")
-        } else { # If condition involves " <= " or " %in% " the tree continues left:
-          nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = NULL,
-                                       kids = NULL, surrogates = NULL, info = "exit")
-          nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2),
-                                       split = partysplit(
-                                         as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
-                                       kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
-                                       surrogates = NULL, info = NULL)
+    } else { # create plot for rules:
+      # Create lists of arguments and operators for every condition:
+      tmp <- list()
+      # check whether ?plot.the operator is " < ", " <= " or "%in%  "
+      # split the string using the operator, into the variable name and splitting value, which is used to define split = partysplit(id, value)
+      # make it a list:
+      for (j in 1:length(conditions[[i]])) {
+        condition_j <- conditions[[i]][[j]]
+        tmp[[j]] <- character()
+        if (length(grep(" > ", condition_j)) > 0) {
+          tmp[[j]][1] <- unlist(strsplit(condition_j, " > "))[1]
+          tmp[[j]][2] <- " > "
+          tmp[[j]][3] <- unlist(strsplit(condition_j, " > "))[2]
         }
-        class(nodes[[lev * 2 + 1]]) <- class(nodes[[lev * 2 + 2]]) <- "partynode"
+        if (length(grep(" <= ", condition_j)) > 0) {
+          tmp[[j]][1] <- unlist(strsplit(condition_j, " <= "))[1]
+          tmp[[j]][2] <- " <= "
+          tmp[[j]][3] <- unlist(strsplit(condition_j, " <= "))[2]
+        }
+        if (length(grep(" %in% ", condition_j)) > 0) {
+          tmp[[j]][1] <- unlist(strsplit(condition_j, " %in% "))[1]
+          tmp[[j]][2] <- " %in% "
+          tmp[[j]][3] <- unlist(strsplit(condition_j, " %in% "))[2]
+        }
       }
-    }
-    # Construct root node:
-    lev <- ncond
-    nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 2),
-                                 split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
-                                 kids = list(nodes[[lev * 2]], nodes[[lev * 2 - 1]]),
-                                 surrogates = NULL, info = NULL)
-    class(nodes[[lev * 2 + 1]]) <- "partynode"
+      ncond <- length(tmp)
+      # generate empty datasets for all the variables appearing in the rules: 
+      treeplotdata <- data.frame(matrix(ncol = ncond))
+      for (j in 1:ncond) {
+        names(treeplotdata)[j] <- tmp[[j]][1]
+        if (tmp[[j]][2] == " %in% ") {
+          treeplotdata[,j] <- factor(treeplotdata[,j])
+          faclevels <- substring(tmp[[j]][3], first = 2)
+          faclevels <- gsub(pattern = "\"", replacement = "", x = faclevels, fixed = TRUE)
+          faclevels <- gsub(pattern = "(", replacement = "", x = faclevels, fixed = TRUE)
+          faclevels <- gsub(pattern = ")", replacement = "", x = faclevels, fixed = TRUE)
+          faclevels <- unlist(strsplit(faclevels, ", ",))
+          levels(treeplotdata[,j]) <- c(
+            levels(x$data[,tmp[[j]][1]])[levels(x$data[,tmp[[j]][1]]) %in% faclevels],
+            levels(x$data[,tmp[[j]][1]])[!(levels(x$data[,tmp[[j]][1]]) %in% faclevels)])
+          tmp[[j]][3] <- length(faclevels)
+        }
+      }
 
-    # Plot the rule:
-    grid::pushViewport(grid::viewport(layout.pos.col = rep(1:plot.dim[2], times = i)[i],
-                                      layout.pos.row = ceiling(i/plot.dim[1])))
-    fftree <- party(nodes[[lev * 2 + 1]], data = treeplotdata)
-    plot(fftree, newpage = FALSE,
-         main = paste(nonzerorules$rule[i], ": Importance", round(nonzerorules$imp[i], digits = 3), sep = ""),
-         inner_panel = node_inner(fftree, id = FALSE),
-         terminal_panel = node_terminal(fftree, id = FALSE))
-    grid::popViewport()
+      # generate partynode objects for plotting:
+      nodes <- list()
+      # Construct level 0 of tree (the two terminal nodes), conditional on operator of last condition:
+      if (tmp[[ncond]][2] == " > ") { # If condition involves " > ", the tree continues right:
+        nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
+                           info = "exit")
+        nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
+                           info = round(nonzeroterms$coefficient[i], digits = 3))
+      } else { # If condition involves " <= " or " %in% " the tree continues left:
+        nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
+                           info = round(nonzeroterms$coefficient[i], digits = 3))
+        nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
+                           info = "exit")
+      }
+      class(nodes[[1]]) <- class(nodes[[2]]) <- "partynode"
+
+      # if there are > 1 conditions in rule, loop for (nconditions - 1) times:
+      if (ncond > 1) {
+        for (lev in 1L:(ncond - 1)) { # lev is a counter for the level in the tree
+          if (tmp[[lev + 1]][2] == " > ") { # If condition involves " > ", the tree continues right:
+            nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1),
+                                         split = partysplit(
+                                           as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+                                         kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
+                                         surrogates = NULL, info = NULL)
+            nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = NULL,
+                                         kids = NULL, surrogates = NULL, info = "exit")
+          } else { # If condition involves " <= " or " %in% " the tree continues left:
+            nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = NULL,
+                                         kids = NULL, surrogates = NULL, info = "exit")
+            nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2),
+                                         split = partysplit(
+                                           as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+                                         kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
+                                         surrogates = NULL, info = NULL)
+          }
+          class(nodes[[lev * 2 + 1]]) <- class(nodes[[lev * 2 + 2]]) <- "partynode"
+        }
+      }
+      # Construct root node:
+      lev <- ncond
+      nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 2),
+                                   split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
+                                   kids = list(nodes[[lev * 2]], nodes[[lev * 2 - 1]]),
+                                   surrogates = NULL, info = NULL)
+      class(nodes[[lev * 2 + 1]]) <- "partynode"
+
+      # Plot the rule:
+      i_plot <- i - nplot * max.terms.plot
+      if((i-1) %% (plot.dim[1]*plot.dim[2]) == 0) {
+        grid::grid.newpage()
+        grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
+      }
+      grid::pushViewport(grid::viewport(layout.pos.col = rep(1:plot.dim[2], times = i_plot)[i_plot],
+                                        layout.pos.row = ceiling(i_plot/plot.dim[1])))
+      fftree <- party(nodes[[lev * 2 + 1]], data = treeplotdata)
+      plot(fftree, newpage = FALSE,
+           main = paste(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3), sep = ""),
+           inner_panel = node_inner(fftree, id = FALSE),
+           terminal_panel = node_terminal(fftree, id = FALSE))
+      grid::popViewport()
+    }
+  }
+  if (ask) {
+    grDevices::devAskNewPage(ask = FALSE)
   }
 }

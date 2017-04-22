@@ -1,5 +1,0 @@
-- Included README file
-- Added support for using function in formula statements
-- Legend included in plot for interaction test statistics by default
-- print() function included for objects of class pre
-- Fixed importance() function to allow for selecting final ensemble different than 'lambda.1se'

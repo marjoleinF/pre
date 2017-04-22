@@ -21,7 +21,10 @@ to the command line?}
 \item{penalty.par.val}{character. Calculate cross-validated error for ensembles 
 with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
 or giving cv error that is within 1 standard error of minimum cv error 
-("\code{lambda.1se}")?}
+("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
+corresponding to one of the values of lambda in the sequence used by glmnet,
+for which estimated cv error can be inspected by running 
+\code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
 \item{parallel}{logical. Should parallel foreach be used? Must register parallel 
 beforehand, such as doMC or others.}

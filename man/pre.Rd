@@ -6,8 +6,9 @@
 \usage{
 pre(formula, data, type = "both", weights = rep(1, times = nrow(data)),
   sampfrac = 0.5, maxdepth = 3L, learnrate = NULL,
-  removeduplicates = TRUE, mtry = Inf, ntrees = 500, thres = 1e-07,
-  standardize = FALSE, winsfrac = 0.025, normalize = TRUE, nfolds = 10L,
+  removeduplicates = TRUE, mtry = Inf, ntrees = 500,
+  removecomplements = TRUE, thres = 1e-07, standardize = FALSE,
+  winsfrac = 0.025, normalize = TRUE, nfolds = 10L,
   mod.sel.crit = "deviance", verbose = FALSE, par.init = FALSE,
   par.final = FALSE, ...)
 }
@@ -38,11 +39,11 @@ linear functions only).}
 \item{weights}{an optional vector of observation weights to be used for 
 deriving the ensemble.}
 
-\item{sampfrac}{numeric value greater than 0, and smaller than or equal to 1. 
-Fraction of randomly selected training observations used to produce each tree. 
-Setting this to values < 1 will result in subsamples being drawn without 
-replacement (i.e., subsampling). Setting this equal to 1 will result in 
-bootstrap sampling.}
+\item{sampfrac}{numeric value greater than 0 and smaller than or equal to 1. 
+Fraction of randomly selected training observations used to produce each 
+tree. Values smaller than 1 will result in subsamples being drawn without 
+replacement (i.e., subsampling), value equal to 1 will result in bootstrap 
+sampling.}
 
 \item{maxdepth}{numeric. Maximal number of conditions in rules.}
 
@@ -59,6 +60,9 @@ creating each split in each tree. Ignored for nominal output variables if
 \code{learnrate} > 0.}
 
 \item{ntrees}{numeric. Number of trees to generate for the initial ensemble.}
+
+\item{removecomplements}{logical. Remove rules from the ensemble which have
+the same support in the training data as the inverse of other rules?}
 
 \item{thres}{numeric. Threshold for convergence.}
 
@@ -101,15 +105,15 @@ such as doMC or others.}
 \code{\link[glmnet]{cv.glmnet}}.}
 }
 \value{
-an object of class \code{pre}, which is a list with many elements
+an object of class \code{pre}
 }
 \description{
 \code{pre} derives a sparse ensemble of rules and/or linear functions for 
 prediction of a continuous or binary outcome.
 }
 \details{
-Inputs can be continuous, ordered or factor variables. Continuous 
-variables
+Inputs can be continuous, ordered or factor variables. Output can be
+continuous or binary categorical.
 }
 \note{
 The code for deriving rules from the nodes of trees was taken from an 

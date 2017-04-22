@@ -27,7 +27,10 @@ in \code{quantprobs}.}
 
 \item{penalty.par.val}{character. Should model be selected with lambda giving
 minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-standard error of minimum cv error ("lambda.1se")?}
+standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
+value may be specified, corresponding to one of the values of lambda in the 
+sequence used by glmnet, for which estimated cv error can be inspected by 
+running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
 \item{quantprobs}{optional numeric vector of length two. Only used when
 \code{global = FALSE} (in which case specification of this argument is still
@@ -60,7 +63,7 @@ airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 importance(airq.ens)
 # calculate local importances (default: over 25\% highest predicted values):
 importance(airq.ens, global = FALSE)
-# calculate local importances (custom: over 25\% highest predicted values):
+# calculate local importances (custom: over 25\% lowest predicted values):
 importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 }
 

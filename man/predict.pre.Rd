@@ -21,7 +21,10 @@ and \code{type = "class"} gives the predicted class membership.}
 \item{penalty.par.val}{character. Penalty parameter criterion to be used for
 selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
 giving cv error that is within 1 standard error of minimum cv error
-("lambda.1se").}
+("lambda.1se"). Alternatively, a numeric value may be specified, 
+corresponding to one of the values of lambda in the sequence used by glmnet,
+for which estimated cv error can be inspected by running 
+\code{object$glmnet.fit} and \code{plot(pbject$glmnet.fit)}.}
 
 \item{...}{currently not used.}
 }
@@ -36,7 +39,7 @@ object is used.
 \examples{
 \donttest{
 set.seed(1)
-train <- sample(1:length(complete.cases(airquality)), size = 120)
+train <- sample(1:sum(complete.cases(airquality)), size = 100)
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,])
 predict(airq.ens)

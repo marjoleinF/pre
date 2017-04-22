@@ -4,7 +4,8 @@
 \alias{plot.pre}
 \title{Plot method for class pre}
 \usage{
-\method{plot}{pre}(x, penalty.par.val = "lambda.1se", plot.dim = NULL, ...)
+\method{plot}{pre}(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
+  nterms = NULL, max.terms.plot = 16, ask = FALSE, ...)
 }
 \arguments{
 \item{x}{an object of class \code{\link{pre}}.}
@@ -12,10 +13,26 @@
 \item{penalty.par.val}{character. Which value of the penalty parameter
 criterion should be used? The value yielding minimum cv error
 (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-error of minimum cv error ("\code{lambda.1se}")?}
+error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
+value may be specified, corresponding to one of the values of lambda in the 
+sequence used by glmnet, for which estimated cv error can be inspected by 
+running \code{x$glmnet.fit} and \code{plot(x$glmnet.fit)}.}
 
-\item{plot.dim}{numeric vector of length two, number of rows and columns of
-the plotting window in which the rules should be plotted.}
+\item{linear.terms}{logical. Should linear terms be included in the plot?}
+
+\item{nterms}{numeric. The total number of terms (or rules, if 
+\code{linear.terms = FALSE}) to be plotted. Default is \code{NULL}, 
+resulting in all terms of the final ensemble to be plotted.}
+
+\item{max.terms.plot}{numeric. The maximum number of terms per plot. Rules 
+are plotted in a square pattern, so \code{is.integer(sqrt(max.terms.plot))} 
+should return \code{TRUE}, otherwise max.terms.plot will be set to the next 
+higher value which returns true. The default \code{max.terms.plot = 16} 
+results in max. 4x4 rules per plot. If the number of terms exceeds the value 
+specified for max.rules.plot, multiple pages of plots will be created.}
+
+\item{ask}{logical. Should user be prompted before starting a new page of
+plots?}
 
 \item{...}{Currently not used.}
 }
