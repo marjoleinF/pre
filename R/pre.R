@@ -225,7 +225,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           # Grow tree on subsample:
           tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
           # Collect rules from tree:
-          rules <- append(rules, unlist(list.rules(tree)))
+          rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:
           y_learn <- y_learn - learnrate * predict(tree, newdata = data)
         }
@@ -268,18 +268,21 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     }
     # Create dataframe with 0-1 coded rules:
     if (length(rules) > 0) {
-      rulevars <- data.frame(
-        rule1 = as.numeric(with(data, eval(parse(text = rules[[1]])))))
-      for(i in 2:length(rules)) {
-        rulevars[,paste("rule", i, sep="")] <- as.numeric(
+      n_rules <- length(rules)
+      rulevars <- matrix(
+        NA_integer_, nrow = nrow(data), ncol = n_rules, 
+        dimnames = list(NULL, paste0("rule", 1:n_rules)))
+      
+      for(i in 1:n_rules)
+        rulevars[, i] <- as.numeric(
           with(data, eval(parse(text = rules[[i]]))))
-      }
+      
       if (removeduplicates) {
         # Remove rules with identical support:
-        duplicates <- duplicated(t(rulevars))
+        duplicates <- duplicated(rulevars, MARGIN = 2)
         duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
                                          description = rules[duplicates])
-        rulevars <- rulevars[,!duplicates]
+        rulevars <- rulevars[, !duplicates]
         rules <- rules[!duplicates]
         if (verbose) {
           cat("\n\nA total of", sum(duplicates), "generated rules had 
@@ -293,18 +296,19 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         # remove rules with complement support:
         removed_complement_rules <- c()
         # for rule that has support identical to some earlier rule(s):
+        comp_rules <- 1L - rulevars
         for(i in which(duplicated(apply(rulevars, 2, sd)))) {
+          if(i == 1)
+            next
           # check whether the rule is a complement of any of the earlier unique rules:
-          for(j in 1:i) {
-            if (all(rulevars[,i] == (1 - rulevars[,j]))) {
-              # add it's name to the list of complement rules:
-              removed_complement_rules <- c(removed_complement_rules, names(rulevars)[j])
-            }
-          }
+          is_comp <- which(apply(rulevars[, i] == comp_rules[, 1:(i - 1), drop = F], 2, all))
+          if(length(is_comp) > 0)
+            removed_complement_rules <- c(removed_complement_rules, colnames(rulevars)[is_comp])
         }
+        
         # rules with their name in removed_complement_rules should be removed from rulevars and rules
         # and also, some message about the number of rules for which this was the case should be printed if verbose
-        complements <- !(names(rulevars) %in% removed_complement_rules)
+        complements <- !(colnames(rulevars) %in% removed_complement_rules)
         rulevars <- rulevars[,!complements]
         rules <- rules[!complements]
         if (verbose) {
@@ -323,6 +327,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
     }
   }
+  
+  rulevars <- data.frame(rulevars)
   
   ######################################################
   ## Prepare rules, linear terms and outcome variable ##
@@ -444,8 +450,8 @@ list.rules <- function (x, i = NULL, ...)
   }
   if (is.character(i) && !is.null(names(x))) 
     i <- which(names(x) %in% i)
-  stopifnot(length(i) == 1 & is.numeric(i))
-  stopifnot(i <= length(x) & i >= 1)
+  #stopifnot(length(i) == 1 & is.numeric(i))
+  #stopifnot(i <= length(x) & i >= 1)
   i <- as.integer(i)
   dat <- partykit::data_party(x, i)
   if (!is.null(x$fitted)) {
