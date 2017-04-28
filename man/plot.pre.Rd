@@ -5,7 +5,8 @@
 \title{Plot method for class pre}
 \usage{
 \method{plot}{pre}(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
-  nterms = NULL, max.terms.plot = 16, ask = FALSE, ...)
+  nterms = NULL, max.terms.plot = 16, ask = FALSE, exit.label = "0",
+  ...)
 }
 \arguments{
 \item{x}{an object of class \code{\link{pre}}.}
@@ -33,6 +34,9 @@ specified for max.rules.plot, multiple pages of plots will be created.}
 
 \item{ask}{logical. Should user be prompted before starting a new page of
 plots?}
+
+\item{exit.label}{character string. What label should be printed in nodes to 
+which the rule does not apply (``exit nodes'')?}
 
 \item{...}{Currently not used.}
 }

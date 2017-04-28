@@ -122,6 +122,7 @@ Hothorn.
 }
 \examples{
 \donttest{
+set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 }
 

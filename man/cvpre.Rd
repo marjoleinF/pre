@@ -50,5 +50,6 @@ the ensemble, providing an estimate of predictive accuracy on future observation
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 airq.cv <- cvpre(airq.ens)}
+
 }
 

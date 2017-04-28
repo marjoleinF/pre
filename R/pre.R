@@ -82,6 +82,7 @@ utils::globalVariables("%dopar%")
 #' @details Inputs can be continuous, ordered or factor variables. Output can be
 #' continuous or binary categorical.
 #' @examples \donttest{
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 #' @import glmnet partykit datasets
 #' @export
@@ -152,9 +153,10 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
             is binary and learnrate > 0", immediate. = TRUE)
   }
   if (any(is.na(data))) {
+    weigths <- weights[complete.cases(data)]
     data <- data[complete.cases(data),]
     n <- nrow(data)
-    warning("Some observations have missing values and will be removed. 
+    warning("Some observations have missing values and have been removed. 
             New sample size is ", n, ".\n", immediate. = TRUE)
   }
   if (verbose) {
@@ -177,16 +179,15 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE)
+            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
           } else { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                prob = weights)
           }
           subsampledata <- data[subsample,]
-          # Make sure ctree() can find object specified by weights argument: 
-          environment(formula) <- environment()
           # Grow ctree on subsample:
-          tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
-                        maxdepth = maxdepth, mtry = mtry)
+          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, 
+                        mtry = mtry)
           # Collect rules from tree:
           unlist(list.rules(tree))
         }
@@ -195,16 +196,14 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE)
+            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
           } else { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                prob = weights)
           }
           subsampledata <- data[subsample,]
-          # Make sure ctree() can find object specified by weights argument: 
-          environment(formula) <- environment()
           # Grow tree on subsample:
-          tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
-                        maxdepth = maxdepth, mtry = mtry)
+          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
           # Collect rules from tree:
           rules <- append(rules, unlist(list.rules(tree)))
         }
@@ -217,17 +216,14 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE)
+            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
           } else { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, prob = weights)
           }
           subsampledata <- data[subsample,]
           subsampledata[,y_name] <- y_learn[subsample]
-          # Make sure ctree() can find object specified by weights argument: 
-          environment(formula) <- environment()
           # Grow tree on subsample:
-          tree <- ctree(formula, data = subsampledata, weights = weights[subsample], 
-                        maxdepth = maxdepth, mtry = mtry)
+          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
           # Collect rules from tree:
           rules <- append(rules, unlist(list.rules(tree)))
           # Substract predictions from current y:
@@ -241,16 +237,15 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         for(i in 1:ntrees) {
           # Take subsample of dataset:
           if (sampfrac == 1) { # then bootstrap:
-            subsample <- sample(1:n, size = n, replace = TRUE)
+            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
           } else { # else subsample:
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE)
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE,
+                                prob = weights)
           }
           subsampledata <- data2[subsample,]
-          # Make sure glmtree() can find object specified by weights argument: 
-          environment(formula) <- environment()
           # Grow tree on subsample:
-          tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial",
-                          weights = weights[subsample], maxdepth = maxdepth + 1,  
+          tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial", 
+                          maxdepth = maxdepth + 1,  
                           offset = offset)
           # Collect rules from tree:
           rules <- append(rules, unlist(list.rules(tree)))
@@ -416,7 +411,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                  modmat = x, modmat_formula = modmat_formula, 
                  wins_points = wins_points,
                  classify = classify, formula = formula, orig_data = orig_data)
-  if (type != "linear" & length(rules) > 0) {
+  if (type != "linear" & length(rules) > 0 & length(names(rulevars)) > 0) {
     result$removed_complement_rules <- removed_complement_rules
     result$duplicates.removed <- duplicates.removed
     result$rules <- data.frame(rule = names(rulevars), description = rules)
@@ -529,7 +524,7 @@ list.rules <- function (x, i = NULL, ...)
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
-#' coefs <- print(airq.ens)}
+#' print(airq.ens)}
 #' @export
 #' @method print pre
 print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
@@ -544,8 +539,9 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
         x$glmnet.fit$lambda[lambda_ind])
   }
   if (is.numeric(penalty.par.val)) {
-    lambda_ind <- which(round(x$glmnet.fit$lambda, digits = 3) == round(penalty.par.val, digits = 3))
-    cat("Final ensemble with lambda = ", round(penalty.par.val, digits = 3))
+    lambda_ind <- which(abs(x$glmnet.fit$lambda - penalty.par.val) == min(abs(
+      x$glmnet.fit$lambda - penalty.par.val)))
+    cat("Final ensemble with lambda = ", x$glmnet.fit$lambda[lambda_ind])
   }
   cat("\n  number of terms = ", x$glmnet.fit$nzero[lambda_ind], 
       "\n  mean cv error (se) = ", x$glmnet.fit$cvm[lambda_ind], 
@@ -592,6 +588,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' airq.cv <- cvpre(airq.ens)}
+#' 
 cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5, 
                   penalty.par.val = "lambda.1se", parallel = FALSE) {
   folds <- sample(rep(1:k, length.out = nrow(object$orig_data)), 
@@ -769,7 +766,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       # take all input variables:
       newdata <- newdata[,names(newdata) %in% object$x_names]
       # add temporary y variable to create model.frame:
-      newdata[,object$y_name] <- object$orig_data[,object$y_name][1]
+      newdata[,object$y_name] <- object$data[,object$y_name][1]
       newdata <- model.frame(object$formula, newdata)
       # check if all variables have the same levels:
       if (!all(unlist(sapply(object$data, levels)) ==
@@ -1102,103 +1099,109 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 
   # get base learner coefficients:
   coefs <- coef.pre(object, penalty.par.val = penalty.par.val)
-  # give factors a description:
-  coefs$description[is.na(coefs$description)] <-
-    paste(as.character(coefs$rule)[is.na(coefs$description)], " ", sep = "")
-  coefs <- coefs[order(coefs$rule),]
-  # Get sds for every baselearner:
-  if (global) {
-    sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))
-  } else {
-    preds <- predict.pre(object, newdata = object$orig_data, type = "response",
-                         penalty.par.val = penalty.par.val)
-    local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
-                               preds <= quantile(preds, probs = quantprobs[2]),]
-    if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2
-                                observations, importances cannot be calculated")}
-    sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
-  }
-  names(sds)[1] <- "(Intercept)"
-  sds <- sds[order(names(sds))]
-  if (all(names(sds) != coefs$rule)) {
-    stop("There seems to be a problem with the ordering or size of the
-         coefficient and sd vectors. Importances cannot be calculated.")
-  }
-
-  # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
-  baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
-
-
-  ## Step 2: Calculate variable importances:
-
-  # For factors, importances for each level should be added together.
-  # first get indicators for assignments in modmat which are not rules:
-  inds <- attr(object$modmat, "assign")[-grep("rule", colnames(object$modmat))]
-  # add names in modelframe and modelmatrix to baselearner importances:
-  frame.mat.conv <- data.frame(
-    modmatname = colnames(object$modmat)[-grep("rule", colnames(object$modmat))],
-    modframename = attr(attr(object$data, "terms"), "term.labels")[inds])
-  baseimps <- merge(frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule",
-                    all.x = TRUE, all.y = TRUE)
-  baseimps <- baseimps[baseimps$coefficient != 0,] # helps?
-  baseimps <- baseimps[baseimps$description != "(Intercept) ",] # helps?
-  # For rules, calculate the number of terms in each rule:
-  baseimps$nterms <- NA
-  for(i in 1:nrow(baseimps)) {
-    # If there is " & " in rule description, there are at least 2 terms/variables 
-    # in the base learner:
-    if (grepl(" & ", baseimps$description[i])) {
-      baseimps$nterms[i] <- length(gregexpr("&", baseimps$description)[[i]]) + 1
+  # only continue when there are nonzero terms besides intercept:
+  if (sum(coefs$coefficient != 0) > 1) { 
+    # give factors a description:
+    coefs$description[is.na(coefs$description)] <-
+      paste(as.character(coefs$rule)[is.na(coefs$description)], " ", sep = "")
+    coefs <- coefs[order(coefs$rule),]
+    # Get sds for every baselearner:
+    if (global) {
+      sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))
     } else {
-      baseimps$nterms[i] <- 1 # if not, the number of terms = 1
+      preds <- predict.pre(object, newdata = object$orig_data, type = "response",
+                           penalty.par.val = penalty.par.val)
+      local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
+                                 preds <= quantile(preds, probs = quantprobs[2]),]
+      if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2
+                                  observations, importances cannot be calculated")}
+      sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
     }
-  }
-  # Calculate variable importances:
-  varimps <- data.frame(varname = object$x_names, imp = 0)
-  # Get importances for rules:
-  for(i in 1:nrow(varimps)) { # for every variable:
-    # For every baselearner:
-    for(j in 1:nrow(baseimps)) {
-      # if the variable name appears in the rule:
-      #   (Note: EXACT matches are needed, so 1) there should be a space before 
-      #     and after the variable name in the rule and thus 2) there should be 
-      #     a space added before the description of the rule)
-      if(grepl(paste(" ", varimps$varname[i], " ", sep = ""), paste(" ", baseimps$description[j], sep =""))) {
-        # then count the number of times it appears in the rule:
-        n_occ <- length(gregexpr(paste(" ", varimps$varname[i], " ", sep = ""),
-          paste(" ", baseimps$description[j], sep =""), fixed = TRUE)[[1]])
-        # and add it to the importance of the variable:
-        varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] /
-                                              baseimps$nterms[j])
+    names(sds)[1] <- "(Intercept)"
+    sds <- sds[order(names(sds))]
+    if (all(names(sds) != coefs$rule)) {
+      stop("There seems to be a problem with the ordering or size of the
+           coefficient and sd vectors. Importances cannot be calculated.")
+    }
+
+    # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
+    baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
+    
+    
+    ## Step 2: Calculate variable importances:
+    
+    # For factors, importances for each level should be added together.
+    # first get indicators for assignments in modmat which are not rules:
+    inds <- attr(object$modmat, "assign")[-grep("rule", colnames(object$modmat))]
+    # add names in modelframe and modelmatrix to baselearner importances:
+    frame.mat.conv <- data.frame(
+      modmatname = colnames(object$modmat)[-grep("rule", colnames(object$modmat))],
+      modframename = attr(attr(object$data, "terms"), "term.labels")[inds])
+    baseimps <- merge(frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule",
+                      all.x = TRUE, all.y = TRUE)
+    baseimps <- baseimps[baseimps$coefficient != 0,]
+    baseimps <- baseimps[baseimps$description != "(Intercept) ",]
+    # For rules, calculate the number of terms in each rule:
+    baseimps$nterms <- NA
+    for(i in 1:nrow(baseimps)) {
+      # If there is " & " in rule description, there are at least 2 terms/variables 
+      # in the base learner:
+      if (grepl(" & ", baseimps$description[i])) {
+        baseimps$nterms[i] <- length(gregexpr("&", baseimps$description)[[i]]) + 1
+      } else {
+        baseimps$nterms[i] <- 1 # if not, the number of terms = 1
       }
     }
-  }
-  # Get importances for factor variables:
-  # if the variable appears several times in modframename, add those
-  # importances to the variable's importance:
-  for(i in object$x_names) {
-    if (sum(i == baseimps$modframename, na.rm = TRUE) > 1) {
-      varimps$imp[varimps$varname == i] <- sum(varimps$imp[varimps$varname == i],
-                      baseimps$imp[i == baseimps$modframename], na.rm = TRUE)
+    # Calculate variable importances:
+    varimps <- data.frame(varname = object$x_names, imp = 0)
+    # Get importances for rules:
+    for(i in 1:nrow(varimps)) { # for every variable:
+      # For every baselearner:
+      for(j in 1:nrow(baseimps)) {
+        # if the variable name appears in the rule:
+        #   (Note: EXACT matches are needed, so 1) there should be a space before 
+        #     and after the variable name in the rule and thus 2) there should be 
+        #     a space added before the description of the rule)
+        if(grepl(paste(" ", varimps$varname[i], " ", sep = ""), paste(" ", baseimps$description[j], sep =""))) {
+          # then count the number of times it appears in the rule:
+          n_occ <- length(gregexpr(paste(" ", varimps$varname[i], " ", sep = ""),
+                                   paste(" ", baseimps$description[j], sep =""), fixed = TRUE)[[1]])
+          # and add it to the importance of the variable:
+          varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] /
+                                                baseimps$nterms[j])
+        }
+      }
     }
+    # Get importances for factor variables:
+    # if the variable appears several times in modframename, add those
+    # importances to the variable's importance:
+    for(i in object$x_names) {
+      if (sum(i == baseimps$modframename, na.rm = TRUE) > 1) {
+        varimps$imp[varimps$varname == i] <- sum(varimps$imp[varimps$varname == i],
+                                                 baseimps$imp[i == baseimps$modframename], na.rm = TRUE)
+      }
+    }
+    
+    ## Step 3: return (and plot) importances:
+    baseimps <- baseimps[baseimps$imp != 0,]
+    baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE),]
+    varimps <- varimps[order(varimps$imp, decreasing = TRUE),]
+    varimps <- varimps[varimps$imp != 0,]
+    if (plot == TRUE & nrow(varimps) > 0) {
+      barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
+              main = main, col = col)
+    }
+    if (!is.na(round)) {
+      varimps[,"imp"] <- round(varimps[,"imp"], digits = round)
+      baseimps[,c("imp", "coefficient", "sd")] <- round(
+        baseimps[,c("imp", "coefficient", "sd")], digits = round)
+    }
+    return(list(varimps = varimps, baseimps = data.frame(rule = baseimps$modmatname,
+                                                         baseimps[baseimps$description != "(Intercept) ", c("description", "imp", "coefficient", "sd")])))
+  } else {
+    warning("No non-zero terms in the ensemble. All importances are zero.")
+    return(NULL)
   }
-
-  ## Step 3: return (and plot) importances:
-  baseimps <- baseimps[baseimps$imp != 0,]
-  baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE),]
-  varimps <- varimps[order(varimps$imp, decreasing = TRUE),]
-  varimps <- varimps[varimps$imp != 0,]
-  if (plot == TRUE & nrow(varimps) > 0) {
-    barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
-            main = main, col = col)
-  }
-  if (!is.na(round)) {
-    varimps[,"imp"] <- round(varimps[,"imp"], digits = round)
-    baseimps[,c("imp", "coefficient", "sd")] <- round(
-      baseimps[,c("imp", "coefficient", "sd")], digits = round)
-  }
-  return(list(varimps = varimps, baseimps = data.frame(rule = baseimps$modmatname,
-    baseimps[baseimps$description != "(Intercept) ", c("description", "imp", "coefficient", "sd")])))
 }
 
 
@@ -1236,6 +1239,9 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
                            penalty.par.val = "lambda.1se", verbose = FALSE)
 {
   # Preliminaries:
+  if(object$classify) {
+    stop("bsnullinteract is not yet available for categorical outcomes.")
+  }
   if(parallel) {
     if (!("foreach" %in% installed.packages()[,1])) {
     warning("Parallel computating of function bsnullinteract() requires package foreach,
@@ -1256,24 +1262,25 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
     if (verbose) cat("This may take a while.")
     bs.ens <- foreach::foreach(i = 1:nsamp) %dopar% {
       # step 1: Take bootstrap sample {x_p, y_p}:
-      bsdataset <- object$orig_data[sample(1:nrow(object$orig_data),
-                                           nrow(object$orig_data), replace = TRUE),]
+      bs_inds <- sample(1:nrow(object$orig_data), nrow(object$orig_data), replace = TRUE)
+      bsdataset <- object$orig_data[bs_inds,]
       # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
       bsnullmodcall$data <- bsdataset
       bs.ens.null <- eval(bsnullmodcall)
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
-      F_a_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
+      F_a_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data, 
+                              penalty.par.val = penalty.par.val)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
       F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
                             penalty.par.val = penalty.par.val)
       # step 5: Calculate ytilde of formula 47 of F&P2008:
-      ytilde <- F_a_of_x + bsdataset[,object$y_name] - F_A_of_x_p
+      ytilde <- F_a_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
       # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
       bsintmodcall$data <- object$orig_data
-      bsintmodcall$data[,object$y_name] <- ytilde
+      bsintmodcall$data[,all.vars(object$call$formula[[2]])] <- ytilde
       eval(match.call(pre, call = bsintmodcall))
     }
   } else {
@@ -1282,8 +1289,8 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
     for(i in 1:nsamp) {
       if (verbose) {cat(i, "of", nsamp, ", ")}
       # step 1: Take bootstrap sample {x_p, y_p}:
-      bsdataset <- object$orig_data[sample(1:nrow(object$orig_data),
-                                           nrow(object$orig_data), replace = TRUE),]
+      bs_inds <- sample(1:nrow(object$orig_data), nrow(object$orig_data), replace = TRUE)
+      bsdataset <- object$orig_data[bs_inds,]
       # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
       bsnullmodcall$data <- bsdataset
       bs.ens.null <- eval(bsnullmodcall)
@@ -1295,11 +1302,12 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
                                 penalty.par.val = penalty.par.val)
       # step 5: Calculate ytilde of formula 47 of F&P2008:
-      ytilde <- F_a_of_x + bsdataset[,object$y_name] - F_A_of_x_p
+      # FIXME: Does not compute for categorical outcomes: 
+      ytilde <- F_a_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
       # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
       bsintmodcall$data <- object$orig_data
-      bsintmodcall$data[,object$y_name] <- ytilde
+      bsintmodcall$data[,all.vars(object$call$formula[[2]])] <- ytilde
       bs.ens[[i]] <- eval(match.call(pre, call = bsintmodcall))
     }
     if (verbose) cat("done!\n")
@@ -1529,6 +1537,8 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
 #' specified for max.rules.plot, multiple pages of plots will be created.   
 #' @param ask logical. Should user be prompted before starting a new page of
 #' plots?
+#' @param exit.label character string. What label should be printed in nodes to 
+#' which the rule does not apply (``exit nodes'')?
 #' @param ... Currently not used.
 #' @examples
 #' \donttest{
@@ -1538,7 +1548,8 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
 #' @export
 #' @method plot pre
 plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
-                     nterms = NULL, max.terms.plot = 16, ask = FALSE, ...) {
+                     nterms = NULL, max.terms.plot = 16, ask = FALSE, 
+                     exit.label = "0", ...) {
   # Preliminaries:
   if (!("grid" %in% installed.packages()[,1])) {
     stop("Function plot.pre requires package grid. Download and install package
@@ -1630,14 +1641,14 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       # Construct level 0 of tree (the two terminal nodes), conditional on operator of last condition:
       if (tmp[[ncond]][2] == " > ") { # If condition involves " > ", the tree continues right:
         nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
-                           info = "exit")
+                           info = exit.label)
         nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
                            info = round(nonzeroterms$coefficient[i], digits = 3))
       } else { # If condition involves " <= " or " %in% " the tree continues left:
         nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
                            info = round(nonzeroterms$coefficient[i], digits = 3))
         nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
-                           info = "exit")
+                           info = exit.label)
       }
       class(nodes[[1]]) <- class(nodes[[2]]) <- "partynode"
 
@@ -1651,10 +1662,10 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                                          kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
                                          surrogates = NULL, info = NULL)
             nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = NULL,
-                                         kids = NULL, surrogates = NULL, info = "exit")
+                                         kids = NULL, surrogates = NULL, info = exit.label)
           } else { # If condition involves " <= " or " %in% " the tree continues left:
             nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = NULL,
-                                         kids = NULL, surrogates = NULL, info = "exit")
+                                         kids = NULL, surrogates = NULL, info = exit.label)
             nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2),
                                          split = partysplit(
                                            as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
