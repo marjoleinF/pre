@@ -31,19 +31,27 @@ list.rules <- function (x, i = NULL, ...)
   }
   rule <- c()
   recFun <- function(node) {
-    if (partykit::id_node(node) == i) {
+    # if (partykit::id_node(node) == i) {
+    #   return(NULL)
+    # }
+    if (node$id == i) {
       return(NULL)
     }
-    kid <- sapply(partykit::kids_node(node), partykit::id_node)
+    # kid <- sapply(partykit::kids_node(node), partykit::id_node)
+    kid <- sapply(node$kids, function(x) x$id)
     whichkid <- max(which(kid <= i))
-    split <- partykit::split_node(node)
-    ivar <- partykit::varid_split(split)
+    #split <- partykit::split_node(node)
+    split <- node$split
+    # ivar <- partykit::varid_split(split)
+    ivar <- split$varid
     svar <- names(dat)[ivar]
-    index <- partykit::index_split(split)
+    # index <- partykit::index_split(split)
+    index <- split$index
     if (is.factor(dat[, svar])) {
-      if (is.null(index)) 
-        index <- ((1:nlevels(dat[, svar])) > partykit::breaks_split(split)) + 
-          1
+      # if (is.null(index)) 
+      #   index <- ((1:nlevels(dat[, svar])) > partykit::breaks_split(split)) + 1
+      if (is.null(index))
+        index <- ((1:nlevels(dat[, svar])) > split$breaks) + 1
       slevels <- levels(dat[, svar])[index == whichkid]
       srule <- paste(svar, " %in% c(\"", paste(slevels, 
                                                collapse = "\", \"", sep = ""), "\")", sep = "")
@@ -52,10 +60,12 @@ list.rules <- function (x, i = NULL, ...)
       if (is.null(index)) {
         index <- 1:length(kid)
       }
-      breaks <- cbind(c(-Inf, partykit::breaks_split(split)), c(partykit::breaks_split(split), 
-                                                                Inf))
+      # breaks <- cbind(c(-Inf, partykit::breaks_split(split)), c(partykit::breaks_split(split), 
+      #                                                           Inf))
+      breaks <- cbind(c(-Inf, split$breaks), c(split$breaks, Inf))
       sbreak <- breaks[index == whichkid, ]
-      right <- partykit::right_split(split)
+      # right <- partykit::right_split(split)
+      right <- split$right
       srule <- c()
       if (is.finite(sbreak[1])) {
         srule <- c(srule, paste(svar, ifelse(right, ">", 
@@ -70,7 +80,8 @@ list.rules <- function (x, i = NULL, ...)
     rule <<- c(rule, srule)
     return(recFun(node[[whichkid]]))
   }
-  node <- recFun(partykit::node_party(x))
+  # node <- recFun(partykit::node_party(x))
+  node <- recFun(x$node)
   paste(rule, collapse = " & ")
 }
 

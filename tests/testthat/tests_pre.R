@@ -30,12 +30,14 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   
   #####
   # Without learning rate
-  fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes)
+  fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, maxdepth = 3)
   
   # We remove some of the data to decrease the size
-  fit <- fit[!names(fit) %in%  c(
-    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
+  fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]
   fit$glmnet.fit <- fit$glmnet.fit["glmnet.fit"]
+  fit$glmnet.fit$glmnet.fit <- fit$glmnet.fit$glmnet.fit["beta"]
+  fit$glmnet.fit$glmnet.fit[["beta"]] <- head(fit$glmnet.fit$glmnet.fit$beta@x, 200)
+  fit$rules <- as.matrix(fit$rules)[1:100, ]
   # save_to_test(fit, "PimaIndiansDiabetes_w_pre_no_LR")
   expect_equal(fit, read_to_test("PimaIndiansDiabetes_w_pre_no_LR"), tolerance = 1.490116e-08)
   
