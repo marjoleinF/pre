@@ -176,7 +176,7 @@ ctree_minmal <- function (
   FUN_wrap <- function(y) FUN(y, rep(1, length(y)))
   fits <- tapply(resps, end_nodes, FUN_wrap)
   
-  fitted <- data.frame(
+  fitted <- list( # We dont need a data.frame with predict_party_minimal
     as.integer(names(fits)),
     rep(1, length(fits)),
     fits)
