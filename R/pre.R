@@ -203,7 +203,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           }
           subsampledata <- data[subsample,]
           # Grow tree on subsample:
-          tree <- ctree(formula, data = data, maxdepth = maxdepth, mtry = mtry)
+          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
         }

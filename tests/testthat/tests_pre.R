@@ -1,5 +1,7 @@
 test_that("Get previous results with airquality and pre function", {
   set.seed(42)
+  #####
+  # With learning rate
   airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
   
   # We remove some of the data to decrease the size
@@ -8,6 +10,18 @@ test_that("Get previous results with airquality and pre function", {
   airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
   # save_to_test(airq.ens, "airquality_w_pre")
   expect_equal(airq.ens, read_to_test("airquality_w_pre"), tolerance = 1.490116e-08)
+  
+  #####
+  # Without learning rate
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], 
+                  learnrate = 0)
+  
+  # We remove some of the data to decrease the size
+  airq.ens <- airq.ens[!names(airq.ens) %in%  c(
+    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
+  airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
+  # save_to_test(airq.ens, "airquality_w_pre_without_LR")
+  expect_equal(airq.ens, read_to_test("airquality_w_pre_without_LR"), tolerance = 1.490116e-08)
 })
 
 test_that("Get previous results with PimaIndiansDiabetes and pre function", {
