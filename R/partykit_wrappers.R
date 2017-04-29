@@ -17,18 +17,19 @@ list.rules <- function (x, i = NULL, ...)
   #stopifnot(length(i) == 1 & is.numeric(i))
   #stopifnot(i <= length(x) & i >= 1)
   i <- as.integer(i)
-  dat <- partykit::data_party(x, i)
-  if (!is.null(x$fitted)) {
-    findx <- which("(fitted)" == names(dat))[1]
-    fit <- dat[, findx:ncol(dat), drop = FALSE]
-    dat <- dat[, -(findx:ncol(dat)), drop = FALSE]
-    if (ncol(dat) == 0) 
-      dat <- x$data
-  }
-  else {
-    fit <- NULL
-    dat <- x$data
-  }
+  # dat <- partykit::data_party(x, i)
+  # if (!is.null(x$fitted)) {
+  #   findx <- which("(fitted)" == names(dat))[1]
+  #   fit <- dat[, findx:ncol(dat), drop = FALSE]
+  #   dat <- dat[, -(findx:ncol(dat)), drop = FALSE]
+  #   if (ncol(dat) == 0) 
+  #     dat <- x$data
+  # }
+  # else {
+  #   fit <- NULL
+  #   dat <- x$data
+  # }
+  dat <- x$data
   rule <- c()
   recFun <- function(node) {
     # if (partykit::id_node(node) == i) {
@@ -155,9 +156,57 @@ ctree_minmal <- function (
                        `(weights)` = weights, check.names = FALSE)
   fitted[[3]] <- dat[, response, drop = length(response) == 1]
   names(fitted)[3] <- "(response)"
-  ret <- party(tree, data = dat, fitted = fitted)
+  ret <- party_minimal(tree, data = dat, fitted = fitted)
+  # ret <- party(tree, data = dat, fitted = fitted
                # , info = list(call = match.call(), control = control))
   class(ret) <- c("constparty", class(ret))
   # ret$terms <- terms(mf)
   return(ret)
+}
+
+party_minimal <- function (
+  node, data, fitted = NULL, ...) {
+  # stopifnot(inherits(node, "partynode"))
+  # stopifnot(inherits(data, "data.frame"))
+  # ids <- nodeids(node)[!nodeids(node) %in% nodeids(node, terminal = TRUE)]
+  # varids <- unique(unlist(nodeapply(node, ids = ids, FUN = function(x) varid_split(split_node(x)))))
+  # stopifnot(varids %in% 1:ncol(data))
+  # if (!is.null(fitted)) {
+  #   stopifnot(inherits(fitted, "data.frame"))
+  #   stopifnot(nrow(data) == 0L | nrow(data) == nrow(fitted))
+  #   if (nrow(data) > 0L) {
+  #     if (!("(fitted)" %in% names(fitted))) 
+  #       fitted[["(fitted)"]] <- fitted_node(node, data = data)
+  #   }
+  #   else {
+  #     stopifnot("(fitted)" == names(fitted)[1L])
+  #   }
+  #   nt <- nodeids(node, terminal = TRUE)
+  #   stopifnot(all(fitted[["(fitted)"]] %in% nt))
+  #   node <- as.partynode(node, from = 1L)
+  #   nt2 <- nodeids(node, terminal = TRUE)
+  #   fitted[["(fitted)"]] <- nt2[match(fitted[["(fitted)"]], 
+  #                                     nt)]
+  # }
+  # else {
+  #   node <- as.partynode(node, from = 1L)
+  #   if (nrow(data) > 0L & missing(fitted)) 
+  #     fitted <- data.frame(`(fitted)` = fitted_node(node, 
+  #                                                   data = data), check.names = FALSE)
+  # }
+  node <- as.partynode(node, from = 1L)
+  party <- list(node = node, data = data, fitted = fitted, 
+                terms = NULL, names = NULL, info = NULL)
+  class(party) <- "party"
+  # if (!is.null(terms)) {
+  #   stopifnot(inherits(terms, "terms"))
+  #   party$terms <- terms
+  # }
+  # if (!is.null(names)) {
+  #   n <- length(nodeids(party, terminal = FALSE))
+  #   if (length(names) != n) 
+  #     stop("invalid", " ", sQuote("names"), " ", "argument")
+  #   party$names <- names
+  # }
+  party
 }
