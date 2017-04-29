@@ -192,7 +192,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           unlist(list.rules(tree))
         }
       } else {
-        rules <- c() 
+        rules <- c()
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
@@ -203,7 +203,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           }
           subsampledata <- data[subsample,]
           # Grow tree on subsample:
-          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
+          tree <- ctree()
           # Collect rules from tree:
           rules <- append(rules, unlist(list.rules(tree)))
         }
@@ -212,7 +212,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     if (learnrate > 0) {
       rules <- c()
       if (!classify) {
-        y_learn <- data[,y_name]
+        y_learn <- data[, y_name]
+        input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
@@ -220,10 +221,10 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           } else { # else subsample
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, prob = weights)
           }
-          subsampledata <- data[subsample,]
-          subsampledata[,y_name] <- y_learn[subsample]
+          input$dat[subsample, y_name] <- y_learn[subsample]
           # Grow tree on subsample:
-          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
+          tree <- with(input, ctree_minmal(
+            dat[subsample, ], response, weights[subsample], control, ytrafo))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:
@@ -270,12 +271,11 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     if (length(rules) > 0) {
       n_rules <- length(rules)
       rulevars <- matrix(
-        NA_integer_, nrow = nrow(data), ncol = n_rules, 
+        NA, nrow = nrow(data), ncol = n_rules, 
         dimnames = list(NULL, paste0("rule", 1:n_rules)))
       
       for(i in 1:n_rules)
-        rulevars[, i] <- as.numeric(
-          with(data, eval(parse(text = rules[[i]]))))
+        rulevars[, i] <- with(data, eval(parse(text = rules[[i]])))
       
       if (removeduplicates) {
         # Remove rules with identical support:
@@ -296,12 +296,11 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         # remove rules with complement support:
         removed_complement_rules <- c()
         # for rule that has support identical to some earlier rule(s):
-        comp_rules <- 1L - rulevars
         for(i in which(duplicated(apply(rulevars, 2, sd)))) {
           if(i == 1)
             next
           # check whether the rule is a complement of any of the earlier unique rules:
-          is_comp <- which(apply(rulevars[, i] == comp_rules[, 1:(i - 1), drop = F], 2, all))
+          is_comp <- which(apply(rulevars[, i] != rulevars[, 1:(i - 1), drop = F], 2, all))
           if(length(is_comp) > 0)
             removed_complement_rules <- c(removed_complement_rules, colnames(rulevars)[is_comp])
         }
@@ -328,21 +327,22 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     }
   }
   
+  storage.mode(rulevars) <- "integer"
   rulevars <- data.frame(rulevars)
   
   ######################################################
   ## Prepare rules, linear terms and outcome variable ##
   ######################################################
-  
-  x <- data[,x_names]
-
-  # convert ordered categorical predictor variables to linear terms:
-  x[,sapply(x, is.ordered)] <- as.numeric(as.character(x[,sapply(x, is.ordered)]))
 
   if (type == "rules" & length(rules) > 0) {
     x <- rulevars
     x_scales <- NULL
   } else { # if type is not rules, linear terms should be prepared:
+    x <- data[,x_names]
+    
+    # convert ordered categorical predictor variables to linear terms:
+    x[,sapply(x, is.ordered)] <- as.numeric(as.character(x[,sapply(x, is.ordered)]))
+    
     # Winsorize numeric variables (section 5 of F&P(2008)):
     if (winsfrac > 0) {
       wins_points <- data.frame(varname = names(x), value = NA)
@@ -430,84 +430,6 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   }
   class(result) <- "pre"
   return(result)
-}
-
-
-
-# Internal function for transforming tree into a set of rules:
-# Taken and modified from package partykit, written by Achim Zeileis and 
-# Torsten Hothorn
-list.rules <- function (x, i = NULL, ...) 
-{
-  if (is.null(i)) 
-    i <- partykit::nodeids(x, terminal = TRUE)
-  if (length(i) > 1) {
-    ret <- sapply(i, list.rules, x = x)
-    names(ret) <- if (is.character(i)) 
-      i
-    else names(x)[i]
-    return(ret)
-  }
-  if (is.character(i) && !is.null(names(x))) 
-    i <- which(names(x) %in% i)
-  #stopifnot(length(i) == 1 & is.numeric(i))
-  #stopifnot(i <= length(x) & i >= 1)
-  i <- as.integer(i)
-  dat <- partykit::data_party(x, i)
-  if (!is.null(x$fitted)) {
-    findx <- which("(fitted)" == names(dat))[1]
-    fit <- dat[, findx:ncol(dat), drop = FALSE]
-    dat <- dat[, -(findx:ncol(dat)), drop = FALSE]
-    if (ncol(dat) == 0) 
-      dat <- x$data
-  }
-  else {
-    fit <- NULL
-    dat <- x$data
-  }
-  rule <- c()
-  recFun <- function(node) {
-    if (partykit::id_node(node) == i) {
-      return(NULL)
-    }
-    kid <- sapply(partykit::kids_node(node), partykit::id_node)
-    whichkid <- max(which(kid <= i))
-    split <- partykit::split_node(node)
-    ivar <- partykit::varid_split(split)
-    svar <- names(dat)[ivar]
-    index <- partykit::index_split(split)
-    if (is.factor(dat[, svar])) {
-      if (is.null(index)) 
-        index <- ((1:nlevels(dat[, svar])) > partykit::breaks_split(split)) + 
-          1
-      slevels <- levels(dat[, svar])[index == whichkid]
-      srule <- paste(svar, " %in% c(\"", paste(slevels, 
-                                               collapse = "\", \"", sep = ""), "\")", sep = "")
-    }
-    else {
-      if (is.null(index)) {
-        index <- 1:length(kid)
-      }
-      breaks <- cbind(c(-Inf, partykit::breaks_split(split)), c(partykit::breaks_split(split), 
-                                                      Inf))
-      sbreak <- breaks[index == whichkid, ]
-      right <- partykit::right_split(split)
-      srule <- c()
-      if (is.finite(sbreak[1])) {
-        srule <- c(srule, paste(svar, ifelse(right, ">", 
-                                             ">="), sbreak[1]))
-      }
-      if (is.finite(sbreak[2])) { 
-        srule <- c(srule, paste(svar, ifelse(right, "<=", 
-                                             "<"), sbreak[2]))
-      }
-      srule <- paste(srule, collapse = " & ")
-    }
-    rule <<- c(rule, srule)
-    return(recFun(node[[whichkid]]))
-  }
-  node <- recFun(partykit::node_party(x))
-  paste(rule, collapse = " & ")
 }
 
 
