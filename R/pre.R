@@ -175,6 +175,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   
   if (type != "linear") {
     if (learnrate == 0) { # always use ctree()
+      input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
       if(par.init) {
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
@@ -184,12 +185,11 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
                                 prob = weights)
           }
-          subsampledata <- data[subsample,]
           # Grow ctree on subsample:
-          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, 
-                        mtry = mtry)
+          tree <- with(input, ctree_minmal(
+            dat[subsample, ], response, weights[subsample], control, ytrafo))
           # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
+          list.rules(tree)
         }
       } else {
         rules <- c()
@@ -201,9 +201,9 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
                                 prob = weights)
           }
-          subsampledata <- data[subsample,]
           # Grow tree on subsample:
-          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
+          tree <- with(input, ctree_minmal(
+            dat[subsample, ], response, weights[subsample], control, ytrafo))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
         }
