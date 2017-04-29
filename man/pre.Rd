@@ -10,7 +10,7 @@ pre(formula, data, type = "both", weights = rep(1, times = nrow(data)),
   removecomplements = TRUE, thres = 1e-07, standardize = FALSE,
   winsfrac = 0.025, normalize = TRUE, nfolds = 10L,
   mod.sel.crit = "deviance", verbose = FALSE, par.init = FALSE,
-  par.final = FALSE, ...)
+  par.final = FALSE, use_suggestion = FALSE, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -125,4 +125,3 @@ Hothorn.
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 }
-

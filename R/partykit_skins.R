@@ -89,6 +89,7 @@ list.rules <- function (x, i = NULL, ...)
 #####
 # Wrappers for ctree which returns the needed output to get rules
 
+#' @importFrom stats model.weights na.pass
 ctree_setup <- function(
   formula, data, weights, subset, na.action = na.pass, 
   control = ctree_control(...), ytrafo = NULL, scores = NULL, 
@@ -237,7 +238,7 @@ party_minimal <- function (
   party
 }
 
-
+#' @importFrom stats delete.reponse
 predict_party_minimal <- function (object, newdata = NULL, perm = NULL, ...) 
 {
   fitted <- if (is.null(newdata)) {

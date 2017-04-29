@@ -92,7 +92,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                 removecomplements = TRUE,
                 thres = 1e-07, standardize = FALSE, winsfrac = .025, 
                 normalize = TRUE, nfolds = 10L, mod.sel.crit = "deviance", 
-                verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)   
+                verbose = FALSE, par.init = FALSE, par.final = FALSE, 
+                use_suggestion = FALSE, ...)   
 { ###################
   ## Preliminaries ##
   ###################
@@ -278,22 +279,33 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       for(i in 1:n_rules)
         rulevars[, i] <- with(data, eval(parse(text = rules[[i]])))
       
-      if (removeduplicates) {
+      # TODO: remove this if you do not want the suggestion I propose
+      if(use_suggestion && removeduplicates && removecomplements){
+        mas <- which(duplicated(cbind(rulevars, !rulevars), MARGIN = 2))
+        
+        nc <- ncol(rulevars)
+        duplicates <- mas[mas <= nc]
+        complements <- mas[mas > nc] - nc
+        complements <- complements[!complements %in% duplicates]
+        
+        duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
+                                         description = rules[duplicates])
+        removed_complement_rules <- colnames(rulevars)[duplicates]
+        
+        rulevars <- rulevars[, -c(complements, duplicates)]
+        rules <- rules[-c(complements, duplicates)]
+      }
+      
+      if (!use_suggestion && removeduplicates) {
         # Remove rules with identical support:
         duplicates <- duplicated(rulevars, MARGIN = 2)
         duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
                                          description = rules[duplicates])
         rulevars <- rulevars[, !duplicates]
         rules <- rules[!duplicates]
-        if (verbose) {
-          cat("\n\nA total of", sum(duplicates), "generated rules had 
-              support identical to earlier rules and were removed from the initial 
-              ensemble ($duplicates.removed shows which, if any).")
-        }
-      } else {
-        duplicates.removed <- NULL
       }
-      if (removecomplements) { 
+        
+      if (!use_suggestion && removecomplements) { 
         # remove rules with complement support:
         removed_complement_rules <- c()
         # for rule that has support identical to some earlier rule(s):
@@ -311,14 +323,25 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         complements <- colnames(rulevars) %in% removed_complement_rules
         rulevars <- rulevars[, !complements]
         rules <- rules[!complements]
-        if (verbose) {
-          cat("\n\nA total of", length(removed_complement_rules), "generated rules had 
-              support that was the complement of the support of earlier rules and were removed from the initial 
-              ensemble ($removed_complement_rules shows which, if any).")
-        }
-      } else {
-        removed_complent_rules <- NULL
       }
+      
+      if(!exists("removed_complement_rules"))
+        removed_complement_rules <- NULL
+      if(!exists("duplicates.removed"))
+        duplicates.removed <- NULL
+      
+      if (verbose && removeduplicates) {
+        cat("\n\nA total of", sum(duplicates), "generated rules had 
+              support identical to earlier rules and were removed from the initial 
+              ensemble ($duplicates.removed shows which, if any).")
+      }
+      
+      if (verbose && removecomplements){
+        cat("\n\nA total of", length(removed_complement_rules), "generated rules had 
+             support that was the complement of the support of earlier rules and were removed from the initial 
+             ensemble ($removed_complement_rules shows which, if any).")
+      }
+      
       if (verbose) {
         cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was 
             succesfully created.")  
