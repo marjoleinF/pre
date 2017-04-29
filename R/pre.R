@@ -307,8 +307,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         
         # rules with their name in removed_complement_rules should be removed from rulevars and rules
         # and also, some message about the number of rules for which this was the case should be printed if verbose
-        complements <- !(colnames(rulevars) %in% removed_complement_rules)
-        rulevars <- rulevars[,!complements]
+        complements <- colnames(rulevars) %in% removed_complement_rules
+        rulevars <- rulevars[, !complements]
         rules <- rules[!complements]
         if (verbose) {
           cat("\n\nA total of", length(removed_complement_rules), "generated rules had 
@@ -475,7 +475,10 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
       "\n  mean cv error (se) = ", x$glmnet.fit$cvm[lambda_ind], 
         " (", x$glmnet.fit$cvsd[lambda_ind], ") \n\n", sep = "")
   tmp <- coef(x, penalty.par.val = penalty.par.val)
-  return(tmp[tmp$coefficient != 0, ])
+  tmp <- tmp[tmp$coefficient != 0, ]
+  print(tmp, print.gap = 2, quote = FALSE, row.names = F)
+  
+  invisible(tmp)
 }
 
 
