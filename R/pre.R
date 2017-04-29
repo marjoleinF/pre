@@ -187,7 +187,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           }
           # Grow ctree on subsample:
           tree <- with(input, ctree_minmal(
-            dat[subsample, ], response, weights[subsample], control, ytrafo))
+            dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
           list.rules(tree)
         }
@@ -203,7 +203,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           }
           # Grow tree on subsample:
           tree <- with(input, ctree_minmal(
-            dat[subsample, ], response, weights[subsample], control, ytrafo))
+            dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
         }
@@ -224,11 +224,12 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           input$dat[subsample, y_name] <- y_learn[subsample]
           # Grow tree on subsample:
           tree <- with(input, ctree_minmal(
-            dat[subsample, ], response, weights[subsample], control, ytrafo))
+            dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:
-          y_learn <- y_learn - learnrate * predict(tree, newdata = data)
+          y_learn <- y_learn - learnrate * predict_party_minimal(
+            tree, newdata = data)
         }
       }
       if (classify) {

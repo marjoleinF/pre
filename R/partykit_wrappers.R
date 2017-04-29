@@ -146,17 +146,43 @@ ctree_setup <- function(
 }
 
 ctree_minmal <- function (
-  dat, response, weights, control, ytrafo) 
+  dat, response, control, ytrafo, ...) 
 {
   .ctree_fit <- with(environment(ctree), .ctree_fit)
   
+  weights <- rep(1, nrow(dat))
   tree <- .ctree_fit(dat, response, weights = weights, ctrl = control, 
                      ytrafo = ytrafo)
-  fitted <- data.frame(`(fitted)` = fitted_node(tree, dat), 
-                       `(weights)` = weights, check.names = FALSE)
-  fitted[[3]] <- dat[, response, drop = length(response) == 1]
-  names(fitted)[3] <- "(response)"
-  ret <- party_minimal(tree, data = dat, fitted = fitted)
+  
+  # fitted <- data.frame(`(fitted)` = fitted_node(tree, dat),
+  #                      `(weights)` = weights, check.names = FALSE)
+  # fitted[[3]] <- dat[, response, drop = length(response) == 1]
+  # names(fitted)[3] <- "(response)"
+  
+  # We compute the outcome in each node to start with to reduce the computation
+  # time in predict. I guess this is not done because we lose some information 
+  # here. E.g. we cannot get predicted probabilities, densties etc. with 
+  # predict
+  
+  end_nodes <- fitted_node(tree, dat)
+  resps <- dat[[response]]
+  
+  # We assume that we either have factors or numeric is used
+  FUN <- if(is.numeric(resps))
+    with(environment(ctree), .pred_numeric_response) else
+      with(environment(ctree), .pred_factor_response)
+  
+  # We assume a weight of one
+  FUN_wrap <- function(y) FUN(y, rep(1, length(y)))
+  fits <- tapply(resps, end_nodes, FUN_wrap)
+  
+  fitted <- data.frame(
+    as.integer(names(fits)),
+    rep(1, length(fits)),
+    fits)
+  names(fitted) <- c("(fitted)", "(weights)", "(response)")
+  
+  ret <- party_minimal(tree, data = dat, fitted)
   # ret <- party(tree, data = dat, fitted = fitted
                # , info = list(call = match.call(), control = control))
   class(ret) <- c("constparty", class(ret))
@@ -209,4 +235,68 @@ party_minimal <- function (
   #   party$names <- names
   # }
   party
+}
+
+
+predict_party_minimal <- function (object, newdata = NULL, perm = NULL, ...) 
+{
+  fitted <- if (is.null(newdata)) {
+    object$fitted[["(fitted)"]]
+  }
+  else {
+    terminal <- nodeids(object, terminal = TRUE)
+    if (max(terminal) == 1L) {
+      rep.int(1L, NROW(newdata))
+    }
+    else {
+      inner <- 1L:max(terminal)
+      inner <- inner[-terminal]
+      primary_vars <- nodeapply(object, ids = inner, by_node = TRUE, 
+                                FUN = function(node) {
+                                  varid_split(split_node(node))
+                                })
+      surrogate_vars <- nodeapply(object, ids = inner, 
+                                  by_node = TRUE, FUN = function(node) {
+                                    surr <- surrogates_node(node)
+                                    if (is.null(surr)) 
+                                      return(NULL)
+                                    else return(sapply(surr, varid_split))
+                                  })
+      vnames <- names(object$data)
+      if (!is.null(perm)) {
+        stopifnot(all(perm %in% vnames))
+        perm <- match(perm, vnames)
+      }
+      unames <- vnames[unique(unlist(c(primary_vars, surrogate_vars)))]
+      vclass <- structure(lapply(object$data, class), 
+                          .Names = vnames)
+      ndnames <- names(newdata)
+      ndclass <- structure(lapply(newdata, class), .Names = ndnames)
+      checkclass <- all(sapply(unames, function(x) isTRUE(all.equal(vclass[[x]], 
+                                                                    ndclass[[x]]))))
+      factors <- sapply(unames, function(x) inherits(object$data[[x]], 
+                                                     "factor"))
+      checkfactors <- all(sapply(unames[factors], function(x) isTRUE(all.equal(levels(object$data[[x]]), 
+                                                                               levels(newdata[[x]])))))
+      if (all(unames %in% ndnames) && checkclass && checkfactors) {
+        vmatch <- match(vnames, ndnames)
+        fitted_node(node_party(object), data = newdata, 
+                    vmatch = vmatch, perm = perm)
+      }
+      else {
+        if (!is.null(object$terms)) {
+          mf <- model.frame(delete.response(object$terms), 
+                            newdata)
+          fitted_node(node_party(object), data = mf, 
+                      vmatch = match(vnames, names(mf)), perm = perm)
+        }
+        else stop("")
+      }
+    }
+  }
+  # predict_party
+  
+  # Assume that the fitted element has exactly one match with the right value
+  # in reponse for the end_node given in each element of the vector  fitted
+  object$fitted[["(response)"]][match(fitted, object$fitted[["(fitted)"]])]
 }
