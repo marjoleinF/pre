@@ -189,7 +189,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, 
                         mtry = mtry)
           # Collect rules from tree:
-          unlist(list.rules(tree))
+          rules <- c(rules, list.rules(tree))
         }
       } else {
         rules <- c()
@@ -203,9 +203,9 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           }
           subsampledata <- data[subsample,]
           # Grow tree on subsample:
-          tree <- ctree()
+          tree <- ctree(formula, data = data, maxdepth = maxdepth, mtry = mtry)
           # Collect rules from tree:
-          rules <- append(rules, unlist(list.rules(tree)))
+          rules <- c(rules, list.rules(tree))
         }
       }
     }
