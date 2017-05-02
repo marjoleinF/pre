@@ -50,3 +50,4 @@ ensemble as simple decision trees.
  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
  plot(airq.ens)}
 }
+

@@ -61,25 +61,3 @@ The Annals of Applied Statistics, 2(3), 916-954.
 Fokkema, M., Smits, N., Kelderman, H., & Penninx, B. W. (2015). Connecting 
 clinical and actuarial prediction with rule-based methods. Psychological 
 assessment, 27(2), 636.
-
-
-Licence:
-
-pre, an R package for fitting prediction rule ensembles
-
-Copyright (C) 2016,2017  Marjolein Fokkema
-
-This file is part of the R package pre.
-
-The R package pre is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-The R package pre is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-A copy of the GNU General Public License can be found in the LICENCE file
-contained in the package, or obtained from <http://www.gnu.org/licenses/>.

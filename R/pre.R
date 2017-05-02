@@ -92,8 +92,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                 removecomplements = TRUE,
                 thres = 1e-07, standardize = FALSE, winsfrac = .025, 
                 normalize = TRUE, nfolds = 10L, mod.sel.crit = "deviance", 
-                verbose = FALSE, par.init = FALSE, par.final = FALSE, 
-                use_suggestion = FALSE, ...)   
+                verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)   
 { ###################
   ## Preliminaries ##
   ###################
@@ -187,6 +186,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                                 prob = weights)
           }
           # Grow ctree on subsample:
+          #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
+          #                mtry = mtry)
           tree <- with(input, ctree_minmal(
             dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
@@ -203,6 +204,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                                 prob = weights)
           }
           # Grow tree on subsample:
+          #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
+          #                mtry = mtry)
           tree <- with(input, ctree_minmal(
             dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
@@ -222,8 +225,10 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           } else { # else subsample
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, prob = weights)
           }
-          input$dat[subsample, y_name] <- y_learn[subsample]
           # Grow tree on subsample:
+          #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
+          #                mtry = mtry)
+          input$dat[subsample, y_name] <- y_learn[subsample]
           tree <- with(input, ctree_minmal(
             dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
@@ -232,8 +237,6 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           y_learn <- y_learn - learnrate * predict_party_minimal(
             tree, newdata = data)
         }
-      }
-      if (classify) {
         data2 <- data.frame(data, offset = 0)
         glmtreeformula <- formula(paste(paste(y_name, " ~ 1 |"), 
                                         paste(x_names, collapse = "+")))
@@ -251,7 +254,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                           maxdepth = maxdepth + 1,  
                           offset = offset)
           # Collect rules from tree:
-          rules <- append(rules, unlist(list.rules(tree)))
+          rules <- c(rules, list.rules(tree))
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")
@@ -276,27 +279,11 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         NA, nrow = nrow(data), ncol = n_rules, 
         dimnames = list(NULL, paste0("rule", 1:n_rules)))
       
-      for(i in 1:n_rules)
+      for(i in 1:n_rules) {
         rulevars[, i] <- with(data, eval(parse(text = rules[[i]])))
-      
-      # TODO: remove this if you do not want the suggestion I propose
-      if(use_suggestion && removeduplicates && removecomplements){
-        mas <- which(duplicated(cbind(rulevars, !rulevars), MARGIN = 2))
-        
-        nc <- ncol(rulevars)
-        duplicates <- mas[mas <= nc]
-        complements <- mas[mas > nc] - nc
-        complements <- complements[!complements %in% duplicates]
-        
-        duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
-                                         description = rules[duplicates])
-        removed_complement_rules <- colnames(rulevars)[duplicates]
-        
-        rulevars <- rulevars[, -c(complements, duplicates)]
-        rules <- rules[-c(complements, duplicates)]
       }
       
-      if (!use_suggestion && removeduplicates) {
+      if (removeduplicates) {
         # Remove rules with identical support:
         duplicates <- duplicated(rulevars, MARGIN = 2)
         duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
@@ -305,28 +292,25 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         rules <- rules[!duplicates]
       }
         
-      if (!use_suggestion && removecomplements) { 
+      if (removecomplements) { 
         # remove rules with complement support:
-        removed_complement_rules <- c()
+        complements <- c()
         # for rule that has support identical to some earlier rule(s):
         for(i in which(duplicated(apply(rulevars, 2, sd)))) {
-          if(i == 1)
-            next
           # check whether the rule is a complement of any of the earlier unique rules:
           is_comp <- which(apply(rulevars[, i] != rulevars[, 1:(i - 1), drop = F], 2, all))
           if(length(is_comp) > 0)
-            removed_complement_rules <- c(removed_complement_rules, colnames(rulevars)[is_comp])
+            complements <- c(complements, is_comp)
         }
-        
-        # rules with their name in removed_complement_rules should be removed from rulevars and rules
-        # and also, some message about the number of rules for which this was the case should be printed if verbose
-        complements <- colnames(rulevars) %in% removed_complement_rules
-        rulevars <- rulevars[, !complements]
-        rules <- rules[!complements]
+       
+        complements.removed <- data.frame(name = colnames(rulevars)[complements],
+                                         description = rules[complements])
+        rulevars <- rulevars[, -complements]
+        rules <- rules[-complements]
       }
       
-      if(!exists("removed_complement_rules"))
-        removed_complement_rules <- NULL
+      if(!exists("complements.removed"))
+        complements.removed <- NULL
       if(!exists("duplicates.removed"))
         duplicates.removed <- NULL
       
@@ -337,9 +321,9 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       }
       
       if (verbose && removecomplements){
-        cat("\n\nA total of", length(removed_complement_rules), "generated rules had 
+        cat("\n\nA total of", length(complements.removed), "generated rules had 
              support that was the complement of the support of earlier rules and were removed from the initial 
-             ensemble ($removed_complement_rules shows which, if any).")
+             ensemble ($complements.removed shows which, if any).")
       }
       
       if (verbose) {
@@ -442,16 +426,11 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                  wins_points = wins_points,
                  classify = classify, formula = formula, orig_data = orig_data)
   if (type != "linear" & length(rules) > 0 & length(names(rulevars)) > 0) {
-    result$removed_complement_rules <- removed_complement_rules
+    result$complements.removed <- complements.removed
     result$duplicates.removed <- duplicates.removed
     result$rules <- data.frame(rule = names(rulevars), description = rules)
     result$rulevars <- rulevars 
-  } else {
-    result$removed_complement_rules <- NULL
-    result$duplicates.removed <- NULL
-    result$rules <- NULL
-    result$rulevars <- NULL
-  }
+  } 
   class(result) <- "pre"
   return(result)
 }
@@ -500,7 +479,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
         " (", x$glmnet.fit$cvsd[lambda_ind], ") \n\n", sep = "")
   tmp <- coef(x, penalty.par.val = penalty.par.val)
   tmp <- tmp[tmp$coefficient != 0, ]
-  print(tmp, print.gap = 2, quote = FALSE, row.names = F)
+  print(tmp, print.gap = 2, quote = FALSE, row.names = FALSE)
   
   invisible(tmp)
 }
@@ -529,7 +508,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
 #' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param parallel logical. Should parallel foreach be used? Must register parallel 
 #' beforehand, such as doMC or others.
-#' @return A list with three elements: \code{$cvpreds} (a vector with cross-validated
+#' @return A list with three objects: \code{$cvpreds} (a vector with cross-validated
 #' predicted y values), \code{$ss} (a vector indicating the cross-validation subsample 
 #' each training observation was assigned to) and \code{$accuracy}. For continuous 
 #' outputs, accuracy is a list with elements \code{$MSE} (mean squared error on test 
@@ -686,7 +665,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' ("lambda.1se"). Alternatively, a numeric value may be specified, 
 #' corresponding to one of the values of lambda in the sequence used by glmnet,
 #' for which estimated cv error can be inspected by running 
-#' \code{object$glmnet.fit} and \code{plot(pbject$glmnet.fit)}.
+#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param type character string. The type of prediction required; the default
 #' \code{type = "link"} is on the scale of the linear predictors. Alternatively,
 #' for nominal outputs, \code{type = "response"} gives the fitted probabilities
@@ -1224,14 +1203,14 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       bs.ens.null <- eval(bsnullmodcall)
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
-      F_a_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data, 
+      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data, 
                               penalty.par.val = penalty.par.val)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
       F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
                             penalty.par.val = penalty.par.val)
       # step 5: Calculate ytilde of formula 47 of F&P2008:
-      ytilde <- F_a_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
+      ytilde <- F_A_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
       # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
       bsintmodcall$data <- object$orig_data
@@ -1251,14 +1230,14 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       bs.ens.null <- eval(bsnullmodcall)
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
-      F_a_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
+      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
       F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
                                 penalty.par.val = penalty.par.val)
       # step 5: Calculate ytilde of formula 47 of F&P2008:
       # FIXME: Does not compute for categorical outcomes: 
-      ytilde <- F_a_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
+      ytilde <- F_A_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
       # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
       bsintmodcall$data <- object$orig_data
