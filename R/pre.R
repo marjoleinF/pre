@@ -92,7 +92,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                 removecomplements = TRUE,
                 thres = 1e-07, standardize = FALSE, winsfrac = .025, 
                 normalize = TRUE, nfolds = 10L, mod.sel.crit = "deviance", 
-                verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)   
+                verbose = FALSE, par.init = FALSE, par.final = FALSE, 
+                use_suggestion = FALSE, ...)   
 { ###################
   ## Preliminaries ##
   ###################
@@ -175,6 +176,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   
   if (type != "linear") {
     if (learnrate == 0) { # always use ctree()
+      input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
       if(par.init) {
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
@@ -184,15 +186,14 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
                                 prob = weights)
           }
-          subsampledata <- data[subsample,]
           # Grow ctree on subsample:
-          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, 
-                        mtry = mtry)
+          tree <- with(input, ctree_minmal(
+            dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
-          unlist(list.rules(tree))
+          list.rules(tree)
         }
       } else {
-        rules <- c() 
+        rules <- c()
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
@@ -201,18 +202,19 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
                                 prob = weights)
           }
-          subsampledata <- data[subsample,]
           # Grow tree on subsample:
-          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
+          tree <- with(input, ctree_minmal(
+            dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
-          rules <- append(rules, unlist(list.rules(tree)))
+          rules <- c(rules, list.rules(tree))
         }
       }
     }
     if (learnrate > 0) {
       rules <- c()
       if (!classify) {
-        y_learn <- data[,y_name]
+        y_learn <- data[, y_name]
+        input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
@@ -220,14 +222,15 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           } else { # else subsample
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, prob = weights)
           }
-          subsampledata <- data[subsample,]
-          subsampledata[,y_name] <- y_learn[subsample]
+          input$dat[subsample, y_name] <- y_learn[subsample]
           # Grow tree on subsample:
-          tree <- ctree(formula, data = subsampledata, maxdepth = maxdepth, mtry = mtry)
+          tree <- with(input, ctree_minmal(
+            dat[subsample, ], response, control, ytrafo))
           # Collect rules from tree:
-          rules <- append(rules, unlist(list.rules(tree)))
+          rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:
-          y_learn <- y_learn - learnrate * predict(tree, newdata = data)
+          y_learn <- y_learn - learnrate * predict_party_minimal(
+            tree, newdata = data)
         }
       }
       if (classify) {
@@ -268,53 +271,77 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     }
     # Create dataframe with 0-1 coded rules:
     if (length(rules) > 0) {
-      rulevars <- data.frame(
-        rule1 = as.numeric(with(data, eval(parse(text = rules[[1]])))))
-      for(i in 2:length(rules)) {
-        rulevars[,paste("rule", i, sep="")] <- as.numeric(
-          with(data, eval(parse(text = rules[[i]]))))
-      }
-      if (removeduplicates) {
-        # Remove rules with identical support:
-        duplicates <- duplicated(t(rulevars))
+      n_rules <- length(rules)
+      rulevars <- matrix(
+        NA, nrow = nrow(data), ncol = n_rules, 
+        dimnames = list(NULL, paste0("rule", 1:n_rules)))
+      
+      for(i in 1:n_rules)
+        rulevars[, i] <- with(data, eval(parse(text = rules[[i]])))
+      
+      # TODO: remove this if you do not want the suggestion I propose
+      if(use_suggestion && removeduplicates && removecomplements){
+        mas <- which(duplicated(cbind(rulevars, !rulevars), MARGIN = 2))
+        
+        nc <- ncol(rulevars)
+        duplicates <- mas[mas <= nc]
+        complements <- mas[mas > nc] - nc
+        complements <- complements[!complements %in% duplicates]
+        
         duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
                                          description = rules[duplicates])
-        rulevars <- rulevars[,!duplicates]
-        rules <- rules[!duplicates]
-        if (verbose) {
-          cat("\n\nA total of", sum(duplicates), "generated rules had 
-              support identical to earlier rules and were removed from the initial 
-              ensemble ($duplicates.removed shows which, if any).")
-        }
-      } else {
-        duplicates.removed <- NULL
+        removed_complement_rules <- colnames(rulevars)[duplicates]
+        
+        rulevars <- rulevars[, -c(complements, duplicates)]
+        rules <- rules[-c(complements, duplicates)]
       }
-      if (removecomplements) { 
+      
+      if (!use_suggestion && removeduplicates) {
+        # Remove rules with identical support:
+        duplicates <- duplicated(rulevars, MARGIN = 2)
+        duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
+                                         description = rules[duplicates])
+        rulevars <- rulevars[, !duplicates]
+        rules <- rules[!duplicates]
+      }
+        
+      if (!use_suggestion && removecomplements) { 
         # remove rules with complement support:
         removed_complement_rules <- c()
         # for rule that has support identical to some earlier rule(s):
         for(i in which(duplicated(apply(rulevars, 2, sd)))) {
+          if(i == 1)
+            next
           # check whether the rule is a complement of any of the earlier unique rules:
-          for(j in 1:i) {
-            if (all(rulevars[,i] == (1 - rulevars[,j]))) {
-              # add it's name to the list of complement rules:
-              removed_complement_rules <- c(removed_complement_rules, names(rulevars)[j])
-            }
-          }
+          is_comp <- which(apply(rulevars[, i] != rulevars[, 1:(i - 1), drop = F], 2, all))
+          if(length(is_comp) > 0)
+            removed_complement_rules <- c(removed_complement_rules, colnames(rulevars)[is_comp])
         }
+        
         # rules with their name in removed_complement_rules should be removed from rulevars and rules
         # and also, some message about the number of rules for which this was the case should be printed if verbose
-        complements <- !(names(rulevars) %in% removed_complement_rules)
-        rulevars <- rulevars[,!complements]
+        complements <- colnames(rulevars) %in% removed_complement_rules
+        rulevars <- rulevars[, !complements]
         rules <- rules[!complements]
-        if (verbose) {
-          cat("\n\nA total of", length(removed_complement_rules), "generated rules had 
-              support that was the complement of the support of earlier rules and were removed from the initial 
-              ensemble ($removed_complement_rules shows which, if any).")
-        }
-      } else {
-        removed_complent_rules <- NULL
       }
+      
+      if(!exists("removed_complement_rules"))
+        removed_complement_rules <- NULL
+      if(!exists("duplicates.removed"))
+        duplicates.removed <- NULL
+      
+      if (verbose && removeduplicates) {
+        cat("\n\nA total of", sum(duplicates), "generated rules had 
+              support identical to earlier rules and were removed from the initial 
+              ensemble ($duplicates.removed shows which, if any).")
+      }
+      
+      if (verbose && removecomplements){
+        cat("\n\nA total of", length(removed_complement_rules), "generated rules had 
+             support that was the complement of the support of earlier rules and were removed from the initial 
+             ensemble ($removed_complement_rules shows which, if any).")
+      }
+      
       if (verbose) {
         cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was 
             succesfully created.")  
@@ -324,19 +351,22 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     }
   }
   
+  storage.mode(rulevars) <- "integer"
+  rulevars <- data.frame(rulevars)
+  
   ######################################################
   ## Prepare rules, linear terms and outcome variable ##
   ######################################################
-  
-  x <- data[,x_names]
-
-  # convert ordered categorical predictor variables to linear terms:
-  x[,sapply(x, is.ordered)] <- as.numeric(as.character(x[,sapply(x, is.ordered)]))
 
   if (type == "rules" & length(rules) > 0) {
     x <- rulevars
     x_scales <- NULL
   } else { # if type is not rules, linear terms should be prepared:
+    x <- data[,x_names]
+    
+    # convert ordered categorical predictor variables to linear terms:
+    x[,sapply(x, is.ordered)] <- as.numeric(as.character(x[,sapply(x, is.ordered)]))
+    
     # Winsorize numeric variables (section 5 of F&P(2008)):
     if (winsfrac > 0) {
       wins_points <- data.frame(varname = names(x), value = NA)
@@ -427,84 +457,6 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
 }
 
 
-
-# Internal function for transforming tree into a set of rules:
-# Taken and modified from package partykit, written by Achim Zeileis and 
-# Torsten Hothorn
-list.rules <- function (x, i = NULL, ...) 
-{
-  if (is.null(i)) 
-    i <- partykit::nodeids(x, terminal = TRUE)
-  if (length(i) > 1) {
-    ret <- sapply(i, list.rules, x = x)
-    names(ret) <- if (is.character(i)) 
-      i
-    else names(x)[i]
-    return(ret)
-  }
-  if (is.character(i) && !is.null(names(x))) 
-    i <- which(names(x) %in% i)
-  stopifnot(length(i) == 1 & is.numeric(i))
-  stopifnot(i <= length(x) & i >= 1)
-  i <- as.integer(i)
-  dat <- partykit::data_party(x, i)
-  if (!is.null(x$fitted)) {
-    findx <- which("(fitted)" == names(dat))[1]
-    fit <- dat[, findx:ncol(dat), drop = FALSE]
-    dat <- dat[, -(findx:ncol(dat)), drop = FALSE]
-    if (ncol(dat) == 0) 
-      dat <- x$data
-  }
-  else {
-    fit <- NULL
-    dat <- x$data
-  }
-  rule <- c()
-  recFun <- function(node) {
-    if (partykit::id_node(node) == i) {
-      return(NULL)
-    }
-    kid <- sapply(partykit::kids_node(node), partykit::id_node)
-    whichkid <- max(which(kid <= i))
-    split <- partykit::split_node(node)
-    ivar <- partykit::varid_split(split)
-    svar <- names(dat)[ivar]
-    index <- partykit::index_split(split)
-    if (is.factor(dat[, svar])) {
-      if (is.null(index)) 
-        index <- ((1:nlevels(dat[, svar])) > partykit::breaks_split(split)) + 
-          1
-      slevels <- levels(dat[, svar])[index == whichkid]
-      srule <- paste(svar, " %in% c(\"", paste(slevels, 
-                                               collapse = "\", \"", sep = ""), "\")", sep = "")
-    }
-    else {
-      if (is.null(index)) {
-        index <- 1:length(kid)
-      }
-      breaks <- cbind(c(-Inf, partykit::breaks_split(split)), c(partykit::breaks_split(split), 
-                                                      Inf))
-      sbreak <- breaks[index == whichkid, ]
-      right <- partykit::right_split(split)
-      srule <- c()
-      if (is.finite(sbreak[1])) {
-        srule <- c(srule, paste(svar, ifelse(right, ">", 
-                                             ">="), sbreak[1]))
-      }
-      if (is.finite(sbreak[2])) { 
-        srule <- c(srule, paste(svar, ifelse(right, "<=", 
-                                             "<"), sbreak[2]))
-      }
-      srule <- paste(srule, collapse = " & ")
-    }
-    rule <<- c(rule, srule)
-    return(recFun(node[[whichkid]]))
-  }
-  node <- recFun(partykit::node_party(x))
-  paste(rule, collapse = " & ")
-}
-
-
 #' Print method for objects of class pre
 #'
 #' \code{print.pre} prints information about the generated prediction rule 
@@ -547,7 +499,10 @@ print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
       "\n  mean cv error (se) = ", x$glmnet.fit$cvm[lambda_ind], 
         " (", x$glmnet.fit$cvsd[lambda_ind], ") \n\n", sep = "")
   tmp <- coef(x, penalty.par.val = penalty.par.val)
-  return(tmp[tmp$coefficient != 0, ])
+  tmp <- tmp[tmp$coefficient != 0, ]
+  print(tmp, print.gap = 2, quote = FALSE, row.names = F)
+  
+  invisible(tmp)
 }
 
 

@@ -45,4 +45,3 @@ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,
 predict(airq.ens)
 predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}
 }
-

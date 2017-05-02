@@ -1,2 +1,4 @@
 WISHLIST
 LICENCE
+^.*\.Rproj$
+^\.Rproj\.user$
