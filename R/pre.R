@@ -237,6 +237,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           y_learn <- y_learn - learnrate * predict_party_minimal(
             tree, newdata = data)
         }
+      } else { # if (classify)
         data2 <- data.frame(data, offset = 0)
         glmtreeformula <- formula(paste(paste(y_name, " ~ 1 |"), 
                                         paste(x_names, collapse = "+")))

@@ -14,6 +14,8 @@ import(Formula)
 import(glmnet)
 import(partykit)
 importFrom("graphics", "barplot", "persp", "plot")
-importFrom("stats", "aggregate", "complete.cases", "cor", "model.frame", "model.matrix", "offset", "predict", "quantile", "sd", "terms")
+importFrom("stats", "aggregate", "complete.cases", "cor", "model.frame", 
+           "model.matrix", "offset", "predict", "quantile", "sd", "terms",
+           "delete.response", "model.weights", "na.pass")
 importFrom("methods", "as")
 importFrom("utils", "installed.packages")
