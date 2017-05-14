@@ -25,7 +25,8 @@ Imports:
     MatrixModels,
     Formula,
     methods,
-    graphics
+    graphics,
+    earth
 Suggests:
     akima,
     grid,

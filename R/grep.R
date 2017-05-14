@@ -108,7 +108,6 @@ gpre_tress <- function(
         sapply(unique(sds), function(x) c(x, sum(sds == x)))
       
       complements <- vector(mode = "logical", length(sds))
-      browser()
       for(i in 1:ncol(sds_distinct)){
         if(sds_distinct[2, i] < 2)
           next
@@ -183,11 +182,92 @@ gpre_linear <- function(
         return(result)
       
       sd <- sd(pmax(pmin(x, qs[2]), qs[1]))
-      paste0("scale(", result, ", scale = ", signif(sd, 2), ")")
+      paste0("scale(", result, ", scale = ", signif(sd, 2), ", center = FALSE)")
     })
     
     out
   }
+}
+
+#' @export
+gpre_earth <- function(
+  ..., degree = 3, nk = 11, standardize = TRUE, 
+  ntrain = 25){
+  
+  out <- function(formula, data, weights, sample_func, verbose, family, ...){
+    ###########
+    ## Setup ##
+    ###########
+    
+    n <- nrow(data)
+    
+    if(standardize){
+      # Need to change scale of formula terms
+      mf <- model.frame(formula, data)
+      mt <- attr(mf, "terms")
+      
+      if(any(attr(mf, "order") > 1))
+        stop("Terms with higher order is not implemented in with gpre_linear")
+      
+      is_numeric_term <- attr(mt, "dataClasses")== "numeric"
+      if(attr(mt, "response") > 0)
+        is_numeric_term <- is_numeric_term & !seq_along(is_numeric_term) %in% attr(mt, "response")
+      is_numeric_term <- which(is_numeric_term)
+      
+      sds <- sapply(mf[, is_numeric_term], sd)
+      new_terms <- paste0(
+        "I(", names(is_numeric_term), " / ", signif(sds, 2), ")")
+      
+      non_num <- attr(mf, "term.labels")[
+        !attr(mf, "term.labels") %in% names(is_numeric_term)]
+      
+      new_terms <- c(new_terms, non_num)
+      
+      formula <- update(formula, paste0(
+        ". ~ ", paste0(new_terms, collapse = " + ")))
+    }
+    
+    basis_funcs <- c()
+    
+    for(i in 1:ntrain){
+      ##########################
+      ## Find basis functions ##
+      ##########################
+      
+      subsample <- sample_func(n = n, weights = weights)
+      
+      fit <- earth(
+        formula, data[subsample, ], degree = degree, nk = nk, pmethod = "none")
+      
+      ###########################################
+      ## Format basis functions terms & return ##
+      ###########################################
+      
+      # For details on the earth object see ?earth.object. The two key elements
+      # are dirs and cuts
+      
+      # -1 for the intercept
+      interaction_degree <- rowSums(fit$dirs[-1, ] != 0)
+      
+      ts <- row.names(fit$cuts)[-1]
+      ts <- gsub("h\\(", "\\(", ts)
+      ts <- gsub("I\\(([^\\)]+)\\)", "\\1", ts)
+      
+      ts[interaction_degree == 1] <- 
+        gsub("(\\(.+)\\)", "pmax\\1, 0)", ts[interaction_degree == 1])
+      
+      ts[interaction_degree > 1] <- 
+        gsub("(\\([^\\)]+)\\)", "pmax\\1, 0)", ts[interaction_degree > 1])
+      ts[interaction_degree > 1] <- paste0("I(", ts[interaction_degree > 1], ")")
+      
+      basis_funcs <- c(basis_funcs, ts)
+    }
+    
+    basis_funcs <- unique(basis_funcs)
+    basis_funcs
+  }
+  
+  out
 }
 
 get_cv.glmnet_args <- function(args, x, y, weights, family){
@@ -270,8 +350,6 @@ gpre <- function(
       f(formula = formula, data = data, weights = weights,
         sample_func = sample_func, verbose = verbose, family = family))
   
-  browser()
-  
   glmnet_formula <- lapply(formulas, paste0, collapse = " + ")
   glmnet_formula <- paste0(unlist(glmnet_formula), collapse = " + ")
   glmnet_formula <- stats::formula(paste("~", glmnet_formula))
@@ -284,14 +362,11 @@ gpre <- function(
   call_args <- get_cv.glmnet_args(
     args = cv.glmnet_args, x = x, y = y, family = family)
   
-  browser()
   glmnet.fit <- do.call(cv.glmnet, call_args)
   
   ####################
   ## Return results ##
   ####################
-  
-  browser()
   
   result <- list(
     glmnet.fit = glmnet.fit, call = match.call, 
@@ -308,4 +383,23 @@ gpre <- function(
   
   class(result) <- "gpre"
   result
+}
+
+#' @rdname print.pre
+#' @export
+#' @method print gpre
+print.gpre <- function(x, penalty.par.val = "lambda.1se", ...){
+  print.pre(x, penalty.par.val, ...)
+}
+
+#' @rdname coef.pre
+#' @export
+#' @method coef gpre
+coef.gpre <- function(object, penalty.par.val = "lambda.1se", ...)
+{
+  coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
+              Class = "matrix")
+  colnames(coefs) <- "coefficient"
+  coefs <- coefs[coefs > 0, ,drop = FALSE]
+  data.frame(description = row.names(coefs), coefs)
 }
