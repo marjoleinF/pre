@@ -27,3 +27,9 @@ test_that("Coef works for gpre", {
 
 test_that("Print works for gpre", {
   expect_true(FALSE) })
+
+test_that("Different options for linear terms works with gpre", {
+  expect_true(FALSE) })
+
+test_that("Different options for earth terms works gpre", {
+  expect_true(FALSE) })

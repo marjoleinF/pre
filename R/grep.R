@@ -201,7 +201,10 @@ lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1){
     stop("lTerm must numeric")
   
   attr(x, "description") <- deparse(substitute(x))
-  x <- pmin(pmax(x, lb), ub) / scale
+  
+  # The (arbitrary?) 0.4 is from
+  # PREDICTIVE LEARNING VIA RULE ENSEMBLES
+  x <- pmin(pmax(x, lb), ub) / scale * 0.4
   class(x) <- "lTerm"
   x
 }
@@ -209,7 +212,10 @@ lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1){
 #' @export
 gpre_earth <- function(
   ..., degree = 3, nk = 11, standardize = TRUE, 
-  ntrain = 25){
+  ntrain = 100, learnrate = 0.01){
+  
+  if(learnrate < 0 && learnrate > 1)
+    stop("learnrate must be between 0 and 1")
   
   out <- function(formula, data, weights, sample_func, verbose, family, ...){
     ###########
@@ -217,32 +223,10 @@ gpre_earth <- function(
     ###########
     
     n <- nrow(data)
-    
-    if(standardize){
-      # Need to change scale of formula terms
-      mf <- model.frame(formula, data)
-      mt <- attr(mf, "terms")
-      
-      if(any(attr(mf, "order") > 1))
-        stop("Terms with higher order is not implemented in with gpre_linear")
-      
-      is_numeric_term <- attr(mt, "dataClasses")== "numeric"
-      if(attr(mt, "response") > 0)
-        is_numeric_term <- is_numeric_term & !seq_along(is_numeric_term) %in% attr(mt, "response")
-      is_numeric_term <- which(is_numeric_term)
-      
-      sds <- sapply(mf[, is_numeric_term], sd)
-      new_terms <- paste0(
-        "I(", names(is_numeric_term), " / ", signif(sds, 2), ")")
-      
-      non_num <- attr(mf, "term.labels")[
-        !attr(mf, "term.labels") %in% names(is_numeric_term)]
-      
-      new_terms <- c(new_terms, non_num)
-      
-      formula <- update(formula, paste0(
-        ". ~ ", paste0(new_terms, collapse = " + ")))
-    }
+    mf <- model.frame(formula, data = data)
+    mt <- attr(mf, "terms")
+    x <- model.matrix(mt, mf)
+    y <- model.response(mf)
     
     basis_funcs <- c()
     
@@ -254,7 +238,11 @@ gpre_earth <- function(
       subsample <- sample_func(n = n, weights = weights)
       
       fit <- earth(
-        formula, data[subsample, ], degree = degree, nk = nk, pmethod = "none")
+        x = x[subsample, , drop = FALSE], y = y[subsample], degree = degree, 
+        nk = nk, pmethod = "none")
+      
+      if(learnrate > 0)
+        y <- drop(y - learnrate * predict(fit, type = "response", newdata = x))
       
       ###########################################
       ## Format basis functions terms & return ##
@@ -268,16 +256,27 @@ gpre_earth <- function(
       
       ts <- row.names(fit$cuts)[-1]
       ts <- gsub("h\\(", "\\(", ts)
-      ts <- gsub("I\\(([^\\)]+)\\)", "\\1", ts)
       
       ts[interaction_degree == 1] <- 
         gsub("(\\(.+)\\)", "pmax\\1, 0)", ts[interaction_degree == 1])
       
       ts[interaction_degree > 1] <- 
         gsub("(\\([^\\)]+)\\)", "pmax\\1, 0)", ts[interaction_degree > 1])
-      ts[interaction_degree > 1] <- paste0("I(", ts[interaction_degree > 1], ")")
+      
+      if(standardize){
+        vars <- with(data, sapply(ts, function(x) eval(parse(text = x))))
+        sds <- apply(vars, 2, sd)
+        
+        ts <- mapply(
+          function(x, s) paste0("eTerm(", x, ", scale = ", s, ")"),
+          x = ts, s = signif(sds, 2))
+      } else {
+        ts <- paste0("eTerm(", ts, ")")
+      }
       
       basis_funcs <- c(basis_funcs, ts)
+      
+      
     }
     
     basis_funcs <- unique(basis_funcs)
@@ -285,6 +284,19 @@ gpre_earth <- function(
   }
   
   out
+}
+
+#' @export
+eTerm <- function(x, scale = 1){
+  if(!is.numeric(x))
+    stop("eTerm must numeric")
+  
+  attr(x, "description") <- deparse(substitute(x))
+  # The (arbitrary?) 0.4 is from
+  # PREDICTIVE LEARNING VIA RULE ENSEMBLES
+  x <- x / scale * 0.4
+  class(x) <- "eTerm"
+  x
 }
 
 get_cv.glmnet_args <- function(args, x, y, weights, family){
