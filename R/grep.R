@@ -90,7 +90,7 @@ gpre_tress <- function(
     rules <- unique(rules[rules != ""])
     # TODO: how does this work with factors?
     rules <- sort(unname(rules))
-    rules <- paste0("rule(", rules, ")")
+    rules <- paste0("rTerm(", rules, ")")
     
     if(remove_duplicates_complements){
       frm <- paste("~", paste0(rules, collapse = " + "))
@@ -132,13 +132,13 @@ gpre_tress <- function(
 }
 
 #' @export
-rule <- function(x){
+rTerm <- function(x){
   if(!is.logical(x))
     stop("Non-logical input passed to rule")
   
   attr(x, "description") <- deparse(substitute(x))
   x <- as.integer(x)
-  class(x) <- "rule"
+  class(x) <- "rTerm"
   x
 }
 
@@ -169,24 +169,41 @@ gpre_linear <- function(
     ####################################
     
     if(winsfrac == 0){
-      return(names(is_numeric_term))
+      return(paste0("lTerm(", names(is_numeric_term), ")"))
     }
     
     out <- sapply(is_numeric_term, function(i) {
       x <- mf[, i]
       x_name <- colnames(mf)[i]
       qs <- quantile(x, c(winsfrac, 1 - winsfrac))
-      result <- paste0("pmax(pmin(", x_name, ", ", qs[2], "), ", qs[1], ")")
       
       if(!normalize)
-        return(result)
+        return(
+          paste0("lTerm(", x_name, 
+                 ", lb = ", signif(qs[1], 2), 
+                 ", ub = ", signif(qs[2], 2)))
+      
       
       sd <- sd(pmax(pmin(x, qs[2]), qs[1]))
-      paste0("scale(", result, ", scale = ", signif(sd, 2), ", center = FALSE)")
+      paste0("lTerm(", x_name, 
+             ", lb = ", signif(qs[1], 2), 
+             ", ub = ", signif(qs[2], 2), 
+             ", scale = ", signif(sd, 2), ")")
     })
     
     out
   }
+}
+
+#' @export
+lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1){
+  if(!is.numeric(x))
+    stop("lTerm must numeric")
+  
+  attr(x, "description") <- deparse(substitute(x))
+  x <- pmin(pmax(x, lb), ub) / scale
+  class(x) <- "lTerm"
+  x
 }
 
 #' @export
