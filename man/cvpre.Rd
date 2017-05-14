@@ -52,4 +52,3 @@ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 airq.cv <- cvpre(airq.ens)}
 
 }
-

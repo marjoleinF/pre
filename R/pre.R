@@ -239,8 +239,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         }
       } else { # if (classify)
         data2 <- data.frame(data, offset = 0)
-        glmtreeformula <- formula(paste(paste(y_name, " ~ 1 |"), 
-                                        paste(x_names, collapse = "+")))
+        glmtreeformula <- update(
+          formula, ". ~ offset + 1| (. - offset)")
         for(i in 1:ntrees) {
           # Take subsample of dataset:
           if (sampfrac == 1) { # then bootstrap:
@@ -369,10 +369,11 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     # normalize numeric variables:
     if (normalize) { 
       # Normalize linear terms (section 5 of F&P08), if there are any:
-      if (sum(sapply(x, is.numeric)) > 0) {
-        x_scales <- sapply(x[sapply(x, is.numeric)], sd, na.rm = TRUE) / 0.4
-        x[,sapply(x, is.numeric)] <- scale(x[,sapply(x, is.numeric)], 
-                                           center = FALSE, scale = x_scales)
+      is_numeric <- sapply(x, is.numeric)
+      if (sum(is_numeric) > 0) {
+        x_scales <- sapply(x[, is_numeric], sd, na.rm = TRUE) / 0.4
+        x[, is_numeric] <- scale(
+          x[, is_numeric], center = FALSE, scale = x_scales)
       } else {
         x_scales <- NULL
       }
@@ -399,6 +400,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     family <- "gaussian"
   }
   
+  browser()
   glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, standardize = standardize, 
                           type.measure = mod.sel.crit, thres = thres, 
                           weights = weights, family = family, parallel = par.final, 
