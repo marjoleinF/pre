@@ -43,6 +43,7 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   
   #####
   # With learning rate
+  set.seed(4989935)
   fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, learnrate = .01,
              ntrees = 20, maxdepth = 3)
   

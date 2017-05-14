@@ -239,8 +239,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         }
       } else { # if (classify)
         data2 <- data.frame(data, offset = 0)
-        glmtreeformula <- update(
-          formula, ". ~ offset + 1| (. - offset)")
+        glmtreeformula <- formula(paste(paste(y_name, " ~ 1 |"), 
+                                        paste(x_names, collapse = "+")))
         for(i in 1:ntrees) {
           # Take subsample of dataset:
           if (sampfrac == 1) { # then bootstrap:
@@ -306,8 +306,10 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
        
         complements.removed <- data.frame(name = colnames(rulevars)[complements],
                                          description = rules[complements])
-        rulevars <- rulevars[, -complements]
-        rules <- rules[-complements]
+        if(length(complements) > 0){
+          rulevars <- rulevars[, -complements]
+          rules <- rules[-complements]
+        }
       }
       
       if(!exists("complements.removed"))

@@ -9,7 +9,7 @@ save_to_test <- function(obj, file_name, tolerance = sqrt(.Machine$double.eps)){
       print(object.size(obj))
   
   out_file <- paste0(
-    str_match(getwd(), ".+pre"), "/tests/testthat/previous_results/", file_name, ".RDS")
+    stringr::str_match(getwd(), ".+pre"), "/tests/testthat/previous_results/", file_name, ".RDS")
   saveRDS(obj, compress = T, out_file)
   
   cat("RDS file size is ", file.size(out_file) / 1000, "KB\n", sep = "")
@@ -21,7 +21,7 @@ save_to_test <- function(obj, file_name, tolerance = sqrt(.Machine$double.eps)){
 #' @importFrom stringr str_match
 read_to_test <- function(file_name){
   path <- if(!interactive()) "./previous_results/" else
-    paste0(str_match(getwd(), ".+pre"), "/tests/testthat/previous_results/")
+    paste0(stringr::str_match(getwd(), ".+pre"), "/tests/testthat/previous_results/")
   
   readRDS(paste0(path, file_name, ".RDS"))
 }

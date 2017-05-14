@@ -60,8 +60,10 @@ gpre_tress <- function(
         }
       } else if (family == "binomial"){
         data2 <- data.frame(data, offset = 0)
-        glmtreeformula <- update(
-          formula, ". ~ offset + 1| (. - offset)")
+        stop("TODO: implement")
+        glmtreeformula <-formula(
+          paste(paste(y_name, " ~ 1 |"),
+                paste(x_names, collapse = "+")))
         
         for(i in 1:ntrees) {
           # Take subsample of dataset:
