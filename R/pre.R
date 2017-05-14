@@ -295,17 +295,27 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
         
       if (removecomplements) { 
         # remove rules with complement support:
-        complements <- c()
-        # for rule that has support identical to some earlier rule(s):
-        for(i in which(duplicated(apply(rulevars, 2, sd)))) {
-          # check whether the rule is a complement of any of the earlier unique rules:
-          is_comp <- which(apply(rulevars[, i] != rulevars[, 1:(i - 1), drop = F], 2, all))
-          if(length(is_comp) > 0)
-            complements <- c(complements, is_comp)
+        sds <- apply(rulevars, 2, sd)
+        sds_distinct <- 
+          sapply(unique(sds), function(x) c(x, sum(sds == x)))
+        
+        complements <- vector(mode = "logical", length(sds))
+        for(i in 1:ncol(sds_distinct)){
+          if(sds_distinct[2, i] < 2)
+            next
+          
+          indices <- which(sds == sds_distinct[1, i])
+          for(j in 2:length(indices)){
+            indices_prev <- indices[1:(j - 1)] 
+            complements[indices_prev] <- 
+              complements[indices_prev] | apply(
+                rulevars[, indices_prev, drop = F] != rulevars[, indices[j]], 2, all)
+          }
         }
-       
+        
+        complements <- which(complements)
         complements.removed <- data.frame(name = colnames(rulevars)[complements],
-                                         description = rules[complements])
+                                          description = rules[complements])
         if(length(complements) > 0){
           rulevars <- rulevars[, -complements]
           rules <- rules[-complements]
