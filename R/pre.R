@@ -400,7 +400,6 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     family <- "gaussian"
   }
   
-  browser()
   glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, standardize = standardize, 
                           type.measure = mod.sel.crit, thres = thres, 
                           weights = weights, family = family, parallel = par.final, 

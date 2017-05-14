@@ -84,9 +84,8 @@ gpre_tress <- function(
     ###################
     ## Rules cleanup ##
     ###################
-    
-    rules <- rules[rules != ""]
-    rules <- rules[!duplicated(rules)]
+  
+    rules <- unique(rules[rules != ""])
     # TODO: how does this work with factors?
     rules <- sort(unname(rules))
     rules <- paste0("rule(", rules, ")")
@@ -96,16 +95,32 @@ gpre_tress <- function(
       rulevars <- model.frame(stats::formula(frm), data)
       rulevars <- as.matrix(rulevars)
       
-      if(remove_duplicates_complements){
-        do_match <- which(duplicated(cbind(rulevars, !rulevars), MARGIN = 2))
+      # Remove duplicates
+      duplicates <- which(duplicated(rulevars, MARGIN = 2))
+      rulevars <- rulevars[, -duplicates]
+      rules <- rules[-duplicates]
+      
+      # Remove compliments
+      sds <- apply(rulevars, 2, sd)
+      sds_distinct <- 
+        sapply(unique(sds), function(x) c(x, sum(sds == x)))
+      
+      complements <- vector(mode = "logical", length(sds))
+      browser()
+      for(i in 1:ncol(sds_distinct)){
+        if(sds_distinct[2, i] < 2)
+          next
         
-        nc <- ncol(rulevars)
-        duplicates <- do_match[do_match <= nc]
-        complements <- do_match[do_match > nc] - nc
-        complements <- complements[!complements %in% duplicates]
-        
-        rules <- rules[-c(duplicates, complements)]
+        indices <- which(sds == sds_distinct[1, i])
+        for(j in 2:length(indices)){
+          indices_prev <- indices[1:(j - 1)] 
+          complements[indices_prev] <- 
+            complements[indices_prev] | apply(
+              rulevars[, indices_prev, drop = F] != rulevars[, indices[j]], 2, all)
+        }
       }
+      
+      rules <- rules[!complements]
     }
     
     # TODO: how does this work with factors?
@@ -160,7 +175,13 @@ gpre_linear <- function(
       x <- mf[, i]
       x_name <- colnames(mf)[i]
       qs <- quantile(x, c(winsfrac, 1 - winsfrac))
-      paste0("pmax(pmin(", x_name, ", ", qs[2], "), ", qs[1], ")")
+      result <- paste0("pmax(pmin(", x_name, ", ", qs[2], "), ", qs[1], ")")
+      
+      if(!normalize)
+        return(result)
+      
+      sd <- sd(pmax(pmin(x, qs[2]), qs[1]))
+      paste0("scale(", result, ", scale = ", signif(sd, 2), ")")
     })
     
     out
@@ -247,6 +268,8 @@ gpre <- function(
       f(formula = formula, data = data, weights = weights,
         sample_func = sample_func, verbose = verbose, family = family))
   
+  browser()
+  
   glmnet_formula <- lapply(formulas, paste0, collapse = " + ")
   glmnet_formula <- paste0(unlist(glmnet_formula), collapse = " + ")
   glmnet_formula <- stats::formula(paste("~", glmnet_formula))
@@ -265,6 +288,8 @@ gpre <- function(
   ####################
   ## Return results ##
   ####################
+  
+  browser()
   
   result <- list(
     glmnet.fit = glmnet.fit, call = match.call, 
