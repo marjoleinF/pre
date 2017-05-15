@@ -189,7 +189,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
           #                mtry = mtry)
           tree <- with(input, ctree_minmal(
-            dat[subsample, ], response, control, ytrafo))
+            dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           list.rules(tree)
         }
@@ -207,7 +207,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
           #                mtry = mtry)
           tree <- with(input, ctree_minmal(
-            dat[subsample, ], response, control, ytrafo))
+            dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
         }
@@ -230,7 +230,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           #                mtry = mtry)
           input$dat[subsample, y_name] <- y_learn[subsample]
           tree <- with(input, ctree_minmal(
-            dat[subsample, ], response, control, ytrafo))
+            dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:

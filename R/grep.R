@@ -31,7 +31,7 @@ gpre_tress <- function(
         #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
         #                mtry = mtry)
         tree <- with(input, ctree_minmal(
-          dat[subsample, ], response, control, ytrafo))
+          dat[subsample, ], response, control, ytrafo, terms))
         # Collect rules from tree:
         rules <- c(rules, list.rules(tree))
       }
@@ -51,7 +51,7 @@ gpre_tress <- function(
           #                mtry = mtry)
           input$dat[subsample, input$response] <- y_learn[subsample]
           tree <- with(input, ctree_minmal(
-            dat[subsample, ], response, control, ytrafo))
+            dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:
@@ -88,7 +88,6 @@ gpre_tress <- function(
     ###################
   
     rules <- unique(rules[rules != ""])
-    # TODO: how does this work with factors?
     rules <- sort(unname(rules))
     rules <- paste0("rTerm(", rules, ")")
     
@@ -124,8 +123,7 @@ gpre_tress <- function(
       rules <- rules[!complements]
     }
     
-    # TODO: how does this work with factors?
-    c("-1", rules) 
+    c(rules) 
   }
   
   out
@@ -169,7 +167,13 @@ gpre_linear <- function(
     ####################################
     
     if(winsfrac == 0){
-      return(paste0("lTerm(", names(is_numeric_term), ")"))
+      if(!normalize)
+        return(paste0("lTerm(", names(is_numeric_term), ")"))
+      
+      sds <- apply(mf[, names(is_numeric_term)], 2, sd)
+      out <- mapply(function(x, s) paste0("lTerm(", x, ", scale = ", s, ")"), 
+                    x = names(is_numeric_term), s = signif(sds, 2))
+      return(out)
     }
     
     out <- sapply(is_numeric_term, function(i) {
@@ -181,7 +185,7 @@ gpre_linear <- function(
         return(
           paste0("lTerm(", x_name, 
                  ", lb = ", signif(qs[1], 2), 
-                 ", ub = ", signif(qs[2], 2)))
+                 ", ub = ", signif(qs[2], 2), ")"))
       
       
       sd <- sd(pmax(pmin(x, qs[2]), qs[1]))
@@ -228,8 +232,37 @@ gpre_earth <- function(
     x <- model.matrix(mt, mf)
     y <- model.response(mf)
     
-    basis_funcs <- c()
+    if(family == "binomial"){
+      message("Beware that gpre_earth will use L2 loss to train")
+      y <- as.numeric(y)
+    }
     
+    # We later need to take care of the factor terms
+    factor_terms <- which(
+      attr(mt, "dataClasses")[
+        (1 + attr(mt, "response")):length(attr(mt, "dataClasses"))] == 
+        "factor")
+    n_factors <- length(factor_terms)
+    factor_terms <- names(factor_terms)
+    
+    if(n_factors > 0){
+      add_escapes <- function(regexp)
+        stringr::str_replace_all(regexp, "(\\W)", "\\\\\\1")
+      
+      factor_terms_regexp <- add_escapes(factor_terms)
+      factor_labels <- lapply(mf[, factor_terms, drop = FALSE], levels)
+      
+      regexp_find <- list()
+      regexp_replace <- list()
+      for(i in 1:n_factors){
+        regexp_find[[i]] <- add_escapes(paste0(
+          factor_terms[i], factor_labels[[i]]))
+        regexp_replace[[i]] <- add_escapes(paste0(
+          "(", factor_terms[i], " == '", factor_labels[[i]], "')"))
+      }
+    }
+    
+    basis_funcs <- c()
     for(i in 1:ntrain){
       ##########################
       ## Find basis functions ##
@@ -254,14 +287,36 @@ gpre_earth <- function(
       # -1 for the intercept
       interaction_degree <- rowSums(fit$dirs[-1, ] != 0)
       
+      # Replace 
+      #   h(xyz)
+      # with 
+      #   pmax(xyz, 0)
       ts <- row.names(fit$cuts)[-1]
-      ts <- gsub("h\\(", "\\(", ts)
+      ts <- gsub("h(\\([^\\)]+)\\)($|\\*)", "pmax\\1, 0\\)\\2", ts)
       
-      ts[interaction_degree == 1] <- 
-        gsub("(\\(.+)\\)", "pmax\\1, 0)", ts[interaction_degree == 1])
-      
-      ts[interaction_degree > 1] <- 
-        gsub("(\\([^\\)]+)\\)", "pmax\\1, 0)", ts[interaction_degree > 1])
+      # Check if we have factor terms and adjust these. That is, we replace 
+      #   facxyz
+      # with 
+      #   (fac == 'xyz')
+      if(n_factors > 0){
+        has_factor <- sapply(factor_terms_regexp, grepl, x = ts, perl = TRUE)
+        if(is.vector(has_factor)) has_factor <- t(has_factor)
+        
+        if(any(has_factor)){
+          for(i in 1:n_factors){
+            needs_replace <- which(has_factor[, i])
+            if(length(needs_replace) == 0)
+              next
+            
+            r_find <- regexp_find[[i]]
+            r_replace <- regexp_replace[[i]]
+            
+            for(j in seq_along(r_find))
+              ts[needs_replace] <- stringr::str_replace(
+                ts[needs_replace], r_find[j], r_replace[j])
+          }
+        }
+      }
       
       if(standardize){
         vars <- with(data, sapply(ts, function(x) eval(parse(text = x))))
@@ -275,8 +330,6 @@ gpre_earth <- function(
       }
       
       basis_funcs <- c(basis_funcs, ts)
-      
-      
     }
     
     basis_funcs <- unique(basis_funcs)
@@ -306,6 +359,7 @@ get_cv.glmnet_args <- function(args, x, y, weights, family){
     parallel = FALSE)
   
   not_match <- !(names(args) %in% names(defaults))
+  # TODO: matching elements should replace default
   out <- c(defaults, args[not_match])
   out$x <- x
   out$y <- y
@@ -325,7 +379,7 @@ gpre_sample <- function(sampfrac = .5){
     })
   } else {
     return(function(n, weights){
-      sample(1:n, size = round(sampfrac * n), replace = FALSE, prob = weights)
+      sample(1:n, size = round(sampfrac * n), replace = TRUE, prob = weights)
     })
   }
 }
@@ -333,10 +387,9 @@ gpre_sample <- function(sampfrac = .5){
 #' @export
 gpre <- function(
   formula, data, 
-  #type = "both", 
   base_learners = list(gpre_tress(), gpre_linear()),
   weights = rep(1, times = nrow(data)), 
-  sample_func = gpre_sample(), learnrate = NULL,
+  sample_func = gpre_sample(),
   verbose = FALSE, cv.glmnet_args = list(), 
   model = TRUE){
   

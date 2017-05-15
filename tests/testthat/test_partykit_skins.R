@@ -9,7 +9,7 @@ test_that("wrapper for ctree gives the same",{
   
   set.seed(seed)
   tmp <- ctree_setup(Ozone ~ ., data = dat, maxdepth = 3, mtry = Inf)
-  mini <- ctree_minmal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo)
+  mini <- ctree_minmal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
   
   org <- unclass(org)
   mini <- unclass(mini)
