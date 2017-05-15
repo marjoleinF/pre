@@ -60,19 +60,27 @@ gpre_tress <- function(
         }
       } else if (family == "binomial"){
         data2 <- data.frame(data, offset = 0)
-        stop("TODO: implement")
-        glmtreeformula <-formula(
-          paste(paste(y_name, " ~ 1 |"),
-                paste(x_names, collapse = "+")))
+        mt <- terms(formula, data = data)
+        
+        if(attr(mt, "response") != 1)
+          stop("Left hand site of formula must have one term")
+        
+        glmtreeformula <-stats::formula(paste0(
+          as.character((attr(mt, "variables")[[2]])), " ~ 1 |", paste0(
+            attr(mt, "term.labels"), collapse = " + ")))
+        n <- nrow(data)
         
         for(i in 1:ntrees) {
           # Take subsample of dataset:
           subsample <- sample_func(n = n, weights = weights)
           subsampledata <- data2[subsample,]
           # Grow tree on subsample:
-          tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial", 
-                          maxdepth = maxdepth + 1,  
-                          offset = offset)
+          tree <- glmtree(
+            glmtreeformula, data = subsampledata, family = "binomial", 
+            maxdepth = maxdepth + 1,  
+            offset = offset, 
+            epsilon = 1e-4) # we set the relative change in the deviance lower
+                            # to speed up the computations
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Update offset:
@@ -98,8 +106,10 @@ gpre_tress <- function(
       
       # Remove duplicates
       duplicates <- which(duplicated(rulevars, MARGIN = 2))
-      rulevars <- rulevars[, -duplicates]
-      rules <- rules[-duplicates]
+      if(length(duplicates) > 0){
+        rulevars <- rulevars[, -duplicates]
+        rules <- rules[-duplicates]
+      }
       
       # Remove compliments
       sds <- apply(rulevars, 2, sd)
@@ -107,7 +117,7 @@ gpre_tress <- function(
         sapply(unique(sds), function(x) c(x, sum(sds == x)))
       
       complements <- vector(mode = "logical", length(sds))
-      for(i in 1:ncol(sds_distinct)){
+      for(i in seq_len(ncol(sds_distinct))){
         if(sds_distinct[2, i] < 2)
           next
         

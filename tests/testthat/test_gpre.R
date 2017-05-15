@@ -18,9 +18,15 @@ test_that("gpre works with default settings and gives previous results", {
   data(PimaIndiansDiabetes, package = "mlbench")
   
   set.seed(8782650)
-  fit <- gpre(diabetes ~ ., PimaIndiansDiabetes)
+  fit <- gpre(diabetes ~ ., PimaIndiansDiabetes, 
+              base_learners = list(gpre_linear(), gpre_tress(ntrees = 20)))
 
-  expect_true(FALSE)
+  fit <- fit$glmnet.fit$glmnet.fit
+  fit <- fit[c("a0", "beta")]
+  fit$beta <- fit$beta[1:50, ]
+  
+  # save_to_test(fit, "gpre_fit1_binary")
+  expect_equal(fit, read_to_test("gpre_fit1_binary"))
 })
 
 test_that("Sampling and subsampling works and is used in gpre", {
@@ -123,7 +129,7 @@ test_that("gpre_tress gives expected_result for binary outcomes", {
   # Works with binomial outcome
   data(PimaIndiansDiabetes, package = "mlbench")
   
-  func <- gpre_tress(ntrees = 100)
+  func <- gpre_tress(ntrees = 20)
   
   args <- list(
     formula = diabetes ~ ., 
@@ -135,7 +141,8 @@ test_that("gpre_tress gives expected_result for binary outcomes", {
   set.seed(seed <- 8779606)
   out <- do.call(func, args)
   
-  expect_true(FALSE)
+  # save_to_test(out, "gpre_tree_binary_1")
+  expect_equal(out, read_to_test("gpre_tree_binary_1"), tolerance = 1.490116e-08)
   
   #####
   # Binary without learning rate
