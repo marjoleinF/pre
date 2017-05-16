@@ -144,9 +144,19 @@ test_that("gpre_tress gives expected_result for binary outcomes", {
   # save_to_test(out, "gpre_tree_binary_1")
   expect_equal(out, read_to_test("gpre_tree_binary_1"), tolerance = 1.490116e-08)
   
+  func <- gpre_tress(ntrees = 20, use_L2_loss = TRUE)
+  
+  set.seed(seed)
+  out2 <- do.call(func, args)
+  
+  expect_true(any(!out2 %in% out))
+  
+  # save_to_test(out2, "gpre_tree_binary_1_w_L2")
+  expect_equal(out2, read_to_test("gpre_tree_binary_1_w_L2"), tolerance = 1.490116e-08)
+  
   #####
   # Binary without learning rate
-  func <- gpre_tress(ntrees = 100, learnrate = 0)
+  func <- gpre_tress(ntrees = 20, learnrate = 0)
   
   set.seed(seed)
   out <- do.call(func, args)

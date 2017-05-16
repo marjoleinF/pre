@@ -4,7 +4,7 @@ gpre_tress <- function(
   remove_duplicates_complements = TRUE,
   mtry = Inf, ntrees = 500,
   maxdepth = 3L, learnrate = 0.01,
-  parallel = FALSE){
+  parallel = FALSE, use_L2_loss = FALSE){
   if(learnrate < 0 && learnrate > 1)
     stop("learnrate must be between 0 and 1")
   
@@ -37,9 +37,18 @@ gpre_tress <- function(
       }
     } else {
       rules <- c()
-      if(family == "gaussian"){
+      if(family == "gaussian" || (
+        family == "binomial" && use_L2_loss)){
         mf <- model.frame(update(formula, . ~ -1), data = data)
         y_learn <- model.response(mf)
+        if(family == "binomial"){
+          if(length(levels(y_learn)) != 2)
+            stop("Factor for outcome in must have two levels in gpre_tress with a learning rate")
+          
+          y_learn <- as.numeric(y_learn == levels(y_learn)[1])
+          mt <- terms(mf)
+          data[, as.character(attr(mt,"variables")[[2]])] <- y_learn
+        }
         input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
         n <- nrow(data)
         
@@ -329,7 +338,8 @@ gpre_earth <- function(
       }
       
       if(standardize){
-        vars <- with(data, sapply(ts, function(x) eval(parse(text = x))))
+        vars <- with(data, eval(parse(
+          text = paste0("cbind(", paste0(ts, collapse = ", "), ")"))))
         sds <- apply(vars, 2, sd)
         
         ts <- mapply(
@@ -475,23 +485,4 @@ gpre <- function(
   
   class(result) <- "gpre"
   result
-}
-
-#' @rdname print.pre
-#' @export
-#' @method print gpre
-print.gpre <- function(x, penalty.par.val = "lambda.1se", ...){
-  print.pre(x, penalty.par.val, ...)
-}
-
-#' @rdname coef.pre
-#' @export
-#' @method coef gpre
-coef.gpre <- function(object, penalty.par.val = "lambda.1se", ...)
-{
-  coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
-              Class = "matrix")
-  colnames(coefs) <- "coefficient"
-  coefs <- coefs[coefs != 0, ,drop = FALSE]
-  data.frame(description = row.names(coefs), coefs)
 }
