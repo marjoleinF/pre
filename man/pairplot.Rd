@@ -70,7 +70,7 @@ The \code{pairplot} function uses the akima package to construct
 interpolated surfaces and  has an ACM license that restricts applications
 to non-commercial usage, see
 \url{https://www.acm.org/publications/policies/software-copyright-notice}
-The \code{pairplot} function prints a note refering to this ACM licence.
+The \code{pairplot} function prints a note referring to this ACM licence.
 }
 \examples{
 \donttest{

@@ -7,7 +7,7 @@ utils::globalVariables("%dopar%")
 #' 
 #' @param formula a symbolic description of the model to be fit of the form 
 #' \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the 
-#' formala) is a factor, an ensemble for binary classification is created.
+#' formula) is a factor, an ensemble for binary classification is created.
 #' Otherwise, an ensemble for prediction of a continuous variable is created. 
 #' Note that input variables may not have 'rule' as (part of) their name, and 
 #' the formula may not exclude the intercept (that is \code{+ 0} or \code{- 1} 
@@ -22,7 +22,7 @@ utils::globalVariables("%dopar%")
 #' variables with 2 or more levels), or \code{"ordered" "factor"} (for 
 #' ordered input variables).
 #' @param type character. Type of base learners to be included in ensemble. 
-#' Defaults to "both" (intial ensemble included both rules and linear functions). 
+#' Defaults to "both" (initial ensemble included both rules and linear functions). 
 #' Other option may be "rules" (for prediction rules only) or "linear" (for 
 #' linear functions only).
 #' @param weights an optional vector of observation weights to be used for 
@@ -47,7 +47,7 @@ utils::globalVariables("%dopar%")
 #' @param thres numeric. Threshold for convergence. 
 #' @param standardize logical. Standardize rules and linear terms before 
 #' estimating the regression model? As this will also standardize dummy coded
-#' factors, users are adviced to use the default: \code{standardize = FALSE}.
+#' factors, users are advised to use the default: \code{standardize = FALSE}.
 #' @param winsfrac numeric. Quantiles of data distribution to be used for 
 #' winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
 #' that ordinal variables are included as linear terms in estimating the
@@ -932,7 +932,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' interpolated surfaces and  has an ACM license that restricts applications
 #' to non-commercial usage, see
 #' \url{https://www.acm.org/publications/policies/software-copyright-notice}
-#' The \code{pairplot} function prints a note refering to this ACM licence.
+#' The \code{pairplot} function prints a note referring to this ACM licence.
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
@@ -1025,8 +1025,8 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param ... further arguments to be passed to \code{barplot} (only used
 #' when \code{plot = TRUE}).
-#' @return A list with two dataframes: $baseimps, giving the importances for
-#' baselearners in the ensemble, and $varimps, giving the importances for
+#' @return A list with two dataframes: \code{$baseimps}, giving the importances for
+#' baselearners in the ensemble, and \code{$varimps}, giving the importances for
 #' variables that appear and do not appear in the ensemble.
 #' @examples \donttest{
 #' set.seed(42)
@@ -1156,7 +1156,7 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 
 
 
-#' Compute boostrapped null interaction models
+#' Compute bootstrapped null interaction models
 #'
 #' \code{bsnullinteract} generates bootstrapped null interaction models,
 #' which can be used to derive a reference distribution of the test statistic
@@ -1205,7 +1205,7 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
   # datasets without interactions:
   bsintmodcall <- object$call
   bsintmodcall$verbose <- FALSE
-  # compute boostrapped null datasets (i.e., datasets with no interactions):
+  # compute bootstrapped null datasets (i.e., datasets with no interactions):
   if (parallel) {
     if (verbose) cat("This may take a while.")
     bs.ens <- foreach::foreach(i = 1:nsamp) %dopar% {

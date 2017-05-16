@@ -47,8 +47,8 @@ If NA (default), no rounding is performed.}
 when \code{plot = TRUE}).}
 }
 \value{
-A list with two dataframes: $baseimps, giving the importances for
-baselearners in the ensemble, and $varimps, giving the importances for
+A list with two dataframes: \code{$baseimps}, giving the importances for
+baselearners in the ensemble, and \code{$varimps}, giving the importances for
 variables that appear and do not appear in the ensemble.
 }
 \description{

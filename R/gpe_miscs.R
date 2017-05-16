@@ -1,14 +1,14 @@
 #' @rdname print.pre
 #' @export
-#' @method print gpre
-print.gpre <- function(x, penalty.par.val = "lambda.1se", ...){
+#' @method print gpe
+print.gpe <- function(x, penalty.par.val = "lambda.1se", ...){
   print.pre(x, penalty.par.val, ...)
 }
 
 #' @rdname coef.pre
 #' @export
-#' @method coef gpre
-coef.gpre <- function(object, penalty.par.val = "lambda.1se", ...)
+#' @method coef gpe
+coef.gpe <- function(object, penalty.par.val = "lambda.1se", ...)
 {
   coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
               Class = "matrix")

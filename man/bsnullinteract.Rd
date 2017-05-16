@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{bsnullinteract}
 \alias{bsnullinteract}
-\title{Compute boostrapped null interaction models}
+\title{Compute bootstrapped null interaction models}
 \usage{
 bsnullinteract(object, nsamp = 10, parallel = FALSE,
   penalty.par.val = "lambda.1se", verbose = FALSE)
