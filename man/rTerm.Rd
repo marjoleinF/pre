@@ -24,6 +24,9 @@ eTerm(x, scale = 1/0.4)
 \value{
 \code{x} potentially transformed with additional information provided in the attributes.
 }
+\description{
+Wrapper functions for terms in gpe.
+}
 \details{
 The motivation to use wrappers is to ease getting the different terms as shown in the examples and simplify the formula passed to \code{\link{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescale and/or winsorize \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
 }

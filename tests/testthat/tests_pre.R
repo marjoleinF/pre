@@ -1,3 +1,5 @@
+context("Tests the pre functions")
+
 test_that("Get previous results with airquality and pre function", {
   set.seed(42)
   #####

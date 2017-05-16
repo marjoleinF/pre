@@ -140,7 +140,7 @@ ctree_setup <- function(
       crit <- p["p.value"]
     c(crit, p)
   }))
-  environment(control$cfun) <- environment(ctree)
+  environment(control$cfun) <- environment(partykit::ctree)
   
   list(dat = dat, response = response, weights = weights, 
        control = control, ytrafo = ytrafo, terms = terms(mf))

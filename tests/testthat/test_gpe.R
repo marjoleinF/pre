@@ -1,3 +1,5 @@
+context("Tests the gpe function, gpe base learner functions and gpe sampling function")
+
 test_that("gpe works with default settings and gives previous results", {
   #####
   # Continous outcome
@@ -8,7 +10,7 @@ test_that("gpe works with default settings and gives previous results", {
   
   fit <- fit$glmnet.fit$glmnet.fit
   fit <- fit[c("a0", "beta")]
-  fit$beta <- fit$beta[1:100, ]
+  fit$beta <- fit$beta[1:100, 1:10]
   
   # save_to_test(fit, "gpe_fit1")
   expect_equal(fit, read_to_test("gpe_fit1"))
@@ -23,7 +25,7 @@ test_that("gpe works with default settings and gives previous results", {
 
   fit <- fit$glmnet.fit$glmnet.fit
   fit <- fit[c("a0", "beta")]
-  fit$beta <- fit$beta[1:50, ]
+  fit$beta <- fit$beta[1:50, 1:10]
   
   # save_to_test(fit, "gpe_fit1_binary")
   expect_equal(fit, read_to_test("gpe_fit1_binary"))
@@ -40,12 +42,12 @@ test_that("Sampling and subsampling works and is used in gpe", {
   expect_length(out, 100)
   
   #####
-  # Bootstrap with lower fraction
+  # Subsampling with lower fraction
   func <- gpe_sample(.5)
   out <- func(100, rep(1, 100))
   
   expect_true(any(!1:100 %in% out))
-  expect_true(any(table(out) > 1))
+  expect_true(!any(table(out) > 1))
   expect_length(out, 50)
   
   #####
@@ -59,10 +61,15 @@ test_that("Sampling and subsampling works and is used in gpe", {
   expect_length(out, 100)
   
   #####
-  # Bootstrap with lower fraction
+  # Bootstrap is used with a lower fraction and unequal weights
   func <- gpe_sample(.5)
-  out <- func(100, ws)
+  expect_message(
+    out <- func(100, ws),
+    "Some weights do not match. Bootstrap will be used instead of subsampling to reflect weights")
   
+  # should only show the message once
+  expect_silent(out <- func(100, ws))
+                 
   expect_true(names(sort(table(out),decreasing=TRUE))[1] == "1")
   expect_length(out, 50)
 })
@@ -182,8 +189,8 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
   set.seed(seed <- 6817505)
   out <- do.call(func, args)
   
-  # save_to_test(out, "gpe_earth_1")
-  expect_equal(out, read_to_test("gpe_earth_1"), tolerance = 1.490116e-08)
+  # save_to_test(out[1:100], "gpe_earth_1")
+  expect_equal(out[1:100], read_to_test("gpe_earth_1"), tolerance = 1.490116e-08)
   
   ##### 
   # Additive model
@@ -205,8 +212,8 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
   out3 <- do.call(func, args)
   
   expect_true(length(setdiff(out3, out)) > 0)
-  # save_to_test(out3, "gpe_earth_3")
-  expect_equal(out2, read_to_test("gpe_earth_2"), tolerance = 1.490116e-08)
+  # save_to_test(out[1:100], "gpe_earth_3")
+  expect_equal(out[1:100], read_to_test("gpe_earth_3"), tolerance = 0.00000001490116)
   
   #####
   # With different number of end nodes
@@ -229,8 +236,8 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
   out6 <- do.call(func, args)
   
   expect_true(!any(grepl("scale\\ ?=", out6, perl = TRUE)))
-  # save_to_test(out6, "gpe_earth_6")
-  expect_equal(out6, read_to_test("gpe_earth_6"), tolerance = 1.490116e-08)
+  # save_to_test(out6[1:100], "gpe_earth_6")
+  expect_equal(out6[1:100], read_to_test("gpe_earth_6"), tolerance = 1.490116e-08)
   
   ######
   # Continous outcome with defaults with two factors
@@ -248,6 +255,9 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
   
   set.seed(seed)
   out <- do.call(func, args)
+  
+  # save_to_test(out, "gpe_earth_7")
+  expect_equal(out, read_to_test("gpe_earth_7"), tolerance = 0.00000001490116)
 })
 
 test_that("gpe_earth gives expected_result for binary outcomes", {
@@ -305,4 +315,8 @@ test_that("gpe_linear gives expected_result", {
   out <- do.call(func, args)
   
   expect_equal(out, c("lTerm(Solar.R)", "lTerm(Wind)"))
+})
+
+test_that("eTerm works for logicals", {
+  eTerm(c(F, T, T, T))
 })

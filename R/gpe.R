@@ -191,6 +191,9 @@ gpe_tress <- function(
 
 #' @title Wrapper Functions for Terms in gpe
 #' 
+#' @description 
+#' Wrapper functions for terms in gpe.
+#' 
 #' @param x Input symbol 
 #' @param lb Lower quantile when winsorizing. \code{-Inf} yields no winsorizing in the lower tail
 #' @param ub Lower quantile when winsorizing. \code{Inf} yields no winsorizing in the upper tail
@@ -443,7 +446,7 @@ gpe_earth <- function(
 #' @rdname rTerm
 #' @export
 eTerm <- function(x, scale = 1 / 0.4){
-  if(!is.numeric(x))
+  if(!is.numeric(x) && !is.logical(x))
     stop("eTerm must numeric")
   
   attr(x, "description") <- deparse(substitute(x))
@@ -474,6 +477,9 @@ get_cv.glmnet_args <- function(args, x, y, weights, family){
 }
 
 #' @title Sampling Function Generator for gpe
+#' 
+#' @description 
+#' Provides a sample function for \code{\link{gpe}}.
 #'
 #' @param sampfrac Fraction of \code{n} to use for sampling. It is the \eqn{\eta / N} in Friedman & Popescu (2008)
 #' 
@@ -497,13 +503,27 @@ gpe_sample <- function(sampfrac = .5){
       sample(1:n, size = n, replace = TRUE, prob = weights)
     })
   } else {
+    has_written_about_weights <- FALSE
     return(function(n, weights){
-      sample(1:n, size = round(sampfrac * n), replace = TRUE, prob = weights)
+      # Sub sampling will be used if all weights match
+      all_weights_match <- all(weights[1] == weights)
+      
+      if(!all_weights_match && !has_written_about_weights){
+        has_written_about_weights <<- TRUE
+        message("Some weights do not match. Bootstrap will be used instead of subsampling to reflect weights")
+      }
+      
+      sample(1:n, size = round(sampfrac * n), 
+             replace = !all_weights_match, 
+             prob = weights)
     })
   }
 }
 
 #' @title Derive a General Prediction Ensemble (gpe)
+#' 
+#' @description 
+#' Provides an interface sparse prediction ensemble where basis functions are removed with the L1 penalty.
 #' 
 #' @param formula Symbolic description of the model to be fit of the form \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the formula) is a factor, an ensemble for binary classification is created. Otherwise, an ensemble for prediction of a continuous variable is created
 #' @param data \code{data.frame} containing the variables in the model
@@ -521,7 +541,7 @@ gpe_sample <- function(sampfrac = .5){
 #' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_tress()))
 #'}
 #'     
-#' Products of hinge functions using MARS can be added to the ensamble above with the following calling:
+#' Products of hinge functions using MARS can be added to the ensemble above with the following calling:
 #' 
 #' \code{
 #' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_tress(), gpe_earth))
@@ -590,6 +610,7 @@ gpe <- function(
   glmnet_formula <- paste0(unlist(glmnet_formula), collapse = " + ")
   glmnet_formula <- stats::formula(paste("~", glmnet_formula))
   x <- model.matrix(glmnet_formula, data = data)
+  Terms <- terms(glmnet_formula, data = data)
   
   ##################################################
   ## Perform penalized regression on the ensemble ##
@@ -607,7 +628,7 @@ gpe <- function(
   result <- list(
     glmnet.fit = glmnet.fit, call = match.call, 
     family = family, base_learners = base_learners, 
-    modmat_formula = glmnet_formula)
+    modmat_formula = glmnet_formula, terms = Terms)
   
   if(model){
     result <- c(result, list(

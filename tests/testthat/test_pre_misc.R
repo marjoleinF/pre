@@ -1,3 +1,5 @@
+context("Tests the pre functions including S3 methods")
+
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 
@@ -43,4 +45,22 @@ test_that("bsnullinteract and interact gives previous results with airquality da
   
   # save_to_test(inter, "airquality_w_inter")
   expect_equal(inter, read_to_test("airquality_w_inter"), tolerance = 1.490116e-08)
+})
+
+test_that("Print gives previous resutls with airquality",{
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  
+  # save_to_test(capture.output(print(airq.ens)), "airquality_print_output")
+  expect_equal(capture.output(print(airq.ens)), read_to_test("airquality_print_output"), tolerance = 1.490116e-08)
+})
+
+test_that("Predict gives previous results with airquality data", {
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  
+  preds <- predict(airq.ens, airquality[complete.cases(airquality),])
+  # save_to_test(preds, "airquality_preds")
+  
+  expect_equal(preds, read_to_test("airquality_preds"), tolerance = 1.490116e-08)
 })

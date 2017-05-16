@@ -28,6 +28,9 @@ gpe(formula, data, base_learners = list(gpe_tress(), gpe_linear()),
 \value{
 An object of class \code{gpe}
 }
+\description{
+Provides an interface sparse prediction ensemble where basis functions are removed with the L1 penalty.
+}
 \details{
 Provides are more general framework for making a sparse prediction ensemble than \code{\link{pre}}. A similar fit to \code{\link{pre}} can be estimated with the following call:
 
@@ -35,7 +38,7 @@ Provides are more general framework for making a sparse prediction ensemble than
 gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_tress()))
 }
     
-Products of hinge functions using MARS can be added to the ensamble above with the following calling:
+Products of hinge functions using MARS can be added to the ensemble above with the following calling:
 
 \code{
 gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_tress(), gpe_earth))

@@ -12,6 +12,9 @@ gpe_sample(sampfrac = 0.5)
 \value{
 Returns a function that takes an \code{n} argument for the number of observation and an \code{weights} argument for the case weights. The function return a vector of indices
 }
+\description{
+Provides a sample function for \code{\link{gpe}}.
+}
 \references{
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
 }

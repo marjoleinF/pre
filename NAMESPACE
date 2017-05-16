@@ -1,6 +1,7 @@
 S3method(coef,pre)
 S3method(coef,gpe)
 S3method(predict,pre)
+S3method(predict,gpe)
 S3method(print,pre)
 S3method(print,gpe)
 S3method(plot,pre)
@@ -26,7 +27,8 @@ import(partykit)
 importFrom("graphics", "barplot", "persp", "plot")
 importFrom("stats", "aggregate", "complete.cases", "cor", "model.frame", 
            "model.matrix", "offset", "predict", "quantile", "sd", "terms",
-           "delete.response", "model.weights", "na.pass")
+           "delete.response", "model.weights", "na.pass", "model.response", "update")
 importFrom("methods", "as")
-importFrom("utils", "installed.packages")
+importFrom("utils", "installed.packages", "head", "object.size")
 importFrom("earth", "earth")
+importFrom("stringr", "str_match")

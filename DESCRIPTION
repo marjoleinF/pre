@@ -26,7 +26,11 @@ Imports:
     Formula,
     methods,
     graphics,
-    earth
+    earth,
+    stringr,
+    testthat,
+    mlbench,
+    datasets
 Suggests:
     akima,
     grid,
