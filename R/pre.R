@@ -646,7 +646,8 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs), 
                       stringsAsFactors = FALSE)
   if (object$type != "linear" & !is.null(object$rules)) {
-    coefs <- base::merge.data.frame(coefs, object$rules, all.x = TRUE)
+    # We set sort to FALSE to get comparable results across platforms
+    coefs <- base::merge.data.frame(coefs, object$rules, all.x = TRUE, sort = FALSE)
     coefs$description <- as.character(coefs$description)
   } else {
     coefs <- data.frame(rule = coefs$rule, 
@@ -1089,8 +1090,10 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
       modmatname = colnames(object$modmat)[-grep("rule", colnames(object$modmat))],
       modframename = attr(attr(object$data, "terms"), "term.labels")[inds],
       stringsAsFactors = FALSE)
-    baseimps <- merge(frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule",
-                      all.x = TRUE, all.y = TRUE)
+    # We set sort to FALSE to get comparable results across platforms
+    baseimps <- base::merge.data.frame(
+      frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule",
+      all.x = TRUE, all.y = TRUE, sort = FALSE)
     baseimps <- baseimps[baseimps$coefficient != 0,]
     baseimps <- baseimps[baseimps$description != "(Intercept) ",]
     # For rules, calculate the number of terms in each rule:
@@ -1137,8 +1140,8 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     
     ## Step 3: return (and plot) importances:
     baseimps <- baseimps[baseimps$imp != 0,]
-    baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE),]
-    varimps <- varimps[order(varimps$imp, decreasing = TRUE),]
+    baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE, method = "radix"),]
+    varimps <- varimps[order(varimps$imp, decreasing = TRUE, method = "radix"),]
     varimps <- varimps[varimps$imp != 0,]
     if (plot == TRUE & nrow(varimps) > 0) {
       barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
@@ -1149,6 +1152,9 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
       baseimps[,c("imp", "coefficient", "sd")] <- round(
         baseimps[,c("imp", "coefficient", "sd")], digits = round)
     }
+    row.names(baseimps) <- NULL
+    row.names(varimps) <- NULL
+    
     return(list(
       varimps = varimps, 
       baseimps = data.frame(

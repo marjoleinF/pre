@@ -14,20 +14,19 @@ To get a first impression of how pre works, consider the following example of pr
 
 ``` r
 library(pre)
-#> Loading required package: partykit
-#> Loading required package: grid
+set.seed(3428488)
 is_complete <- complete.cases(airquality)
 airq.ens <- pre(Ozone ~ ., data = airquality[is_complete, ], verbose = TRUE)
 #> A rule ensemble for prediction of a continuous output variable will 
 #>           be created.
 #> 
-#> A total of 500 trees and  897 rules were 
+#> A total of 500 trees and  887 rules were 
 #>           generated initially.
 #> 
-#> A total of 627 rules were empty
+#> A total of 648 rules were empty
 #>             and removed from the initial ensemble.
 #> 
-#> A total of 25 generated rules had 
+#> A total of 20 generated rules had 
 #>               support identical to earlier rules and were removed from the initial 
 #>               ensemble ($duplicates.removed shows which, if any).
 #> 
@@ -35,81 +34,73 @@ airq.ens <- pre(Ozone ~ ., data = airquality[is_complete, ], verbose = TRUE)
 #>              support that was the complement of the support of earlier rules and were removed from the initial 
 #>              ensemble ($complements.removed shows which, if any).
 #> 
-#> An initial ensemble consisting of 212 rules was 
+#> An initial ensemble consisting of 187 rules was 
 #>             succesfully created.
 #> 
 #> Final ensemble with minimum cv error: 
-#>   lambda = 0.2619248
-#>   number of terms = 32
-#>   mean cv error (se) = 230.1749 (47.43908)
+#>   lambda = 0.7635248
+#>   number of terms = 21
+#>   mean cv error (se) = 235.6417 (58.31193)
 #> 
 #> Final ensemble with cv error within 1se of minimum: 
 #>   lambda = 2.331694
 #>   number of terms = 13
-#>   mean cv error (se) = 275.0646 (63.91246)
+#>   mean cv error (se) = 293.3763 (78.56292)
 print(airq.ens, penalty.par.val = "lambda.1se")
 #> 
 #> Final ensemble with cv error within 1se of minimum: 
 #>   lambda =  2.331694
 #>   number of terms = 13
-#>   mean cv error (se) = 275.0646 (63.91246) 
+#>   mean cv error (se) = 293.3763 (78.56292) 
 #> 
 #>          rule  coefficient                  description
-#>   (Intercept)   66.1819328                         <NA>
-#>       rule159  -18.7350689      Wind > 5.7 & Temp <= 87
-#>       rule177    8.6825348      Temp > 77 & Wind <= 9.7
-#>       rule236    8.0001231    Solar.R > 201 & Temp > 78
-#>        rule76   -7.6105386      Wind > 5.7 & Temp <= 84
-#>        rule75   -6.4070400      Wind > 6.3 & Temp <= 82
-#>       rule228    4.1535959    Solar.R > 183 & Wind <= 8
-#>       rule151   -3.6663981      Wind > 6.3 & Temp <= 84
-#>        rule94   -3.2009607      Wind > 5.7 & Temp <= 82
-#>        rule32   -2.1825758      Temp <= 84 & Wind > 7.4
-#>       rule148    1.3876383                    Temp > 77
-#>       rule181   -0.9183333  Wind > 6.3 & Solar.R <= 149
-#>        rule97   -0.6241135        Wind > 8 & Temp <= 77
-#>       rule222   -0.4324227       Temp <= 87 & Day <= 23
+#>   (Intercept)   68.7271555                         <NA>
+#>       rule134  -19.8479022      Wind > 5.7 & Temp <= 87
+#>       rule206    9.3707140    Solar.R > 201 & Temp > 78
+#>       rule129    6.3302852      Temp > 77 & Wind <= 8.6
+#>       rule127   -5.3732463      Wind > 5.7 & Temp <= 84
+#>        rule18   -5.3074522      Wind > 6.3 & Temp <= 84
+#>        rule54   -4.5523606      Wind > 6.3 & Temp <= 82
+#>        rule78   -3.7757836      Temp <= 84 & Wind > 7.4
+#>        rule32   -3.6229508      Wind > 5.7 & Temp <= 82
+#>       rule103    3.5182200                    Temp > 77
+#>       rule138   -1.5708229  Wind > 6.3 & Solar.R <= 149
+#>       rule171   -1.3978472       Temp <= 87 & Day <= 23
+#>       rule144   -1.1118169                     Wind > 8
+#>        rule49   -0.2308569        Wind > 8 & Temp <= 77
+```
+
+``` r
 print(airq.ens, penalty.par.val = "lambda.min")
 #> Final ensemble with minimum cv error: 
 #> 
-#>   lambda =  0.2619248
-#>   number of terms = 32
-#>   mean cv error (se) = 230.1749 (47.43908) 
+#>   lambda =  0.7635248
+#>   number of terms = 21
+#>   mean cv error (se) = 235.6417 (58.31193) 
 #> 
-#>          rule  coefficient                               description
-#>   (Intercept)   68.1965705                                      <NA>
-#>       rule159  -25.6007284                   Wind > 5.7 & Temp <= 87
-#>       rule236   12.9831333                 Solar.R > 201 & Temp > 78
-#>       rule119    9.7203286                   Temp > 78 & Wind <= 4.6
-#>       rule179   -9.5825496  Wind > 6.3 & Temp <= 84 & Solar.R <= 149
-#>       rule228    7.6258668                 Solar.R > 183 & Wind <= 8
-#>       rule244   -6.8867967                Wind > 5.7 & Solar.R > 175
-#>       rule100    6.7523806                 Temp <= 86 & Solar.R > 81
-#>        rule76   -6.5100276                   Wind > 5.7 & Temp <= 84
-#>       rule132    6.0515318                    Temp <= 85 & Temp > 77
-#>       rule204   -6.0197680   Wind > 5.7 & Temp <= 84 & Solar.R > 175
-#>        rule75   -5.7139408                   Wind > 6.3 & Temp <= 82
-#>        rule27   -5.7033923       Temp > 78 & Wind > 6.3 & Temp <= 83
-#>       rule222   -5.2806402                    Temp <= 87 & Day <= 23
-#>        rule70    4.9960160        Temp <= 87 & Temp > 77 & Month > 7
-#>       rule156    4.5478997                      Temp > 77 & Day > 20
-#>       rule173    4.1710432                   Wind <= 9.2 & Temp > 88
-#>       rule153    2.7945838       Temp <= 84 & Temp > 65 & Month <= 8
-#>       rule211   -2.5940565                               Wind > 10.3
-#>       rule231    2.2132736                             Solar.R > 220
-#>        rule15    2.2112710                  Temp <= 82 & Wind <= 7.4
-#>       rule177    2.2006028                   Temp > 77 & Wind <= 9.7
-#>       rule232   -2.1715789                      Wind > 8 & Day <= 14
-#>        rule55    1.8442578                   Temp > 77 & Wind <= 6.9
-#>        rule36    1.7077629                    Wind > 6.3 & Temp > 82
-#>       rule252    1.5844797    Wind > 6.9 & Day <= 21 & Solar.R > 149
-#>       rule265   -1.3420526               Wind > 6.9 & Solar.R <= 149
-#>       rule151   -1.3252358                   Wind > 6.3 & Temp <= 84
-#>        rule79    0.8945285                    Wind > 6.3 & Temp > 84
-#>       rule154   -0.3764326        Temp <= 84 & Temp > 65 & Month > 8
-#>       rule149   -0.1310046                Temp <= 83 & Solar.R <= 49
-#>        rule94   -0.0383628                   Wind > 5.7 & Temp <= 82
-#>       rule223    0.0224742                     Temp <= 87 & Day > 23
+#>          rule   coefficient                              description
+#>   (Intercept)   79.42437736                                     <NA>
+#>       rule134  -26.13161095                  Wind > 5.7 & Temp <= 87
+#>       rule127  -13.89343420                  Wind > 5.7 & Temp <= 84
+#>       rule206    9.42623530                Solar.R > 201 & Temp > 78
+#>        rule21    6.95362622                   Temp <= 86 & Temp > 77
+#>       rule218    6.93836920                Solar.R > 220 & Wind <= 8
+#>        rule54   -6.04536943                  Wind > 6.3 & Temp <= 82
+#>       rule171   -4.08559369                   Temp <= 87 & Day <= 23
+#>        rule40    3.79406451                  Temp > 78 & Wind <= 6.9
+#>       rule138   -3.48840978              Wind > 6.3 & Solar.R <= 149
+#>        rule58   -3.23716044  Wind > 6.3 & Temp <= 82 & Solar.R <= 78
+#>       rule144   -2.09730518                                 Wind > 8
+#>       rule191   -1.29902040                              Wind > 10.3
+#>       rule129    1.15288009                  Temp > 77 & Wind <= 8.6
+#>       rule177   -1.09430440                  Wind > 6.3 & Temp <= 83
+#>       rule195   -0.89671839                     Wind > 8 & Day <= 15
+#>       rule140    0.66133317                              Wind <= 8.6
+#>        rule92   -0.46512868                  Temp <= 83 & Wind > 7.4
+#>          Wind   -0.26129747                    3.85 <= Wind <= 17.05
+#>       rule104   -0.23720998                  Wind > 5.7 & Temp <= 83
+#>       rule236    0.02337044                Solar.R > 197 & Wind <= 8
+#>        rule32   -0.00360309                  Wind > 5.7 & Temp <= 82
 ```
 
 ``` r
@@ -119,58 +110,65 @@ print(airq.ens, penalty.par.val = "lambda.min")
 # Inspect the prediction rule ensemble:
 head(coef(airq.ens), 10)
 #>            rule coefficient               description
-#> 1   (Intercept)   66.181933                      <NA>
-#> 61      rule159  -18.735069   Wind > 5.7 & Temp <= 87
-#> 79      rule177    8.682535   Temp > 77 & Wind <= 9.7
-#> 130     rule236    8.000123 Solar.R > 201 & Temp > 78
-#> 196      rule76   -7.610539   Wind > 5.7 & Temp <= 84
-#> 195      rule75   -6.407040   Wind > 6.3 & Temp <= 82
-#> 122     rule228    4.153596 Solar.R > 183 & Wind <= 8
-#> 53      rule151   -3.666398   Wind > 6.3 & Temp <= 84
-#> 212      rule94   -3.200961   Wind > 5.7 & Temp <= 82
-#> 160      rule32   -2.182576   Temp <= 84 & Wind > 7.4
+#> 188 (Intercept)   68.727155                      <NA>
+#> 105     rule134  -19.847902   Wind > 5.7 & Temp <= 87
+#> 163     rule206    9.370714 Solar.R > 201 & Temp > 78
+#> 102     rule129    6.330285   Temp > 77 & Wind <= 8.6
+#> 100     rule127   -5.373246   Wind > 5.7 & Temp <= 84
+#> 14       rule18   -5.307452   Wind > 6.3 & Temp <= 84
+#> 39       rule54   -4.552361   Wind > 6.3 & Temp <= 82
+#> 58       rule78   -3.775784   Temp <= 84 & Wind > 7.4
+#> 22       rule32   -3.622951   Wind > 5.7 & Temp <= 82
+#> 79      rule103    3.518220                 Temp > 77
+```
+
+``` r
 importance(airq.ens)
 ```
 
-![](README-figures/README-unnamed-chunk-3-1.png)
+![](inst/README-figures/README-unnamed-chunk-5-1.png)
 
     #> $varimps
     #>   varname        imp
-    #> 3    Temp 14.0460883
-    #> 2    Wind 12.5238961
-    #> 1 Solar.R  2.9475865
-    #> 5     Day  0.1030562
+    #> 3    Temp 15.0676297
+    #> 2    Wind 11.7304055
+    #> 1 Solar.R  2.5205770
+    #> 5     Day  0.3331387
     #> 
     #> $baseimps
     #>        rule                 description       imp coefficient        sd
-    #> 61  rule159     Wind > 5.7 & Temp <= 87 7.5024620 -18.7350689 0.4004502
-    #> 79  rule177     Temp > 77 & Wind <= 9.7 4.2094916   8.6825348 0.4848229
-    #> 130 rule236   Solar.R > 201 & Temp > 78 3.6731876   8.0001231 0.4591414
-    #> 196  rule76     Wind > 5.7 & Temp <= 84 3.4629490  -7.6105386 0.4550202
-    #> 195  rule75     Wind > 6.3 & Temp <= 82 3.0538861  -6.4070400 0.4766454
-    #> 122 rule228   Solar.R > 183 & Wind <= 8 1.7901439   4.1535959 0.4309865
-    #> 53  rule151     Wind > 6.3 & Temp <= 84 1.7112860  -3.6663981 0.4667486
-    #> 212  rule94     Wind > 5.7 & Temp <= 82 1.5052353  -3.2009607 0.4702449
-    #> 160  rule32     Temp <= 84 & Wind > 7.4 1.0764398  -2.1825758 0.4931970
-    #> 49  rule148                   Temp > 77 0.6935350   1.3876383 0.4997952
-    #> 84  rule181 Wind > 6.3 & Solar.R <= 149 0.4318415  -0.9183333 0.4702449
-    #> 214  rule97       Wind > 8 & Temp <= 77 0.3040569  -0.6241135 0.4871821
-    #> 117 rule222      Temp <= 87 & Day <= 23 0.2061123  -0.4324227 0.4766454
-    plot(airq.ens)
-
-![](README-figures/README-unnamed-chunk-3-2.png)
+    #> 42  rule134     Wind > 5.7 & Temp <= 87 7.9480963 -19.8479022 0.4004502
+    #> 105 rule206   Solar.R > 201 & Temp > 78 4.3024826   9.3707140 0.4591414
+    #> 38  rule129     Temp > 77 & Wind <= 8.6 2.9312325   6.3302852 0.4630490
+    #> 83   rule18     Wind > 6.3 & Temp <= 84 2.4772457  -5.3074522 0.4667486
+    #> 36  rule127     Wind > 5.7 & Temp <= 84 2.4449358  -5.3732463 0.4550202
+    #> 156  rule54     Wind > 6.3 & Temp <= 82 2.1698617  -4.5523606 0.4766454
+    #> 177  rule78     Temp <= 84 & Wind > 7.4 1.8622050  -3.7757836 0.4931970
+    #> 13  rule103                   Temp > 77 1.7583895   3.5182200 0.4997952
+    #> 137  rule32     Wind > 5.7 & Temp <= 82 1.7036740  -3.6229508 0.4702449
+    #> 46  rule138 Wind > 6.3 & Solar.R <= 149 0.7386714  -1.5708229 0.4702449
+    #> 75  rule171      Temp <= 87 & Day <= 23 0.6662774  -1.3978472 0.4766454
+    #> 51  rule144                    Wind > 8 0.5362096  -1.1118169 0.4822823
+    #> 150  rule49       Wind > 8 & Temp <= 77 0.1124694  -0.2308569 0.4871821
 
 ``` r
-pairplot(airq.ens, varnames = c("Temp", "Wind"))
+par(cex = .5)
+plot(airq.ens, max.terms.plot = 9)
 ```
 
-![](README-figures/README-unnamed-chunk-3-3.png)
+![](inst/README-figures/README-unnamed-chunk-6-1.png)![](inst/README-figures/README-unnamed-chunk-6-2.png)
+
+``` r
+pairplot(airq.ens, varnames = c("Temp", "Wind"), nticks = 4)
+```
+
+![](inst/README-figures/README-unnamed-chunk-7-1.png)
 
     #> NOTE: function pairplot uses package 'akima', which has an ACM license.
     #>     See also https://www.acm.org/publications/policies/software-copyright-notice.
     singleplot(airq.ens, varname = "Temp")
 
-![](README-figures/README-unnamed-chunk-3-4.png)
+![](inst/README-figures/README-unnamed-chunk-7-2.png)
 
 ``` r
 # Generate predictions:
@@ -180,17 +178,17 @@ plot(airq.preds, airquality$Ozone[is_complete],
 abline(a = 0, b = 1)
 ```
 
-![](README-figures/README-unnamed-chunk-4-1.png)
+![](inst/README-figures/README-unnamed-chunk-8-1.png)
 
 ``` r
 # Calculate 10-fold cross-validated error:
 airq.cv <- cvpre(airq.ens)
 airq.cv$accuracy
 #> $MSE
-#> [1] 403.8556
+#> [1] 393.3764
 #> 
 #> $MAE
-#> [1] 13.96879
+#> [1] 14.16919
 ```
 
 ``` r
@@ -199,24 +197,24 @@ nullmods <- bsnullinteract(airq.ens, verbose = FALSE)
 interact(airq.ens, varnames = c("Temp", "Wind", "Solar.R"), nullmods = nullmods)
 ```
 
-![](README-figures/README-unnamed-chunk-6-1.png)
+![](inst/README-figures/README-unnamed-chunk-10-1.png)
 
     #> $trainingH2
-    #>       Temp       Wind    Solar.R 
-    #> 0.09826132 0.08878277 0.01023634 
+    #>        Temp        Wind     Solar.R 
+    #> 0.100380801 0.090926605 0.009411048 
     #> 
     #> $nullH2
     #>           Temp        Wind     Solar.R
-    #> 1  0.019426386 0.017590994 0.010694943
-    #> 2  0.047977017 0.027193054 0.026175323
-    #> 3  0.040478410 0.030282946 0.010451812
-    #> 4  0.037267634 0.027313284 0.004189972
-    #> 5  0.045316708 0.033326270 0.011828865
-    #> 6  0.035542079 0.035542079 0.000000000
-    #> 7  0.054408881 0.038205286 0.027066122
-    #> 8  0.029773369 0.029773369 0.000000000
-    #> 9  0.026577596 0.036995759 0.006435320
-    #> 10 0.009112392 0.009359814 0.007706163
+    #> 1  0.031238566 0.028188425 0.009956798
+    #> 2  0.031411876 0.011150184 0.028041657
+    #> 3  0.019167872 0.019181218 0.005309737
+    #> 4  0.059385272 0.045246219 0.016878111
+    #> 5  0.028694544 0.018238082 0.032159841
+    #> 6  0.042169837 0.040653129 0.000155595
+    #> 7  0.037949741 0.031724780 0.005597079
+    #> 8  0.020273760 0.016881229 0.000000000
+    #> 9  0.004644556 0.012980344 0.010852254
+    #> 10 0.022019061 0.003805711 0.018232213
 
 References
 ==========

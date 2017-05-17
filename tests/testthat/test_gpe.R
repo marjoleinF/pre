@@ -89,7 +89,7 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
     family = "gaussian")
   
   set.seed(seed <- 6772769)
-  out <- do.call(func, args)
+  out <- do.call(func, c(args))
   
   # save_to_test(out, "gpe_tree_1")
   expect_true(setequal(out, read_to_test("gpe_tree_1")))
@@ -319,4 +319,23 @@ test_that("gpe_linear gives expected_result", {
 
 test_that("eTerm works for logicals", {
   eTerm(c(F, T, T, T))
+})
+
+test_that("get_cv.glmnet_args works", {
+  #####
+  # Not changing defaults works
+  get_cv.glmnet_args <- with(environment(gpe), get_cv.glmnet_args)
+  
+  no_args <- get_cv.glmnet_args(list(), c(), c(), c(), "boh")
+  w_args <- get_cv.glmnet_args(list(xyz = 1), c(), c(), c(), "boh")
+  
+  expect_equal(no_args, w_args[names(w_args) != "xyz"])
+  
+  #####
+  # Changing defaults works
+  
+  change_def <- get_cv.glmnet_args(list(parallel = T), c(), c(), c(), "boh")
+  expect_equal(no_args[names(no_args) != "parallel"], 
+               change_def[names(change_def) != "parallel"])
+  expect_false(no_args$parallel == change_def$parallel)
 })

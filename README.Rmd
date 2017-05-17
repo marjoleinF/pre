@@ -9,7 +9,7 @@ bibliography: README.bib
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "README-figures/README-",
+  fig.path = "inst/README-figures/README-",
   dpi = 124
 )
 ```
@@ -30,11 +30,16 @@ To get a first impression of how pre works, consider the following example of pr
 
 ```{r}
 library(pre)
+set.seed(3428488)
 is_complete <- complete.cases(airquality)
 airq.ens <- pre(Ozone ~ ., data = airquality[is_complete, ], verbose = TRUE)
 print(airq.ens, penalty.par.val = "lambda.1se")
+```
+
+```{r}
 print(airq.ens, penalty.par.val = "lambda.min")
 ```
+
 
 ```{r}
 # Let's take the smallest ensemble yielding a cross-validated error within 1se 
@@ -42,9 +47,20 @@ print(airq.ens, penalty.par.val = "lambda.min")
 
 # Inspect the prediction rule ensemble:
 head(coef(airq.ens), 10)
+```
+
+```{r}
 importance(airq.ens)
-plot(airq.ens)
-pairplot(airq.ens, varnames = c("Temp", "Wind"))
+```
+
+
+```{r, fig.height=8, fig.width=8}
+par(cex = .5)
+plot(airq.ens, max.terms.plot = 9)
+```
+
+```{r}
+pairplot(airq.ens, varnames = c("Temp", "Wind"), nticks = 4)
 singleplot(airq.ens, varname = "Temp")
 ```
 

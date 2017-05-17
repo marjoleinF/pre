@@ -145,17 +145,20 @@ gpe_tress <- function(
     ## Rules cleanup ##
     ###################
   
-    rules <- unique(rules[rules != ""])
-    rules <- sort(unname(rules))
+    rules <- base::unique.default(rules[rules != ""])
+    # method = "radix" is used to give same results on different platforms
+    # see ?sort or http://stackoverflow.com/a/42272120
+    rules <- base::sort.default(unname(rules), method = "radix")
     rules <- paste0("rTerm(", rules, ")")
     
     if(remove_duplicates_complements){
       frm <- paste("~", paste0(rules, collapse = " + "))
-      rulevars <- model.frame(stats::formula(frm), data)
-      rulevars <- as.matrix(rulevars)
+      rulevars <- stats::model.frame.default(stats::formula(frm), data)
+      rulevars <- base::as.matrix.data.frame(rulevars)
+      row.names(rulevars) <- NULL
       
       # Remove duplicates
-      duplicates <- which(duplicated(rulevars, MARGIN = 2))
+      duplicates <- which(base::duplicated.matrix(rulevars, MARGIN = 2))
       if(length(duplicates) > 0){
         rulevars <- rulevars[, -duplicates]
         rules <- rules[-duplicates]
@@ -164,7 +167,7 @@ gpe_tress <- function(
       # Remove compliments
       sds <- apply(rulevars, 2, sd)
       sds_distinct <- 
-        sapply(unique(sds), function(x) c(x, sum(sds == x)))
+        sapply(base::unique.default(sds), function(x) c(x, sum(sds == x)))
       
       complements <- vector(mode = "logical", length(sds))
       for(i in seq_len(ncol(sds_distinct))){
@@ -466,7 +469,11 @@ get_cv.glmnet_args <- function(args, x, y, weights, family){
     parallel = FALSE)
   
   not_match <- !(names(args) %in% names(defaults))
-  # TODO: matching elements should replace default
+  
+  do_replace <- args[!not_match]
+  if(length(do_replace) > 0)
+    defaults[names(do_replace)] <- do_replace
+  
   out <- c(defaults, args[not_match])
   out$x <- x
   out$y <- y

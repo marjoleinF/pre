@@ -23,8 +23,8 @@ test_that("Coef gives previous results with airquality data", {
   
   coefs <- coef(airq.ens)
   
-  # save_to_test(coefs[coefs[, 2] > 0, ], "airquality_w_pre_coef")
-  expect_equal(coefs[coefs[, 2] > 0, ], read_to_test("airquality_w_pre_coef"), tolerance = 1.490116e-08)
+  # save_to_test(coefs, "airquality_w_pre_coef")
+  expect_equal(coefs, read_to_test("airquality_w_pre_coef"), tolerance = 1.490116e-08)
 })
 
 test_that("cvpre gives previous results with airquality data", {

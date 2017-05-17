@@ -7,7 +7,7 @@
 pre(formula, data, type = "both", weights = rep(1, times = nrow(data)),
   sampfrac = 0.5, maxdepth = 3L, learnrate = NULL,
   removeduplicates = TRUE, mtry = Inf, ntrees = 500,
-  removecomplements = TRUE, thres = 0.0000001, standardize = FALSE,
+  removecomplements = TRUE, thres = 1e-07, standardize = FALSE,
   winsfrac = 0.025, normalize = TRUE, nfolds = 10L,
   mod.sel.crit = "deviance", verbose = FALSE, par.init = FALSE,
   par.final = FALSE, ...)
