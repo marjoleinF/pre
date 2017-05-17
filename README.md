@@ -1,11 +1,11 @@
-pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in (Friedman and Popescu 2008), with some improvements and adjustments. The most important improvements and adjustments are:
+pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with some improvements and adjustments. The most important improvements and adjustments are:
 
 1.  The pre package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble
 2.  An unbiased tree induction algorithm is used for deriving prediction rules. Friedman & Popescu used the classification and regression tree (CART) algorithm, but this suffers from biased variable selection.
 3.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 4.  The initial ensemble of prediction rules can be generated as a bagged, boosted and/or random forest ensemble.
 
-The pre package is developed to provide useRs a completely R based implementation of the algorithm described by (Friedman and Popescu 2008). However, note that pre is under development, and much work still needs to be done. See (Fokkema et al. 2015) for an application of the methods.
+The pre package is developed to provide useRs a completely R based implementation of the algorithm described by Friedman & Popescu (2008). However, note that pre is under development, and much work still needs to be done. See Fokkema, Smits, Kelderman, & Penninx (2015) for an application of the methods.
 
 Examples
 ========
@@ -130,26 +130,26 @@ importance(airq.ens)
 
     #> $varimps
     #>   varname        imp
-    #> 3    Temp 15.0676297
+    #> 1    Temp 15.0676297
     #> 2    Wind 11.7304055
-    #> 1 Solar.R  2.5205770
-    #> 5     Day  0.3331387
+    #> 3 Solar.R  2.5205770
+    #> 4     Day  0.3331387
     #> 
     #> $baseimps
-    #>        rule                 description       imp coefficient        sd
-    #> 42  rule134     Wind > 5.7 & Temp <= 87 7.9480963 -19.8479022 0.4004502
-    #> 105 rule206   Solar.R > 201 & Temp > 78 4.3024826   9.3707140 0.4591414
-    #> 38  rule129     Temp > 77 & Wind <= 8.6 2.9312325   6.3302852 0.4630490
-    #> 83   rule18     Wind > 6.3 & Temp <= 84 2.4772457  -5.3074522 0.4667486
-    #> 36  rule127     Wind > 5.7 & Temp <= 84 2.4449358  -5.3732463 0.4550202
-    #> 156  rule54     Wind > 6.3 & Temp <= 82 2.1698617  -4.5523606 0.4766454
-    #> 177  rule78     Temp <= 84 & Wind > 7.4 1.8622050  -3.7757836 0.4931970
-    #> 13  rule103                   Temp > 77 1.7583895   3.5182200 0.4997952
-    #> 137  rule32     Wind > 5.7 & Temp <= 82 1.7036740  -3.6229508 0.4702449
-    #> 46  rule138 Wind > 6.3 & Solar.R <= 149 0.7386714  -1.5708229 0.4702449
-    #> 75  rule171      Temp <= 87 & Day <= 23 0.6662774  -1.3978472 0.4766454
-    #> 51  rule144                    Wind > 8 0.5362096  -1.1118169 0.4822823
-    #> 150  rule49       Wind > 8 & Temp <= 77 0.1124694  -0.2308569 0.4871821
+    #>       rule                 description       imp coefficient        sd
+    #> 1  rule134     Wind > 5.7 & Temp <= 87 7.9480963 -19.8479022 0.4004502
+    #> 2  rule206   Solar.R > 201 & Temp > 78 4.3024826   9.3707140 0.4591414
+    #> 3  rule129     Temp > 77 & Wind <= 8.6 2.9312325   6.3302852 0.4630490
+    #> 4   rule18     Wind > 6.3 & Temp <= 84 2.4772457  -5.3074522 0.4667486
+    #> 5  rule127     Wind > 5.7 & Temp <= 84 2.4449358  -5.3732463 0.4550202
+    #> 6   rule54     Wind > 6.3 & Temp <= 82 2.1698617  -4.5523606 0.4766454
+    #> 7   rule78     Temp <= 84 & Wind > 7.4 1.8622050  -3.7757836 0.4931970
+    #> 8  rule103                   Temp > 77 1.7583895   3.5182200 0.4997952
+    #> 9   rule32     Wind > 5.7 & Temp <= 82 1.7036740  -3.6229508 0.4702449
+    #> 10 rule138 Wind > 6.3 & Solar.R <= 149 0.7386714  -1.5708229 0.4702449
+    #> 11 rule171      Temp <= 87 & Day <= 23 0.6662774  -1.3978472 0.4766454
+    #> 12 rule144                    Wind > 8 0.5362096  -1.1118169 0.4822823
+    #> 13  rule49       Wind > 8 & Temp <= 77 0.1124694  -0.2308569 0.4871821
 
 ``` r
 par(cex = .5)
@@ -219,6 +219,6 @@ interact(airq.ens, varnames = c("Temp", "Wind", "Solar.R"), nullmods = nullmods)
 References
 ==========
 
-Fokkema, Marjolein, Niels Smits, Henk Kelderman, and Brenda WJH Penninx. 2015. “Connecting Clinical and Actuarial Prediction with Rule-Based Methods.” *Psychological Assessment* 27 (2). American Psychological Association: 636.
+Fokkema, M., Smits, N., Kelderman, H., & Penninx, B. W. (2015). Connecting clinical and actuarial prediction with rule-based methods. *Psychological Assessment*, *27*(2), 636.
 
-Friedman, Jerome H., and Bogdan E. Popescu. 2008. “Predictive Learning via Rule Ensembles.” *The Annals of Applied Statistics* 2 (3). Institute of Mathematical Statistics: 916–54. <http://www.jstor.org/stable/30245114>.
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954. Retrieved from <http://www.jstor.org/stable/30245114>

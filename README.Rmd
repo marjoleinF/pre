@@ -3,6 +3,7 @@ output:
   md_document:
     variant: markdown_github
 bibliography: README.bib
+csl: inst/bib_style.csl
 ---
 
 ```{r, echo = FALSE}
