@@ -92,7 +92,7 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
   out <- do.call(func, args)
   
   # save_to_test(out, "gpe_tree_1")
-  expect_equal(out, read_to_test("gpe_tree_1"), tolerance = 1.490116e-08)
+  expect_true(setequal(out, read_to_test("gpe_tree_1")))
 
   #####  
   # Only use stumps
@@ -104,7 +104,7 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
   expect_lt(length(out2), length(out))
   expect_true(!any(grepl("\\$", out2)))
   # save_to_test(out2, "gpe_tree_2")
-  expect_equal(out2, read_to_test("gpe_tree_2"), tolerance = 1.490116e-08)
+  expect_true(setequal(out2, read_to_test("gpe_tree_2")))
   
   #####
   # Without learning rate
@@ -115,7 +115,7 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
   
   expect_true(any(!out3 %in% out))
   # save_to_test(out3, "gpe_tree_3")
-  expect_equal(out3, read_to_test("gpe_tree_3"), tolerance = 1.490116e-08)
+  expect_true(setequal(out3, read_to_test("gpe_tree_3")))
   
   #####
   # Without removal of duplicates and complements
@@ -128,7 +128,7 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
   expect_true(all(out %in% out4))
   
   # save_to_test(out4, "gpe_tree_4")
-  expect_equal(out4, read_to_test("gpe_tree_4"), tolerance = 1.490116e-08)
+  expect_true(setequal(out4, read_to_test("gpe_tree_4")))
 })
 
 test_that("gpe_tress gives expected_result for binary outcomes", {

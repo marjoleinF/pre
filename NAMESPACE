@@ -5,6 +5,9 @@ S3method(predict,gpe)
 S3method(print,pre)
 S3method(print,gpe)
 S3method(plot,pre)
+
+
+
 export(bsnullinteract)
 export(cvpre)
 export(importance)
@@ -20,15 +23,18 @@ export(lTerm)
 export(eTerm)
 export(gpe_sample)
 export(singleplot)
-import(MatrixModels)
+
+
+
 import(Formula)
 import(glmnet)
+import(stats)
+import(graphics)
 import(partykit)
-importFrom("graphics", "barplot", "persp", "plot")
-importFrom("stats", "aggregate", "complete.cases", "cor", "model.frame", 
-           "model.matrix", "offset", "predict", "quantile", "sd", "terms",
-           "delete.response", "model.weights", "na.pass", "model.response", "update")
+
+
+importFrom("MatrixModels", "model.Matrix")
 importFrom("methods", "as")
-importFrom("utils", "installed.packages", "head", "object.size")
+importFrom("utils", "installed.packages", "head", "tail", "object.size")
 importFrom("earth", "earth")
 importFrom("stringr", "str_match")

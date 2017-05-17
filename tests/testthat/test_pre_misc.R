@@ -1,9 +1,9 @@
 context("Tests the pre functions including S3 methods")
 
-set.seed(42)
-airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
-
 test_that("Importance gives previous results with airquality data",{
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  
   imp1 <- importance(airq.ens, plot = FALSE)
   # save_to_test(imp1, "airquality_w_importance1")
   expect_equal(imp1, read_to_test("airquality_w_importance1"), tolerance = 1.490116e-08)
@@ -18,13 +18,19 @@ test_that("Importance gives previous results with airquality data",{
 })
 
 test_that("Coef gives previous results with airquality data", {
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  
   coefs <- coef(airq.ens)
   
-  # save_to_test(coefs, "airquality_w_pre_coef")
-  expect_equal(coefs, read_to_test("airquality_w_pre_coef"), tolerance = 1.490116e-08)
+  # save_to_test(coefs[coefs[, 2] > 0, ], "airquality_w_pre_coef")
+  expect_equal(coefs[coefs[, 2] > 0, ], read_to_test("airquality_w_pre_coef"), tolerance = 1.490116e-08)
 })
 
 test_that("cvpre gives previous results with airquality data", {
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  
   set.seed(7385056)
   airq.cv <- cvpre(airq.ens, k = 2)
   
@@ -33,6 +39,9 @@ test_that("cvpre gives previous results with airquality data", {
 })
 
 test_that("bsnullinteract and interact gives previous results with airquality data", {
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  
   set.seed(8969591)
   nullmods <- bsnullinteract(airq.ens, nsamp = 2)
   inter <- interact(airq.ens, c("Temp", "Wind", "Solar.R"), nullmods = nullmods, plot = FALSE)

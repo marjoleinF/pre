@@ -1,4 +1,6 @@
 WISHLIST
 LICENCE
+README\.Rmd
+README\.bib
 ^.*\.Rproj$
 ^\.Rproj\.user$

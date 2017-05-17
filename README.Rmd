@@ -1,0 +1,71 @@
+---
+output:
+  md_document:
+    variant: markdown_github
+bibliography: README.bib
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "README-figures/README-",
+  dpi = 124
+)
+```
+
+pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with some improvements and adjustments. The most important improvements and adjustments are: 
+
+1) The pre package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble
+2) An unbiased tree induction algorithm is used for deriving prediction rules. 
+Friedman & Popescu used the classification and regression tree (CART) algorithm, but this suffers from biased variable selection.
+3) The package allows for plotting the final rule ensemble as a collection of simple decision trees.
+4) The initial ensemble of prediction rules can be generated as a bagged, boosted and/or random forest ensemble.
+
+The pre package is developed to provide useRs a completely R based implementation of the algorithm described by [@Friedman08]. However, note that pre is under development, and much work still needs to be done. See [@Fokkema15] for an application of the methods.
+
+# Examples
+
+To get a first impression of how pre works, consider the following example of prediction rule ensemble, using the airquality dataset:
+
+```{r}
+library(pre)
+is_complete <- complete.cases(airquality)
+airq.ens <- pre(Ozone ~ ., data = airquality[is_complete, ], verbose = TRUE)
+print(airq.ens, penalty.par.val = "lambda.1se")
+print(airq.ens, penalty.par.val = "lambda.min")
+```
+
+```{r}
+# Let's take the smallest ensemble yielding a cross-validated error within 1se 
+# of the minimum (this is the default in all pre functions): 
+
+# Inspect the prediction rule ensemble:
+head(coef(airq.ens), 10)
+importance(airq.ens)
+plot(airq.ens)
+pairplot(airq.ens, varnames = c("Temp", "Wind"))
+singleplot(airq.ens, varname = "Temp")
+```
+
+```{r}
+# Generate predictions:
+airq.preds <- predict(airq.ens)
+plot(airq.preds, airquality$Ozone[is_complete], 
+     xlab = "Prediction", ylab = "Actual")
+abline(a = 0, b = 1)
+```
+
+```{r}
+# Calculate 10-fold cross-validated error:
+airq.cv <- cvpre(airq.ens)
+airq.cv$accuracy
+```
+
+```{r}
+# Assess interaction effects of predictor variables:
+nullmods <- bsnullinteract(airq.ens, verbose = FALSE)
+interact(airq.ens, varnames = c("Temp", "Wind", "Solar.R"), nullmods = nullmods)
+```
+
+# References

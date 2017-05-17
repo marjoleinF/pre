@@ -442,7 +442,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   if (type != "linear" & length(rules) > 0 & length(names(rulevars)) > 0) {
     result$complements.removed <- complements.removed
     result$duplicates.removed <- duplicates.removed
-    result$rules <- data.frame(rule = names(rulevars), description = rules)
+    result$rules <- data.frame(rule = names(rulevars), description = rules, 
+                               stringsAsFactors = FALSE)
     result$rulevars <- rulevars 
   } 
   class(result) <- "pre"
@@ -642,14 +643,16 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
     coefs[names(object$x_scales),] <- coefs[names(object$x_scales),] /
       object$x_scales
   }
-  coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs))
+  coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs), 
+                      stringsAsFactors = FALSE)
   if (object$type != "linear" & !is.null(object$rules)) {
-    coefs <- merge(coefs, object$rules, all.x = TRUE)
+    coefs <- base::merge.data.frame(coefs, object$rules, all.x = TRUE)
     coefs$description <- as.character(coefs$description)
   } else {
     coefs <- data.frame(rule = coefs$rule, 
                         description = rep(NA, times = nrow(coefs)), 
-                        coefficient = coefs[,1])
+                        coefficient = coefs[,1],
+                        stringsAsFactors = FALSE)
   }
   if(!is.null(object$wins_points)) { # include winsorizing points in the 
     # description if they were used in generating the ensemble:
@@ -771,8 +774,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     if (object$type != "linear") {
       newdata <- data.frame(newdata, newrulevars)
     }
-    newdata <- MatrixModels::model.Matrix(object$modmat_formula, data = newdata,
-                                          sparse = TRUE)
+    newdata <- model.Matrix(object$modmat_formula, data = newdata,
+                            sparse = TRUE)
   }
 
   # Get predictions:
@@ -1084,7 +1087,8 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     # add names in modelframe and modelmatrix to baselearner importances:
     frame.mat.conv <- data.frame(
       modmatname = colnames(object$modmat)[-grep("rule", colnames(object$modmat))],
-      modframename = attr(attr(object$data, "terms"), "term.labels")[inds])
+      modframename = attr(attr(object$data, "terms"), "term.labels")[inds],
+      stringsAsFactors = FALSE)
     baseimps <- merge(frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule",
                       all.x = TRUE, all.y = TRUE)
     baseimps <- baseimps[baseimps$coefficient != 0,]
@@ -1101,7 +1105,8 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
       }
     }
     # Calculate variable importances:
-    varimps <- data.frame(varname = object$x_names, imp = 0)
+    varimps <- data.frame(varname = object$x_names, imp = 0,
+                          stringsAsFactors = FALSE)
     # Get importances for rules:
     for(i in 1:nrow(varimps)) { # for every variable:
       # For every baselearner:
@@ -1144,8 +1149,12 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
       baseimps[,c("imp", "coefficient", "sd")] <- round(
         baseimps[,c("imp", "coefficient", "sd")], digits = round)
     }
-    return(list(varimps = varimps, baseimps = data.frame(rule = baseimps$modmatname,
-                                                         baseimps[baseimps$description != "(Intercept) ", c("description", "imp", "coefficient", "sd")])))
+    return(list(
+      varimps = varimps, 
+      baseimps = data.frame(
+        rule = baseimps$modmatname,
+        baseimps[baseimps$description != "(Intercept) ", c("description", "imp", "coefficient", "sd")],
+        stringsAsFactors = FALSE)))
   } else {
     warning("No non-zero terms in the ensemble. All importances are zero.")
     return(NULL)
@@ -1201,6 +1210,7 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
   # create call for generating bootstrapped null models:
   bsnullmodcall <- object$call
   bsnullmodcall$maxdepth <- 1
+  bsnullmodcall$verbose <- verbose
   # create call for model allowing for interactions, grown on bootstrapped
   # datasets without interactions:
   bsintmodcall <- object$call
