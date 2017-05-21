@@ -151,7 +151,7 @@ test_that("gpe_tress gives expected_result for binary outcomes", {
   # save_to_test(out, "gpe_tree_binary_1")
   expect_equal(out, read_to_test("gpe_tree_binary_1"), tolerance = 1.490116e-08)
   
-  func <- gpe_tress(ntrees = 20, use_L2_loss = TRUE)
+  func <- gpe_tress(ntrees = 20, use_grad = TRUE)
   
   set.seed(seed)
   out2 <- do.call(func, args)
@@ -263,6 +263,8 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
 test_that("gpe_earth gives expected_result for binary outcomes", {
   data(PimaIndiansDiabetes, package = "mlbench")
   
+  #####
+  # With learning rate
   func <- gpe_earth(ntrain = 10)
   
   args <- list(
@@ -272,12 +274,25 @@ test_that("gpe_earth gives expected_result for binary outcomes", {
     sample_func = gpe_sample(), 
     family = "binomial")
   
-  set.seed(1067229)
+  set.seed(seed <- 1067229)
   expect_message(out <- do.call(func, args), 
-                 "Beware that gpe_earth will use L2 loss to train")
+                 "Beware that gpe_earth will use gradiant boosting")
   
   # save_to_test(out, "gpe_earth_binary")
   expect_equal(out, read_to_test("gpe_earth_binary"), tolerance = 1.490116e-08)
+  
+  #####
+  # Without learning rate
+  func <- gpe_earth(ntrain = 10, learnrate = 0)
+  
+  set.seed(seed)
+  expect_message(out1 <- do.call(func, args), 
+                 "Beware that gpe_earth will use L2 loss to train")
+  
+  expect_true(any(!out1 %in% out))
+  
+  # save_to_test(out1, "gpe_earth_binary_no_learn")
+  expect_equal(out1, read_to_test("gpe_earth_binary_no_learn"), tolerance = 1.490116e-08)
 })
 
 test_that("gpe_linear gives expected_result", {

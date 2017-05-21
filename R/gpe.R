@@ -10,7 +10,7 @@
 #' @param maxdepth Maximum dpeth of trees 
 #' @param learnrate Learning rate for methods. It is the \eqn{\nu} parameter in Friedman & Popescu (2008)
 #' @param parallel \code{TRUE} if basis functions should be found in parallel
-#' @param use_L2_loss \code{TRUE} if binary outcomes should use L2 loss instead logistic loss when \code{learnrate > 0}. That is, use \code{\link{ctree}} instead of \code{\link{glmtree}}
+#' @param use_grad \code{TRUE} if binary outcomes should use gradiant boosting with regression trees when \code{learnrate > 0}. That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016)
 #' @param winsfrac Quantiles to winsorize linear terms at. The value should be in \eqn{[0,0.5)}
 #' @param normalize \code{TRUE} if value should be scaled by \eqn{0.4} times the inverse standard deviation. The \eqn{0.4} is from Friedman & Popescu (2008)
 #' @param degree Maximum degree of interactions in \code{\link{earth}} model
@@ -33,11 +33,15 @@
 #' @references 
 #' Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive partytioning in R. \emph{Journal of Machine Learning Research}, 16, 3905-3909.
 #' 
-#' Friedman, J. H. (1991). Multivariate adaptive regression splines. \emph{The annals of statistics}, 1-67.
+#' Friedman, J. H. (1991). Multivariate adaptive regression splines. \emph{The Annals of Applied Statistics}, 1-67.
+#' 
+#' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. \emph{The Annals of Applied Statistics}, 1189-1232.
 #' 
 #' Stanford University. Laboratory for Computational Statistics, & Friedman, J. H. (1993). Fast MARS.
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+#' 
+#' Chen T., & Guestrin C. (2016). Xgboost: A scalable tree boosting system. \emph{Proceedings of the 22Nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}. ACM, 2016.
 #' 
 #' @export
 gpe_tress <- function(
@@ -45,7 +49,7 @@ gpe_tress <- function(
   remove_duplicates_complements = TRUE,
   mtry = Inf, ntrees = 500,
   maxdepth = 3L, learnrate = 0.01,
-  parallel = FALSE, use_L2_loss = FALSE){
+  parallel = FALSE, use_grad = FALSE){
   if(learnrate < 0 && learnrate > 1)
     stop("learnrate must be between 0 and 1")
   
@@ -79,17 +83,20 @@ gpe_tress <- function(
     } else {
       rules <- c()
       if(family == "gaussian" || (
-        family == "binomial" && use_L2_loss)){
+        family == "binomial" && use_grad)){
         mf <- model.frame(update(formula, . ~ -1), data = data)
         y_learn <- model.response(mf)
+        
         if(family == "binomial"){
           if(length(levels(y_learn)) != 2)
             stop("Factor for outcome in must have two levels in gpe_tress with a learning rate")
           
-          y_learn <- as.numeric(y_learn == levels(y_learn)[1])
+          y_learn <- y <- as.numeric(y_learn == levels(y_learn)[1])
+          eta <- rep(0, length(y_learn))
           mt <- terms(mf)
           data[, as.character(attr(mt,"variables")[[2]])] <- y_learn
         }
+        
         input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
         n <- nrow(data)
         
@@ -105,8 +112,12 @@ gpe_tress <- function(
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:
-          y_learn <- y_learn - learnrate * predict_party_minimal(
-            tree, newdata = data)
+          if(use_grad && family == "binomial"){
+            eta <- eta + learnrate * predict_party_minimal(tree, newdata = data)
+            y_learn <- get_y_learn_logistic(eta, y)
+          } else {
+            y_learn <- y_learn - learnrate * predict_party_minimal(tree, newdata = data)
+          }
         }
       } else if (family == "binomial"){
         data2 <- data.frame(data, offset = 0)
@@ -336,12 +347,7 @@ gpe_earth <- function(
     mf <- model.frame(formula, data = data)
     mt <- attr(mf, "terms")
     x <- model.matrix(mt, mf)
-    y <- model.response(mf)
-    
-    if(family == "binomial"){
-      message("Beware that gpe_earth will use L2 loss to train")
-      y <- as.numeric(y)
-    }
+    y <- y_learn <- model.response(mf)
     
     # We later need to take care of the factor terms
     factor_terms <- which(
@@ -369,6 +375,20 @@ gpe_earth <- function(
     }
     
     basis_funcs <- c()
+    
+    if(family == "binomial"){
+      if(learnrate == 0){
+        message("Beware that gpe_earth will use L2 loss to train")
+      } else
+        message("Beware that gpe_earth will use gradiant boosting")
+      y <- y_learn <- as.numeric(y)
+      
+      if(learnrate > 0)
+        eta <- rep(0, n)
+    }
+    
+
+    
     for(i in 1:ntrain){
       ##########################
       ## Find basis functions ##
@@ -377,12 +397,17 @@ gpe_earth <- function(
       subsample <- sample_func(n = n, weights = weights)
       
       fit <- earth(
-        x = x[subsample, , drop = FALSE], y = y[subsample], degree = degree, 
+        x = x[subsample, , drop = FALSE], y = y_learn[subsample], degree = degree, 
         nk = nk, pmethod = "none")
       
-      if(learnrate > 0)
-        y <- drop(y - learnrate * predict(fit, type = "response", newdata = x))
-      
+      if(learnrate > 0){
+        if(family == "binomial"){
+          eta <- drop(eta + learnrate * predict(fit, type = "response", newdata = x)) 
+          y_learn <- get_y_learn_logistic(eta, y)
+        } else 
+          y_learn <- drop(y_learn - learnrate * predict(fit, type = "response", newdata = x))
+      }
+              
       ###########################################
       ## Format basis functions terms & return ##
       ###########################################
@@ -460,6 +485,18 @@ eTerm <- function(x, scale = 1 / 0.4){
   x <- x / scale * 0.4
   class(x) <- "eTerm"
   x
+}
+
+get_y_learn_logistic <- function(eta, y){
+  if(eta <= -6 || eta >= 6){
+    term <- pmax(sign(eta), 0)
+  } else{
+    exp_e <- exp(eta)
+    
+    term <- exp_e * (2 + exp_e) / (1 + exp_e)^2
+  }
+  
+  term - y
 }
 
 get_cv.glmnet_args <- function(args, x, y, weights, family){

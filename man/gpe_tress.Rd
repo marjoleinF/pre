@@ -8,7 +8,7 @@
 \usage{
 gpe_tress(..., remove_duplicates_complements = TRUE, mtry = Inf,
   ntrees = 500, maxdepth = 3L, learnrate = 0.01, parallel = FALSE,
-  use_L2_loss = FALSE)
+  use_grad = FALSE)
 
 gpe_linear(..., winsfrac = 0.025, normalize = TRUE)
 
@@ -30,7 +30,7 @@ gpe_earth(..., degree = 3, nk = 11, normalize = TRUE, ntrain = 100,
 
 \item{parallel}{\code{TRUE} if basis functions should be found in parallel}
 
-\item{use_L2_loss}{\code{TRUE} if binary outcomes should use L2 loss instead logistic loss when \code{learnrate > 0}. That is, use \code{\link{ctree}} instead of \code{\link{glmtree}}}
+\item{use_grad}{\code{TRUE} if binary outcomes should use gradiant boosting with regression trees when \code{learnrate > 0}. That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016)}
 
 \item{winsfrac}{Quantiles to winsorize linear terms at. The value should be in \eqn{[0,0.5)}}
 
@@ -58,11 +58,15 @@ Functions to get "learners" functions for \code{\link{gpe}}.
 \references{
 Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive partytioning in R. \emph{Journal of Machine Learning Research}, 16, 3905-3909.
 
-Friedman, J. H. (1991). Multivariate adaptive regression splines. \emph{The annals of statistics}, 1-67.
+Friedman, J. H. (1991). Multivariate adaptive regression splines. \emph{The Annals of Applied Statistics}, 1-67.
+
+Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. \emph{The Annals of Applied Statistics}, 1189-1232.
 
 Stanford University. Laboratory for Computational Statistics, & Friedman, J. H. (1993). Fast MARS.
 
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+
+Chen T., & Guestrin C. (2016). Xgboost: A scalable tree boosting system. \emph{Proceedings of the 22Nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}. ACM, 2016.
 }
 \seealso{
 \code{\link{gpe}}, \code{\link{rTerm}}, \code{\link{lTerm}}, \code{\link{eTerm}}
