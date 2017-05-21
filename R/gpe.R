@@ -381,7 +381,7 @@ gpe_earth <- function(
         message("Beware that gpe_earth will use L2 loss to train")
       } else
         message("Beware that gpe_earth will use gradiant boosting")
-      y <- y_learn <- as.numeric(y)
+      y <- y_learn <- as.numeric(y == levels(y)[1])
       
       if(learnrate > 0)
         eta <- rep(0, n)
@@ -487,6 +487,9 @@ eTerm <- function(x, scale = 1 / 0.4){
   x
 }
 
+#####
+# Functions for gradiant boosting
+
 get_y_learn_logistic <- function(eta, y){
   if(eta <= -6 || eta >= 6){
     term <- pmax(sign(eta), 0)
@@ -498,7 +501,6 @@ get_y_learn_logistic <- function(eta, y){
   
   term - y
 }
-
 
 #' @title Default penalized trainer for gpe
 #' 
