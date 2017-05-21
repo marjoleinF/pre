@@ -6,7 +6,7 @@
 \usage{
 gpe(formula, data, base_learners = list(gpe_tress(), gpe_linear()),
   weights = rep(1, times = nrow(data)), sample_func = gpe_sample(),
-  verbose = FALSE, cv.glmnet_args = list(), model = TRUE)
+  verbose = FALSE, penalized_trainer = gpe_cv.glmnet(), model = TRUE)
 }
 \arguments{
 \item{formula}{Symbolic description of the model to be fit of the form \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the formula) is a factor, an ensemble for binary classification is created. Otherwise, an ensemble for prediction of a continuous variable is created}
@@ -21,7 +21,7 @@ gpe(formula, data, base_learners = list(gpe_tress(), gpe_linear()),
 
 \item{verbose}{\code{TRUE} if comments should be posted throughout the computations}
 
-\item{cv.glmnet_args}{List of arguments to \code{\link{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used}
+\item{penalized_trainer}{Function with formal arguments \code{x, y, weights, family} which returns a fit object. This can be changed to test other "penalized trainers" (like other function that perform an L1 penalty or L2 penalty and elastic net penalty). Not using \code{\link{cv.glmnet}} may cause other function for \code{gpe} objects to fail. See \code{\link{gpe_cv.glmnet}}}
 
 \item{model}{\code{TRUE} if the \code{data} should added to the returned object}
 }
@@ -50,5 +50,5 @@ Other customs base learners can be implemented. See \code{\link{gpe_tress}} \cod
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
 }
 \seealso{
-\code{\link{pre}}, \code{\link{gpe_tress}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}
+\code{\link{pre}}, \code{\link{gpe_tress}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
 }

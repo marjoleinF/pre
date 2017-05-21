@@ -354,3 +354,39 @@ test_that("get_cv.glmnet_args works", {
                change_def[names(change_def) != "parallel"])
   expect_false(no_args$parallel == change_def$parallel)
 })
+
+
+test_that("gpe_cv.glmnet gives same results as cv.glmnet", {
+  # Create dummy data
+  set.seed(3782347)
+  X <- rnorm(90)
+  dim(X) <- c(30, 3)
+  y <- rpois(30, 1)
+  ws <- runif(30)
+  
+  get_cv.glmnet_args <- with(environment(gpe), get_cv.glmnet_args)
+  
+  #####
+  # fit with defaults
+  def <- get_cv.glmnet_args(
+    args = list(), x = X, y = y, weights = ws, family = "poisson")
+  set.seed(seed <- 9629006)
+  f1 <- do.call(glmnet::cv.glmnet, def)
+  set.seed(seed)
+  f2 <- gpe_cv.glmnet()(x = X, y = y, weights = ws, family = "poisson")
+  
+  expect_equal(f1, f2)
+  
+  ######
+  # change lambda argument
+  def <- get_cv.glmnet_args(
+    args = list(lambda = c(.1, .01)), 
+    x = X, y = y, weights = ws, family = "poisson")
+  set.seed(seed)
+  f1 <- do.call(glmnet::cv.glmnet, def)
+  set.seed(seed)
+  f2 <- gpe_cv.glmnet(lambda =  c(.1, .01))(
+    x = X, y = y, weights = ws, family = "poisson")
+  
+  expect_equal(f1, f2)
+})

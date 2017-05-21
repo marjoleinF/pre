@@ -1,8 +1,9 @@
 #' @rdname print.pre
 #' @export
 #' @method print gpe
-print.gpe <- function(x, penalty.par.val = "lambda.1se", ...){
-  print.pre(x, penalty.par.val, ...)
+print.gpe <- function(
+  x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...){
+  print.pre(x, penalty.par.val, digits, ...)
 }
 
 #' @rdname coef.pre

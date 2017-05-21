@@ -57,11 +57,21 @@ test_that("bsnullinteract and interact gives previous results with airquality da
 })
 
 test_that("Print gives previous resutls with airquality",{
+  old <- getOption("digits")
+  on.exit(options(digits = old))
+  options(digits = 4)
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
   
   # save_to_test(capture.output(print(airq.ens)), "airquality_print_output")
   expect_equal(capture.output(print(airq.ens)), read_to_test("airquality_print_output"), tolerance = 1.490116e-08)
+  
+  #####
+  # Change digits
+  options(digits = 2)
+  
+  # save_to_test(capture.output(print(airq.ens)), "airquality_print_output_less_digits")
+  expect_equal(capture.output(print(airq.ens)), read_to_test("airquality_print_output_less_digits"), tolerance = 1.490116e-08)
 })
 
 test_that("Predict gives previous results with airquality data", {

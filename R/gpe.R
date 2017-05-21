@@ -499,6 +499,32 @@ get_y_learn_logistic <- function(eta, y){
   term - y
 }
 
+
+#' @title Default penalized trainer for gpe
+#' 
+#' @description 
+#' Default "penalizer function" generator \code{\link{gpe}} which uses \code{\link{cv.glmnet}}.
+#' 
+#' @param ... arguments to \code{\link{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used
+#' 
+#' @return 
+#' Returns a function with formal arguments \code{x, y, weights, family} and returns a fit object
+#' 
+#' @seealso 
+#' \code{\link{gpe}}
+#' 
+#' @export
+gpe_cv.glmnet <- function(...){
+  args <- list(...)
+  
+  function(x, y, weights, family){
+    call_args <- get_cv.glmnet_args(
+      args = args, x = x, y = y, family = family, weights = weights)
+    
+    do.call(cv.glmnet, call_args)
+  }
+}
+
 get_cv.glmnet_args <- function(args, x, y, weights, family){
   defaults <- list(
     nfolds =  10L, standardize = FALSE, 
@@ -575,7 +601,7 @@ gpe_sample <- function(sampfrac = .5){
 #' @param weights Case weights with length equal to number of rows in \code{data}
 #' @param sample_func Function used to sample when learning with base learners. The function should have formal argument \code{n} and \code{weights} and return a vector of indices. See \code{\link{gpe_sample}}
 #' @param verbose \code{TRUE} if comments should be posted throughout the computations
-#' @param cv.glmnet_args List of arguments to \code{\link{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used
+#' @param penalized_trainer Function with formal arguments \code{x, y, weights, family} which returns a fit object. This can be changed to test other "penalized trainers" (like other function that perform an L1 penalty or L2 penalty and elastic net penalty). Not using \code{\link{cv.glmnet}} may cause other function for \code{gpe} objects to fail. See \code{\link{gpe_cv.glmnet}}
 #' @param model \code{TRUE} if the \code{data} should added to the returned object
 #' 
 #' @details 
@@ -597,7 +623,7 @@ gpe_sample <- function(sampfrac = .5){
 #' An object of class \code{gpe}
 #' 
 #' @seealso 
-#' \code{\link{pre}}, \code{\link{gpe_tress}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}
+#' \code{\link{pre}}, \code{\link{gpe_tress}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
 #' 
 #' @references 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
@@ -608,7 +634,8 @@ gpe <- function(
   base_learners = list(gpe_tress(), gpe_linear()),
   weights = rep(1, times = nrow(data)), 
   sample_func = gpe_sample(),
-  verbose = FALSE, cv.glmnet_args = list(), 
+  verbose = FALSE, 
+  penalized_trainer = gpe_cv.glmnet(), 
   model = TRUE){
   
   ###################
@@ -650,20 +677,18 @@ gpe <- function(
       f(formula = formula, data = data, weights = weights,
         sample_func = sample_func, verbose = verbose, family = family))
   
-  glmnet_formula <- lapply(formulas, paste0, collapse = " + ")
-  glmnet_formula <- paste0(unlist(glmnet_formula), collapse = " + ")
-  glmnet_formula <- stats::formula(paste("~", glmnet_formula))
-  x <- model.matrix(glmnet_formula, data = data)
-  Terms <- terms(glmnet_formula, data = data)
+  modmat_formula <- lapply(formulas, paste0, collapse = " + ")
+  modmat_formula <- paste0(unlist(modmat_formula), collapse = " + ")
+  modmat_formula <- stats::formula(paste("~", modmat_formula))
+  x <- model.matrix(modmat_formula, data = data)
+  Terms <- terms(modmat_formula, data = data)
   
   ##################################################
   ## Perform penalized regression on the ensemble ##
   ##################################################
   
-  call_args <- get_cv.glmnet_args(
-    args = cv.glmnet_args, x = x, y = y, family = family, weights = weights)
-  
-  glmnet.fit <- do.call(cv.glmnet, call_args)
+  glmnet.fit <- penalized_trainer(
+    x = x, y = y, family = family, weights = weights)
   
   ####################
   ## Return results ##
@@ -672,7 +697,7 @@ gpe <- function(
   result <- list(
     glmnet.fit = glmnet.fit, call = match.call, 
     family = family, base_learners = base_learners, 
-    modmat_formula = glmnet_formula, terms = Terms)
+    modmat_formula = modmat_formula, terms = Terms)
   
   if(model){
     result <- c(result, list(

@@ -465,7 +465,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
 #' corresponding to one of the values of lambda in the sequence used by glmnet,
 #' for which estimated cv error can be inspected by running \code{x$glmnet.fit}
 #' and \code{plot(x$glmnet.fit)}.
-#' @param ... Additional arguments, currently not used.
+#' @param digits Number of digits to print
+#' @param ... Additional arguments, currently not used
 #' @return Prints information about the generated prediction rule ensembles, 
 #' @examples \donttest{
 #' set.seed(42)
@@ -473,28 +474,34 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
 #' print(airq.ens)}
 #' @export
 #' @method print pre
-print.pre <- function(x, penalty.par.val = "lambda.1se", ...) {
+print.pre <- function(
+  x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...) {
+  # function to round values
+  rf <- function(x)
+    signif(x, digits)
+  
   if (penalty.par.val == "lambda.1se") {
     lambda_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.1se)
     cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
-      x$glmnet.fit$lambda[lambda_ind])
+        rf(x$glmnet.fit$lambda[lambda_ind]))
   }
   if (penalty.par.val == "lambda.min") {
     lambda_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
     cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
-        x$glmnet.fit$lambda[lambda_ind])
+        rf(x$glmnet.fit$lambda[lambda_ind]))
   }
   if (is.numeric(penalty.par.val)) {
     lambda_ind <- which(abs(x$glmnet.fit$lambda - penalty.par.val) == min(abs(
       x$glmnet.fit$lambda - penalty.par.val)))
-    cat("Final ensemble with lambda = ", x$glmnet.fit$lambda[lambda_ind])
+    cat("Final ensemble with lambda = ", rf(x$glmnet.fit$lambda[lambda_ind]))
   }
   cat("\n  number of terms = ", x$glmnet.fit$nzero[lambda_ind], 
-      "\n  mean cv error (se) = ", x$glmnet.fit$cvm[lambda_ind], 
-        " (", x$glmnet.fit$cvsd[lambda_ind], ") \n\n", sep = "")
+      "\n  mean cv error (se) = ", rf(x$glmnet.fit$cvm[lambda_ind]), 
+        " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ") \n\n", sep = "")
   tmp <- coef(x, penalty.par.val = penalty.par.val)
   tmp <- tmp[tmp$coefficient != 0, ]
-  print(tmp, print.gap = 2, quote = FALSE, row.names = FALSE)
+  
+  print(tmp, print.gap = 2, quote = FALSE, row.names = FALSE, digits = digits)
   
   invisible(tmp)
 }

@@ -5,9 +5,11 @@
 \alias{print.pre}
 \title{Print method for objects of class pre}
 \usage{
-\method{print}{gpe}(x, penalty.par.val = "lambda.1se", ...)
+\method{print}{gpe}(x, penalty.par.val = "lambda.1se",
+  digits = getOption("digits"), ...)
 
-\method{print}{pre}(x, penalty.par.val = "lambda.1se", ...)
+\method{print}{pre}(x, penalty.par.val = "lambda.1se",
+  digits = getOption("digits"), ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{pre}}.}
@@ -21,7 +23,9 @@ corresponding to one of the values of lambda in the sequence used by glmnet,
 for which estimated cv error can be inspected by running \code{x$glmnet.fit}
 and \code{plot(x$glmnet.fit)}.}
 
-\item{...}{Additional arguments, currently not used.}
+\item{digits}{Number of digits to print}
+
+\item{...}{Additional arguments, currently not used}
 }
 \value{
 Prints information about the generated prediction rule ensembles,
