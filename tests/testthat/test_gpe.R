@@ -189,8 +189,8 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
   set.seed(seed <- 6817505)
   out <- do.call(func, args)
   
-  # save_to_test(out[1:100], "gpe_earth_1")
-  expect_equal(out[1:100], read_to_test("gpe_earth_1"), tolerance = 1.490116e-08)
+  # save_to_test(out, "gpe_earth_1")
+  expect_equal(out, read_to_test("gpe_earth_1"), tolerance = 1.490116e-08)
   
   ##### 
   # Additive model
@@ -212,8 +212,8 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
   out3 <- do.call(func, args)
   
   expect_true(length(setdiff(out3, out)) > 0)
-  # save_to_test(out[1:100], "gpe_earth_3")
-  expect_equal(out[1:100], read_to_test("gpe_earth_3"), tolerance = 0.00000001490116)
+  # save_to_test(out, "gpe_earth_3")
+  expect_equal(out, read_to_test("gpe_earth_3"), tolerance = 0.00000001490116)
   
   #####
   # With different number of end nodes
@@ -236,8 +236,29 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
   out6 <- do.call(func, args)
   
   expect_true(!any(grepl("scale\\ ?=", out6, perl = TRUE)))
-  # save_to_test(out6[1:100], "gpe_earth_6")
-  expect_equal(out6[1:100], read_to_test("gpe_earth_6"), tolerance = 1.490116e-08)
+  # save_to_test(out6, "gpe_earth_6")
+  expect_equal(out6, read_to_test("gpe_earth_6"), tolerance = 1.490116e-08)
+  
+  #####
+  # No using threshold gives different results
+  
+  func <- gpe_earth(cor_thresh = 1.01)
+  
+  set.seed(seed)
+  out7 <- do.call(func, args)
+  
+  expect_gt(length(out7), length(out))
+  
+  # Should give the same
+  func <- gpe_earth(cor_thresh = NULL)
+  
+  set.seed(seed)
+  out8 <- do.call(func, args)
+  
+  expect_equal(out8, out7)
+  
+  # save_to_test(out8[1:100], "gpe_earth_6.1")
+  expect_equal(out8[1:100], read_to_test("gpe_earth_6.1"), tolerance = 1.490116e-08)
   
   ######
   # Continous outcome with defaults with two factors
@@ -276,7 +297,7 @@ test_that("gpe_earth gives expected_result for binary outcomes", {
   
   set.seed(seed <- 1067229)
   expect_message(out <- do.call(func, args), 
-                 "Beware that gpe_earth will use gradiant boosting")
+                 "Beware that gpe_earth will use gradient boosting")
   
   # save_to_test(out, "gpe_earth_binary")
   expect_equal(out, read_to_test("gpe_earth_binary"), tolerance = 1.490116e-08)

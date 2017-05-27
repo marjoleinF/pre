@@ -5,17 +5,19 @@
 #' 
 #' @param ... Unused
 #' @param remove_duplicates_complements \code{TRUE} if rules with complementary or duplicate support should be removed from trees
-#' @param mtry Depth of trees. The argument is passed the tree methods in \code{partykit} package
+#' @param mtry Number of input variables randomly sampled as candidates at each node for random forest like algorithms.. The argument is passed the tree methods in \code{partykit} package
 #' @param ntrees Number of trees to fit
-#' @param maxdepth Maximum dpeth of trees 
+#' @param maxdepth Maximum depth of trees 
 #' @param learnrate Learning rate for methods. It is the \eqn{\nu} parameter in Friedman & Popescu (2008)
 #' @param parallel \code{TRUE} if basis functions should be found in parallel
-#' @param use_grad \code{TRUE} if binary outcomes should use gradiant boosting with regression trees when \code{learnrate > 0}. That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016)
+#' @param use_grad \code{TRUE} if binary outcomes should use gradient boosting with regression trees when \code{learnrate > 0}. That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016)
 #' @param winsfrac Quantiles to winsorize linear terms at. The value should be in \eqn{[0,0.5)}
 #' @param normalize \code{TRUE} if value should be scaled by \eqn{0.4} times the inverse standard deviation. The \eqn{0.4} is from Friedman & Popescu (2008)
 #' @param degree Maximum degree of interactions in \code{\link{earth}} model
 #' @param nk Maximum number of basis functions in \code{\link{earth}} model
 #' @param ntrain Number of models to fit 
+#' @param cor_thresh A threshold on pairwise correlation for removal of basis functions. This is similar to \code{remove_duplicates_complements}. One of the basis function in pair where the correlation exceeds the threshold is excluded. \code{NULL} implies no exclusion. Setting a value closer to zero will decrease the time taken to fit the final model.
+#' 
 #' 
 #' @details 
 #' \code{gpe_tress} provides learners for tree method. Either \code{\link{ctree}} or \code{\link{glmtree}} from the \code{partykit} package will be used.
@@ -333,7 +335,8 @@ lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1 / 0.4){
 #' @export
 gpe_earth <- function(
   ..., degree = 3, nk = 11, normalize = TRUE, 
-  ntrain = 100, learnrate = 0.01){
+  ntrain = 100, learnrate = 0.01,
+  cor_thresh = 0.99){
   
   if(learnrate < 0 && learnrate > 1)
     stop("learnrate must be between 0 and 1")
@@ -380,7 +383,7 @@ gpe_earth <- function(
       if(learnrate == 0){
         message("Beware that gpe_earth will use L2 loss to train")
       } else
-        message("Beware that gpe_earth will use gradiant boosting")
+        message("Beware that gpe_earth will use gradient boosting")
       y <- y_learn <- as.numeric(y == levels(y)[1])
       
       if(learnrate > 0)
@@ -465,6 +468,26 @@ gpe_earth <- function(
     }
     
     basis_funcs <- unique(basis_funcs)
+    
+    
+    if(!is.null(cor_thresh)){
+      # Compute design matrix
+      frm <- paste("~", paste0(basis_funcs, collapse = " + "))
+      X_mat <- stats::model.frame.default(stats::formula(frm), data)
+      X_mat <- base::as.matrix.data.frame(X_mat)
+      row.names(X_mat) <- NULL
+      
+      # Compute correlation matrix
+      cors <- cor(X_mat)
+      
+      # Find pairwise correlation that have entries that exceeds the threshold
+      # We remove the later of the basis functions
+      cors[upper.tri(cors, diag = TRUE)] <- 0
+      do_exclude <- rowSums(abs(cors) >= cor_thresh) > 0   
+      
+      basis_funcs <- basis_funcs[!do_exclude]
+    }
+    
     basis_funcs
   }
   
@@ -488,7 +511,7 @@ eTerm <- function(x, scale = 1 / 0.4){
 }
 
 #####
-# Functions for gradiant boosting
+# Functions for gradient boosting
 
 get_y_learn_logistic <- function(eta, y){
   if(eta <= -6 || eta >= 6){
