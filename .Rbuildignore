@@ -1,6 +1,6 @@
 WISHLIST
 LICENCE
-tests
-R/test_utils.R
+README\.Rmd
+README\.bib
 ^.*\.Rproj$
 ^\.Rproj\.user$

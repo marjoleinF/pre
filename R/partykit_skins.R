@@ -140,14 +140,14 @@ ctree_setup <- function(
       crit <- p["p.value"]
     c(crit, p)
   }))
-  environment(control$cfun) <- environment(ctree)
+  environment(control$cfun) <- environment(partykit::ctree)
   
   list(dat = dat, response = response, weights = weights, 
-       control = control, ytrafo = ytrafo)
+       control = control, ytrafo = ytrafo, terms = terms(mf))
 }
 
 ctree_minmal <- function (
-  dat, response, control, ytrafo, ...) 
+  dat, response, control, ytrafo, terms, ...) 
 {
   .ctree_fit <- with(environment(ctree), .ctree_fit)
   
@@ -187,7 +187,7 @@ ctree_minmal <- function (
   # ret <- party(tree, data = dat, fitted = fitted
                # , info = list(call = match.call(), control = control))
   class(ret) <- c("constparty", class(ret))
-  # ret$terms <- terms(mf)
+  ret$terms <- terms
   return(ret)
 }
 

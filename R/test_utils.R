@@ -1,4 +1,5 @@
 #' @importFrom utils head object.size
+#' @importFrom stringr str_match
 save_to_test <- function(obj, file_name, tolerance = sqrt(.Machine$double.eps)){
   if(!interactive())
     stop("save_to_test called not in interactive mode. Likely an error")

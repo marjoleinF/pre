@@ -15,7 +15,7 @@ pre(formula, data, type = "both", weights = rep(1, times = nrow(data)),
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
 \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the 
-formala) is a factor, an ensemble for binary classification is created.
+formula) is a factor, an ensemble for binary classification is created.
 Otherwise, an ensemble for prediction of a continuous variable is created. 
 Note that input variables may not have 'rule' as (part of) their name, and 
 the formula may not exclude the intercept (that is \code{+ 0} or \code{- 1} 
@@ -32,7 +32,7 @@ variables with 2 or more levels), or \code{"ordered" "factor"} (for
 ordered input variables).}
 
 \item{type}{character. Type of base learners to be included in ensemble. 
-Defaults to "both" (intial ensemble included both rules and linear functions). 
+Defaults to "both" (initial ensemble included both rules and linear functions). 
 Other option may be "rules" (for prediction rules only) or "linear" (for 
 linear functions only).}
 
@@ -68,7 +68,7 @@ the same support in the training data as the inverse of other rules?}
 
 \item{standardize}{logical. Standardize rules and linear terms before 
 estimating the regression model? As this will also standardize dummy coded
-factors, users are adviced to use the default: \code{standardize = FALSE}.}
+factors, users are advised to use the default: \code{standardize = FALSE}.}
 
 \item{winsfrac}{numeric. Quantiles of data distribution to be used for 
 winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
@@ -125,4 +125,3 @@ Hothorn.
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 }
-
