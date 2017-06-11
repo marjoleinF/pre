@@ -1,9 +1,10 @@
 Package: pre
 Title: Prediction Rule Ensembles
 Version: 0.2.1
-Authors@R: person("Marjolein", "Fokkema", role = c("aut", "cre"), email = 
-  "m.fokkema@fsw.leidenuniv.nl")
-Author: Marjolein Fokkema [aut, cre]
+Authors@R: c(person("Marjolein", "Fokkema", role = c("aut", "cre"), email = 
+  "m.fokkema@fsw.leidenuniv.nl"), person(given = "Benjamin", 
+  family = "Christofferson", role = "aut", email = "boennecd@gmail.com"))
+Author: Marjolein Fokkema [aut, cre], Benjamin Christoffersen [aut]
 Maintainer: Marjolein Fokkema <m.fokkema@fsw.leidenuniv.nl>
 Description: Derives prediction rule ensembles (PREs). Largely follows the
     procedure for deriving PREs as described in Friedman & Popescu (2008; <DOI:

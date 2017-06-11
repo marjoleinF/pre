@@ -59,7 +59,7 @@ test_that("Predict works for gpe and gives previous results", {
   set.seed(seed)
   fit <- gpe(
     diabetes ~ ., data = PimaIndiansDiabetes,
-    base_learners = list(gpe_tress(ntrees = 10), gpe_linear()))
+    base_learners = list(gpe_trees(ntrees = 10), gpe_linear()))
   
   preds <- predict(fit, type = "response")
   

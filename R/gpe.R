@@ -20,7 +20,7 @@
 #' 
 #' 
 #' @details 
-#' \code{gpe_tress} provides learners for tree method. Either \code{\link{ctree}} or \code{\link{glmtree}} from the \code{partykit} package will be used.
+#' \code{gpe_trees} provides learners for tree method. Either \code{\link{ctree}} or \code{\link{glmtree}} from the \code{partykit} package will be used.
 #' 
 #' \code{gpe_linear} provides linear terms for the \code{gpe}.
 #' 
@@ -46,7 +46,7 @@
 #' Chen T., & Guestrin C. (2016). Xgboost: A scalable tree boosting system. \emph{Proceedings of the 22Nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}. ACM, 2016.
 #' 
 #' @export
-gpe_tress <- function(
+gpe_trees <- function(
   ...,
   remove_duplicates_complements = TRUE,
   mtry = Inf, ntrees = 500,
@@ -56,7 +56,7 @@ gpe_tress <- function(
     stop("learnrate must be between 0 and 1")
   
   if(learnrate > 0 && parallel)
-    warning("Parallel will not be used with learnrate > 0 in gpe_tress")
+    warning("Parallel will not be used with learnrate > 0 in gpe_trees")
   
   out <- function(
     formula, data, weights, sample_func, verbose, family, ...){
@@ -91,7 +91,7 @@ gpe_tress <- function(
         
         if(family == "binomial"){
           if(length(levels(y_learn)) != 2)
-            stop("Factor for outcome in must have two levels in gpe_tress with a learning rate")
+            stop("Factor for outcome in must have two levels in gpe_trees with a learning rate")
           
           y_learn <- y <- as.numeric(y_learn == levels(y_learn)[1])
           eta <- rep(0, length(y_learn))
@@ -151,7 +151,7 @@ gpe_tress <- function(
             tree, newdata = data2, type = "link")
         }
       } else 
-        stop("family '", family, "' is not implemented for gpe_tress")
+        stop("family '", family, "' is not implemented for gpe_trees")
     }
     
     ###################
@@ -240,7 +240,7 @@ gpe_tress <- function(
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
 #' 
 #' @seealso 
-#' \code{\link{gpe}}, \code{\link{gpe_tress}} \code{\link{gpe_linear}} \code{\link{gpe_earth}}
+#' \code{\link{gpe}}, \code{\link{gpe_trees}} \code{\link{gpe_linear}} \code{\link{gpe_earth}}
 #' 
 #' @export
 rTerm <- function(x){
@@ -253,7 +253,7 @@ rTerm <- function(x){
   x
 }
 
-#' @rdname gpe_tress
+#' @rdname gpe_trees
 #' @export
 gpe_linear <- function(
   ..., winsfrac = .025, normalize = TRUE){
@@ -331,7 +331,7 @@ lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1 / 0.4){
   x
 }
 
-#' @rdname gpe_tress
+#' @rdname gpe_trees
 #' @export
 gpe_earth <- function(
   ..., degree = 3, nk = 11, normalize = TRUE, 
@@ -622,7 +622,7 @@ gpe_sample <- function(sampfrac = .5){
 #' 
 #' @param formula Symbolic description of the model to be fit of the form \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the formula) is a factor, an ensemble for binary classification is created. Otherwise, an ensemble for prediction of a continuous variable is created
 #' @param data \code{data.frame} containing the variables in the model
-#' @param base_learners List of functions which has formal arguments \code{formula, data, weights, sample_func, verbose} and \code{family} and returns a vector of characters with terms for the final formula passed to \code{cv.glmnet}. See \code{\link{gpe_linear}}, \code{\link{gpe_tress}}, and \code{\link{gpe_earth}}
+#' @param base_learners List of functions which has formal arguments \code{formula, data, weights, sample_func, verbose} and \code{family} and returns a vector of characters with terms for the final formula passed to \code{cv.glmnet}. See \code{\link{gpe_linear}}, \code{\link{gpe_trees}}, and \code{\link{gpe_earth}}
 #' @param weights Case weights with length equal to number of rows in \code{data}
 #' @param sample_func Function used to sample when learning with base learners. The function should have formal argument \code{n} and \code{weights} and return a vector of indices. See \code{\link{gpe_sample}}
 #' @param verbose \code{TRUE} if comments should be posted throughout the computations
@@ -630,25 +630,25 @@ gpe_sample <- function(sampfrac = .5){
 #' @param model \code{TRUE} if the \code{data} should added to the returned object
 #' 
 #' @details 
-#' Provides are more general framework for making a sparse prediction ensemble than \code{\link{pre}}. A similar fit to \code{\link{pre}} can be estimated with the following call:
+#' Provides a more general framework for making a sparse prediction ensemble than \code{\link{pre}}. A similar fit to \code{\link{pre}} can be estimated with the following call:
 #' 
 #' \code{
-#' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_tress()))
+#' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees()))
 #'}
 #'     
 #' Products of hinge functions using MARS can be added to the ensemble above with the following calling:
 #' 
 #' \code{
-#' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_tress(), gpe_earth))
+#' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees(), gpe_earth))
 #' }
 #' 
-#' Other customs base learners can be implemented. See \code{\link{gpe_tress}} \code{\link{gpe_linear}} or \code{\link{gpe_earth}} for details of the setup. The sampling function given by \code{sample_func} can also be replaced by a custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
+#' Other customs base learners can be implemented. See \code{\link{gpe_trees}} \code{\link{gpe_linear}} or \code{\link{gpe_earth}} for details of the setup. The sampling function given by \code{sample_func} can also be replaced by a custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
 #' 
 #' @return 
 #' An object of class \code{gpe}
 #' 
 #' @seealso 
-#' \code{\link{pre}}, \code{\link{gpe_tress}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
+#' \code{\link{pre}}, \code{\link{gpe_trees}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
 #' 
 #' @references 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
@@ -656,7 +656,7 @@ gpe_sample <- function(sampfrac = .5){
 #' @export
 gpe <- function(
   formula, data, 
-  base_learners = list(gpe_tress(), gpe_linear()),
+  base_learners = list(gpe_trees(), gpe_linear()),
   weights = rep(1, times = nrow(data)), 
   sample_func = gpe_sample(),
   verbose = FALSE, 

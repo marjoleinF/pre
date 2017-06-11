@@ -4,7 +4,7 @@
 \alias{gpe}
 \title{Derive a General Prediction Ensemble (gpe)}
 \usage{
-gpe(formula, data, base_learners = list(gpe_tress(), gpe_linear()),
+gpe(formula, data, base_learners = list(gpe_trees(), gpe_linear()),
   weights = rep(1, times = nrow(data)), sample_func = gpe_sample(),
   verbose = FALSE, penalized_trainer = gpe_cv.glmnet(), model = TRUE)
 }
@@ -13,7 +13,7 @@ gpe(formula, data, base_learners = list(gpe_tress(), gpe_linear()),
 
 \item{data}{\code{data.frame} containing the variables in the model}
 
-\item{base_learners}{List of functions which has formal arguments \code{formula, data, weights, sample_func, verbose} and \code{family} and returns a vector of characters with terms for the final formula passed to \code{cv.glmnet}. See \code{\link{gpe_linear}}, \code{\link{gpe_tress}}, and \code{\link{gpe_earth}}}
+\item{base_learners}{List of functions which has formal arguments \code{formula, data, weights, sample_func, verbose} and \code{family} and returns a vector of characters with terms for the final formula passed to \code{cv.glmnet}. See \code{\link{gpe_linear}}, \code{\link{gpe_trees}}, and \code{\link{gpe_earth}}}
 
 \item{weights}{Case weights with length equal to number of rows in \code{data}}
 
@@ -32,23 +32,23 @@ An object of class \code{gpe}
 Provides an interface sparse prediction ensemble where basis functions are removed with the L1 penalty.
 }
 \details{
-Provides are more general framework for making a sparse prediction ensemble than \code{\link{pre}}. A similar fit to \code{\link{pre}} can be estimated with the following call:
+Provides a more general framework for making a sparse prediction ensemble than \code{\link{pre}}. A similar fit to \code{\link{pre}} can be estimated with the following call:
 
 \code{
-gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_tress()))
+gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees()))
 }
     
 Products of hinge functions using MARS can be added to the ensemble above with the following calling:
 
 \code{
-gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_tress(), gpe_earth))
+gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees(), gpe_earth))
 }
 
-Other customs base learners can be implemented. See \code{\link{gpe_tress}} \code{\link{gpe_linear}} or \code{\link{gpe_earth}} for details of the setup. The sampling function given by \code{sample_func} can also be replaced by a custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
+Other customs base learners can be implemented. See \code{\link{gpe_trees}} \code{\link{gpe_linear}} or \code{\link{gpe_earth}} for details of the setup. The sampling function given by \code{sample_func} can also be replaced by a custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
 }
 \references{
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
 }
 \seealso{
-\code{\link{pre}}, \code{\link{gpe_tress}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
+\code{\link{pre}}, \code{\link{gpe_trees}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
 }

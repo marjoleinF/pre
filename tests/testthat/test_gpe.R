@@ -21,7 +21,7 @@ test_that("gpe works with default settings and gives previous results", {
   
   set.seed(8782650)
   fit <- gpe(diabetes ~ ., PimaIndiansDiabetes, 
-              base_learners = list(gpe_linear(), gpe_tress(ntrees = 20)))
+              base_learners = list(gpe_linear(), gpe_trees(ntrees = 20)))
 
   fit <- fit$glmnet.fit$glmnet.fit
   fit <- fit[c("a0", "beta")]
@@ -74,10 +74,10 @@ test_that("Sampling and subsampling works and is used in gpe", {
   expect_length(out, 50)
 })
 
-test_that("gpe_tress gives expected_result for continous outcomes", {
+test_that("gpe_trees gives expected_result for continous outcomes", {
   #####
   # Default settings with fewer trees
-  func <- gpe_tress(ntrees = 100)
+  func <- gpe_trees(ntrees = 100)
   
   args <- list(
     formula = Ozone ~ Solar.R + Wind + 
@@ -96,7 +96,7 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
 
   #####  
   # Only use stumps
-  func <- gpe_tress(ntrees = 100, maxdepth = 1)
+  func <- gpe_trees(ntrees = 100, maxdepth = 1)
   
   set.seed(seed)
   out2 <- do.call(func, args)
@@ -108,7 +108,7 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
   
   #####
   # Without learning rate
-  func <- gpe_tress(ntrees = 100, learnrate = 0)
+  func <- gpe_trees(ntrees = 100, learnrate = 0)
   
   set.seed(seed)
   out3 <- do.call(func, args)
@@ -119,7 +119,7 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
   
   #####
   # Without removal of duplicates and complements
-  func <- gpe_tress(ntrees = 100, remove_duplicates_complements = FALSE)
+  func <- gpe_trees(ntrees = 100, remove_duplicates_complements = FALSE)
   
   set.seed(seed)
   out4 <- do.call(func, args)
@@ -131,12 +131,12 @@ test_that("gpe_tress gives expected_result for continous outcomes", {
   expect_true(setequal(out4, read_to_test("gpe_tree_4")))
 })
 
-test_that("gpe_tress gives expected_result for binary outcomes", {
+test_that("gpe_trees gives expected_result for binary outcomes", {
   #####
   # Works with binomial outcome
   data(PimaIndiansDiabetes, package = "mlbench")
   
-  func <- gpe_tress(ntrees = 20)
+  func <- gpe_trees(ntrees = 20)
   
   args <- list(
     formula = diabetes ~ ., 
@@ -151,7 +151,7 @@ test_that("gpe_tress gives expected_result for binary outcomes", {
   # save_to_test(out, "gpe_tree_binary_1")
   expect_equal(out, read_to_test("gpe_tree_binary_1"), tolerance = 1.490116e-08)
   
-  func <- gpe_tress(ntrees = 20, use_grad = TRUE)
+  func <- gpe_trees(ntrees = 20, use_grad = TRUE)
   
   set.seed(seed)
   out2 <- do.call(func, args)
@@ -163,7 +163,7 @@ test_that("gpe_tress gives expected_result for binary outcomes", {
   
   #####
   # Binary without learning rate
-  func <- gpe_tress(ntrees = 20, learnrate = 0)
+  func <- gpe_trees(ntrees = 20, learnrate = 0)
   
   set.seed(seed)
   out <- do.call(func, args)

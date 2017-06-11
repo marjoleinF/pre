@@ -54,7 +54,8 @@ utils::globalVariables("%dopar%")
 #' regression model, and will also be winsorized.
 #' @param normalize logical. Normalize linear variables before estimating the 
 #' regression model? Normalizing gives linear terms the same a priori influence 
-#' as a typical rule.
+#' as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
+#' SD.
 #' @param nfolds numeric. Number of folds to be used in performing cross 
 #' validation for determining penalty parameter.
 #' @param mod.sel.crit character. Model selection criterion to be used for 
@@ -153,7 +154,7 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
             is binary and learnrate > 0", immediate. = TRUE)
   }
   if (any(is.na(data))) {
-    weigths <- weights[complete.cases(data)]
+    weights <- weights[complete.cases(data)]
     data <- data[complete.cases(data),]
     n <- nrow(data)
     warning("Some observations have missing values and have been removed. 
@@ -1556,8 +1557,8 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       grid::pushViewport(grid::viewport(layout.pos.col = rep(1:plot.dim[2], times = i_plot)[i_plot],
                                         layout.pos.row = ceiling(i_plot/plot.dim[1])))
       grid::grid.text(paste("Linear effect of ", nonzeroterms$rule[i], 
-                      "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3), 
-                      sep = ""))
+                            "\n\n Coefficient = ", round(nonzeroterms$coefficient[i], digits = 3),
+                            "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3), sep = ""))
       grid::popViewport()
       if((i-1) %% (plot.dim[1]*plot.dim[2]) == 0) {
         grid::grid.newpage()

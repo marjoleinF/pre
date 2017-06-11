@@ -49,5 +49,5 @@ attr(mt, "specials")
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
 }
 \seealso{
-\code{\link{gpe}}, \code{\link{gpe_tress}} \code{\link{gpe_linear}} \code{\link{gpe_earth}}
+\code{\link{gpe}}, \code{\link{gpe_trees}} \code{\link{gpe_linear}} \code{\link{gpe_earth}}
 }

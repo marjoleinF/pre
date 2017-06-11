@@ -77,7 +77,8 @@ regression model, and will also be winsorized.}
 
 \item{normalize}{logical. Normalize linear variables before estimating the 
 regression model? Normalizing gives linear terms the same a priori influence 
-as a typical rule.}
+as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
+SD.}
 
 \item{nfolds}{numeric. Number of folds to be used in performing cross 
 validation for determining penalty parameter.}
