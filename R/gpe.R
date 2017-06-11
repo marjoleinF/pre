@@ -77,7 +77,7 @@ gpe_trees <- function(
         # Grow tree on subsample:
         #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
         #                mtry = mtry)
-        tree <- with(input, ctree_minmal(
+        tree <- with(input, ctree_minimal(
           dat[subsample, ], response, control, ytrafo, terms))
         # Collect rules from tree:
         rules <- c(rules, list.rules(tree))
@@ -109,7 +109,7 @@ gpe_trees <- function(
           #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
           #                mtry = mtry)
           input$dat[subsample, input$response] <- y_learn[subsample]
-          tree <- with(input, ctree_minmal(
+          tree <- with(input, ctree_minimal(
             dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))

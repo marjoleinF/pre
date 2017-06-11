@@ -146,7 +146,7 @@ ctree_setup <- function(
        control = control, ytrafo = ytrafo, terms = terms(mf))
 }
 
-ctree_minmal <- function (
+ctree_minimal <- function (
   dat, response, control, ytrafo, terms, ...) 
 {
   .ctree_fit <- with(environment(ctree), .ctree_fit)

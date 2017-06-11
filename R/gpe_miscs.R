@@ -14,7 +14,7 @@ coef.gpe <- function(object, penalty.par.val = "lambda.1se", ...)
   coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
               Class = "matrix")
   colnames(coefs) <- "coefficient"
-  coefs <- coefs[coefs != 0, ,drop = FALSE]
+  coefs <- coefs[coefs != 0, , drop = FALSE]
   data.frame(description = row.names(coefs), coefs)
 }
 

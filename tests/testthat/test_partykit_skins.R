@@ -1,7 +1,7 @@
 context("Tests the 'skin' versions of the partykit functions")
 
 ctree_setup <- with(environment(pre), ctree_setup)
-ctree_minmal <- with(environment(pre), ctree_minmal)
+ctree_minimal <- with(environment(pre), ctree_minimal)
 list.rules <- with(environment(pre), list.rules)
 
 test_that("wrapper for ctree gives the same",{
@@ -12,7 +12,7 @@ test_that("wrapper for ctree gives the same",{
   
   set.seed(seed)
   tmp <- ctree_setup(Ozone ~ ., data = dat, maxdepth = 3, mtry = Inf)
-  mini <- ctree_minmal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
+  mini <- ctree_minimal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
   
   org <- unclass(org)
   mini <- unclass(mini)
@@ -33,7 +33,7 @@ test_that("wrapper for ctree gives the same",{
   tmp <- ctree_setup(
     Ozone ~ Solar.R + Wind + cut(Wind, breaks = 3), 
     data = tmp_dat, maxdepth = 3, mtry = Inf)
-  mini <- ctree_minmal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
+  mini <- ctree_minimal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
   
   # save_to_test(unclass(mini), "tree_nodes_from_minimal_xtra")
   expect_equal(unclass(mini), read_to_test("tree_nodes_from_minimal_xtra"), tolerance = 1.490116e-08)
@@ -47,7 +47,7 @@ test_that("list.rules gives the same as previously",{
   
   set.seed(2649390)
   tmp <- ctree_setup(Ozone ~ ., data = dat, maxdepth = 3, mtry = Inf)
-  mini <- ctree_minmal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
+  mini <- ctree_minimal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
   
   rules <- list.rules(mini)
   
