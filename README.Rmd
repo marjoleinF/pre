@@ -28,37 +28,52 @@ The pre package is developed to provide useRs a completely R based implementatio
 
 # Examples
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airqality dataset:
+To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset:
 
 ```{r, results = FALSE}
 library(pre)
-set.seed(42)
 complete <- complete.cases(airquality)
+set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete, ])
 ```
 
-The following functions allow for inspecting and plotting the resulting ensemble: 
+We can print the resulting ensemble: 
 
 ```{r}
 print(airq.ens)
-plot(airq.ens, max.terms.plot = 9, cex = .5)
+```
+
+We can plot a subsample of the rules (and or/linear terms) in the ensemble:
+
+```{r, fig.height=8, fig.width=8}
+plot(airq.ens, max.terms.plot = 9, cex = .75)
+```
+
+We can obtain the estimated coefficients of the ensemble:
+
+```{r}
 head(coef(airq.ens))
+```
+
+We can assess the importance of the predictor variables, and each of the rules and/or linear terms in the ensemble:
+
+```{r}
 importance(airq.ens)
 ```
 
-Using the predict() function, predictions for new observations can be generated:
+We can generate predictions for new observations:
 
 ```{r}
 airq.preds <- predict(airq.ens, newdata = airquality[1:4,])
 ```
 
-The effect of a given predictor variable on the outcome can be assessed through a partial dependence plot:
+We can assess the effect of a given predictor variable on the outcome through a partial dependence plot:
 
 ```{r}
 singleplot(airq.ens, varname = "Temp")
 ```
 
-The expected prediction error of the prediction rule ensemble (by default calculated based on 10-fold cross validation) using the cvpre() function:
+We can assess the expected prediction error of the ensemble, by default calculated using 10-fold cross validation:
 
 ```{r}
 set.seed(43)

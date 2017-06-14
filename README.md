@@ -13,16 +13,16 @@ The pre package is developed to provide useRs a completely R based implementatio
 Examples
 ========
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airqality dataset:
+To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset:
 
 ``` r
 library(pre)
-set.seed(42)
 complete <- complete.cases(airquality)
+set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete, ])
 ```
 
-The following functions allow for inspecting and plotting the resulting ensemble:
+We can print the resulting ensemble:
 
 ``` r
 print(airq.ens)
@@ -48,10 +48,17 @@ print(airq.ens)
 #>        rule76   -2.112110981              Wind > 6.3 & Temp <= 84
 #>       rule174   -1.315368661                           Wind > 6.9
 #>       rule119   -0.009507402                Wind > 8 & Temp <= 76
-plot(airq.ens, max.terms.plot = 9, cex = .5)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-3-1.png)![](inst/README-figures/README-unnamed-chunk-3-2.png)
+We can plot a subsample of the rules (and or/linear terms) in the ensemble:
+
+``` r
+plot(airq.ens, max.terms.plot = 9, cex = .75)
+```
+
+![](inst/README-figures/README-unnamed-chunk-4-1.png)![](inst/README-figures/README-unnamed-chunk-4-2.png)
+
+We can obtain the estimated coefficients of the ensemble:
 
 ``` r
 head(coef(airq.ens))
@@ -62,10 +69,15 @@ head(coef(airq.ens))
 #> 95      rule122    8.027237                           Temp > 77
 #> 167     rule213   -7.901556             Wind > 5.1 & Temp <= 87
 #> 159     rule201   -6.587690 Wind > 5.7 & Temp <= 87 & Day <= 23
+```
+
+We can assess the importance of the predictor variables, and each of the rules and/or linear terms in the ensemble:
+
+``` r
 importance(airq.ens)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-3-3.png)
+![](inst/README-figures/README-unnamed-chunk-6-1.png)
 
     #> $varimps
     #>   varname       imp
@@ -106,21 +118,21 @@ importance(airq.ens)
     #> 13 0.4135304
     #> 14 0.4795575
 
-Using the predict() function, predictions for new observations can be generated:
+We can generate predictions for new observations:
 
 ``` r
 airq.preds <- predict(airq.ens, newdata = airquality[1:4,])
 ```
 
-The effect of a given predictor variable on the outcome can be assessed through a partial dependence plot:
+We can assess the effect of a given predictor variable on the outcome through a partial dependence plot:
 
 ``` r
 singleplot(airq.ens, varname = "Temp")
 ```
 
-![](inst/README-figures/README-unnamed-chunk-5-1.png)
+![](inst/README-figures/README-unnamed-chunk-8-1.png)
 
-The expected prediction error of the prediction rule ensemble (by default calculated based on 10-fold cross validation) using the cvpre() function:
+We can assess the expected prediction error of the ensemble, by default calculated using 10-fold cross validation:
 
 ``` r
 set.seed(43)

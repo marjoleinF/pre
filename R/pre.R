@@ -1677,7 +1677,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       plot(fftree, newpage = FALSE, 
            main = paste(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3), sep = ""),
            inner_panel = node_inner(fftree, id = FALSE),
-           terminal_panel = node_terminal(fftree, id = FALSE), ...)
+           terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))
       grid::popViewport()
     }
   }
