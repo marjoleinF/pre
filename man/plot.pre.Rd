@@ -38,7 +38,7 @@ plots?}
 \item{exit.label}{character string. What label should be printed in nodes to 
 which the rule does not apply (``exit nodes'')?}
 
-\item{...}{Currently not used.}
+\item{...}{Arguments to be passed to \code{\link[grid]{gpar}}.}
 }
 \description{
 \code{plot.pre} creates one or more plots depicting the rules in the final
@@ -49,4 +49,7 @@ ensemble as simple decision trees.
  set.seed(42)
  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
  plot(airq.ens)}
+}
+\seealso{
+\code{\link{pre}}, \code{\link{print.pre}}
 }

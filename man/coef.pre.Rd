@@ -37,3 +37,8 @@ set.seed(42)
 airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 coefs <- coef(airq.ens)}
 }
+\seealso{
+\code{\link{pre}}, \code{\link{plot.pre}}, 
+\code{\link{cvpre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+\code{\link{interact}}, \code{\link{print.pre}}
+}

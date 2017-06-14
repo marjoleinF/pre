@@ -87,6 +87,10 @@ utils::globalVariables("%dopar%")
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 #' @import glmnet partykit datasets
 #' @export
+#' @seealso \code{\link{print.pre}}, \code{\link{plot.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{interact}}, \code{\link{cvpre}} 
+#' 
 pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data)), 
                 sampfrac = .5, maxdepth = 3L, learnrate = NULL, 
                 removeduplicates = TRUE, mtry = Inf, ntrees = 500,
@@ -162,11 +166,9 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   }
   if (verbose) {
     if (classify) {
-      cat("A rule ensemble for prediction of a categorical output variable will be 
-          created.\n")
+      cat("A rule ensemble for prediction of a categorical output variable will be created.\n")
     } else {
-      cat("A rule ensemble for prediction of a continuous output variable will 
-          be created.\n")
+      cat("A rule ensemble for prediction of a continuous output variable will be created.\n")
     }
   }  
   
@@ -265,14 +267,12 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     }
     nrules <- length(rules)
     if (verbose){
-      cat("\nA total of", ntrees, "trees and ", nrules, "rules were 
-          generated initially.")
+      cat("\nA total of", ntrees, "trees and ", nrules, "rules were generated initially.")
     }
     # Keep unique, non-empty rules only:
     rules <- unique(rules[!rules==""])
     if (verbose) {
-      cat("\n\nA total of", nrules - length(rules), "rules were empty
-            and removed from the initial ensemble.")
+      cat("\n\nA total of", nrules - length(rules), "rules were empty and removed from the initial ensemble.")
     }
     # Create dataframe with 0-1 coded rules:
     if (length(rules) > 0) {
@@ -328,21 +328,12 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       if(!exists("duplicates.removed"))
         duplicates.removed <- NULL
       
-      if (verbose && removeduplicates) {
-        cat("\n\nA total of", sum(duplicates), "generated rules had 
-              support identical to earlier rules and were removed from the initial 
-              ensemble ($duplicates.removed shows which, if any).")
-      }
-      
-      if (verbose && removecomplements){
-        cat("\n\nA total of", length(complements.removed), "generated rules had 
-             support that was the complement of the support of earlier rules and were removed from the initial 
-             ensemble ($complements.removed shows which, if any).")
+      if (verbose && (removeduplicates|| removecomplements)) {
+        cat("\n\nA total of", sum(duplicates) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $duplicates.removed show which, if any).")
       }
       
       if (verbose) {
-        cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was 
-            succesfully created.")  
+        cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was succesfully created.")  
       }
     } else {
       warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
@@ -475,6 +466,9 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
 #' print(airq.ens)}
 #' @export
 #' @method print pre
+#' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{interact}}, \code{\link{cvpre}} 
 print.pre <- function(
   x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...) {
   # function to round values
@@ -545,7 +539,10 @@ print.pre <- function(
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' airq.cv <- cvpre(airq.ens)}
-#' 
+#' @export
+#' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{interact}}, \code{\link{print.pre}} 
 cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5, 
                   penalty.par.val = "lambda.1se", parallel = FALSE) {
   folds <- sample(rep(1:k, length.out = nrow(object$orig_data)), 
@@ -642,6 +639,9 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
 #' coefs <- coef(airq.ens)}
 #' @export
 #' @method coef pre
+#' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
+#' \code{\link{cvpre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{interact}}, \code{\link{print.pre}} 
 coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 {
   coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
@@ -709,6 +709,9 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' @import Matrix
 #' @export
 #' @method predict pre
+#' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}}, 
+#' \code{\link{interact}}, \code{\link{print.pre}} 
 predict.pre <- function(object, newdata = NULL, type = "link",
                          penalty.par.val = "lambda.1se", ...)
 {
@@ -839,6 +842,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' singleplot(airq.ens, "Temp")}
 #' @export
+#' @seealso \code{\link{pre}}, \code{\link{pairplot}}
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                        nvals = NULL, type = "response")
 {
@@ -951,6 +955,8 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
 #' @import graphics
+#' @export
+#' @seealso \code{\link{pre}}, \code{\link{singleplot}} 
 pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
                      theta = 315, col = "cyan", nvals = c(20, 20), ticktype = "detailed",
                      nticks = max(nvals), type = "response", ...)
@@ -1050,6 +1056,7 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' # calculate local importances (custom: over 25% lowest predicted values):
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 #' @export
+#' #' @seealso \code{\link{pre}}
 importance <- function(object, plot = TRUE, ylab = "Importance",
                        main = "Variable importances", global = TRUE,
                        penalty.par.val = "lambda.1se",
@@ -1206,6 +1213,7 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
 #' nullmods <- bsnullinteract(airq.ens)}
 #' @details Computationally intensive. Progress info is printed to command line.
 #' @export
+#' @seealso \code{\link{pre}}, \code{\link{interact}} 
 bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
                            penalty.par.val = "lambda.1se", verbose = FALSE)
 {
@@ -1384,6 +1392,7 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' yellow is used for plotting the interaction test statistic. When applicable,
 #' blue is used for the mean in the bootstrapped null models.
 #' @export
+#' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
 interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE,
                      penalty.par.val = "lambda.1se", col = c("yellow", "blue"),
                      ylab = "Interaction strength", parallel = FALSE,
@@ -1511,13 +1520,14 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
 #' plots?
 #' @param exit.label character string. What label should be printed in nodes to 
 #' which the rule does not apply (``exit nodes'')?
-#' @param ... Currently not used.
+#' @param ... Arguments to be passed to \code{\link[grid]{gpar}}.
 #' @examples
 #' \donttest{
 #'  set.seed(42)
 #'  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #'  plot(airq.ens)}
 #' @export
+#' @seealso \code{\link{pre}}, \code{\link{print.pre}}
 #' @method plot pre
 plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
                      nterms = NULL, max.terms.plot = 16, ask = FALSE, 
@@ -1664,10 +1674,10 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       grid::pushViewport(grid::viewport(layout.pos.col = rep(1:plot.dim[2], times = i_plot)[i_plot],
                                         layout.pos.row = ceiling(i_plot/plot.dim[1])))
       fftree <- party(nodes[[lev * 2 + 1]], data = treeplotdata)
-      plot(fftree, newpage = FALSE,
+      plot(fftree, newpage = FALSE, 
            main = paste(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3), sep = ""),
            inner_panel = node_inner(fftree, id = FALSE),
-           terminal_panel = node_terminal(fftree, id = FALSE))
+           terminal_panel = node_terminal(fftree, id = FALSE), ...)
       grid::popViewport()
     }
   }

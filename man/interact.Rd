@@ -78,3 +78,6 @@ in which case setting \verb{parallel = TRUE} may improve speed.
  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
 }
+\seealso{
+\code{\link{pre}}, \code{\link{bsnullinteract}}
+}
