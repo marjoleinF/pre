@@ -9,7 +9,7 @@ pre(formula, data, weights = rep(1, times = nrow(data)), type = "both",
   ntrees = 500, removecomplements = TRUE, removeduplicates = TRUE,
   winsfrac = 0.025, normalize = TRUE, nfolds = 10L, verbose = FALSE,
   par.init = FALSE, par.final = FALSE,
-  treecontrol = ctree_control(maxdepth = maxdepth, mtry = mtry), ...)
+  tree.control = ctree_control(maxdepth = maxdepth, mtry = mtry), ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -87,11 +87,11 @@ beforehand, such as doMC or others.}
 validation for selecting the final ensemble? Must register parallel beforehand, 
 such as doMC or others.}
 
-\item{...}{Additional arguments to be passed to 
-\code{\link[glmnet]{cv.glmnet}}.}
-
 \item{tree.control}{list with control parameters to be passed to the tree 
 fitting function, see \code{\link[partykit]{ctree_control}]}.}
+
+\item{...}{Additional arguments to be passed to 
+\code{\link[glmnet]{cv.glmnet}}.}
 }
 \value{
 an object of class \code{pre}

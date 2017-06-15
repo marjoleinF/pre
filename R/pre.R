@@ -1,12 +1,5 @@
 utils::globalVariables("%dopar%")
 
-#' Internal function for checking whether right partykit version is loaded:
-.onLoad <- function(...) {
-  if (packageVersion("partykit") > "1.1.1") {
-    packageStartupMessage("Package pre requires package partykit version 1.1.1 or lower. A later version seems to be installed on your system. Please be patient while we upgrade. In the meantime, package pre can be used by installing an older version of partykit.")
-  }
-}
-
 #' Derive a prediction rule ensemble
 #'
 #' \code{pre} derives a sparse ensemble of rules and/or linear functions for 
@@ -95,7 +88,7 @@ pre <- function(formula, data, weights = rep(1, times = nrow(data)),
                 removecomplements = TRUE, removeduplicates = TRUE, 
                 winsfrac = .025, normalize = TRUE, nfolds = 10L, 
                 verbose = FALSE, par.init = FALSE, par.final = FALSE, 
-                treecontrol = ctree_control(maxdepth = maxdepth, mtry = mtry),
+                tree.control = ctree_control(maxdepth = maxdepth, mtry = mtry),
                 ...)   { 
   ###################
   ## Preliminaries ##

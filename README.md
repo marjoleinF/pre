@@ -1,15 +1,15 @@
 pre: An R package for deriving prediction rule ensembles
 ========================================================
 
-pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in Jerome H. Friedman & Popescu (2008), with some improvements and adjustments. The most important improvements and adjustments are:
+pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
 
-1.  The package is completely R based, allowing users better accessible results and more control over the parameters used for generating the prediction rule ensemble
+1.  The package is completely R based, allowing users better accessible results and more control over the parameters used for generating the prediction rule ensemble.
 2.  The unbiased tree induction algorithm of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, instead of the classification and regression tree (CART) algorithm, which suffers from biased variable selection.
 3.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 4.  The initial ensemble of prediction rules can be generated as a bagged, boosted and/or random forest ensemble.
-5.  Hinge functions of predictor variables may be included as baselearners in the ensemble, as in the multivariate adaptive regression splines technique of Jerome H Friedman (1991).
+5.  Hinge functions of predictor variables may be included as baselearners in the ensemble, as in the multivariate adaptive regression splines technique of Friedman (1991).
 
-The pre package is developed to provide useRs a completely R based implementation of the algorithm described by Jerome H. Friedman & Popescu (2008). However, note that pre is under development, and much work still needs to be done. See Fokkema, Smits, Kelderman, & Penninx (2015) for an application of the methods.
+The pre package is developed to provide useRs a completely R based implementation of the algorithm described by Friedman & Popescu (2008). However, note that pre is under development, and much work still needs to be done. See Fokkema, Smits, Kelderman, & Penninx (2015) for an application of the methods.
 
 Examples
 ========
@@ -120,7 +120,7 @@ airq.cv$accuracy
 #> [1] 22.09351
 ```
 
-More complex prediction ensembles can be derived with the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which in addition to rules and linear terms may also include hinge functions of the predictor variables Jerome H Friedman (1991). Addition of hinge functions may improve predictive accuracy (but may also reduce interpretability).
+More complex prediction ensembles can be derived with the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which in addition to rules and linear terms may also include hinge functions of the predictor variables Friedman (1991). Addition of hinge functions may improve predictive accuracy (but may also reduce interpretability).
 
 References
 ==========
