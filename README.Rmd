@@ -35,7 +35,7 @@ To get a first impression of how pre works, we will fit a prediction rule ensemb
 library(pre)
 complete <- complete.cases(airquality)
 set.seed(42)
-airq.ens <- pre(identity(Ozone + Temp) ~ ., data = airquality[complete, ], standardize = TRUE)
+airq.ens <- pre(Ozone ~ ., data = airquality[complete, ], standardize = TRUE)
 ```
 
 We can print the resulting ensemble: 
