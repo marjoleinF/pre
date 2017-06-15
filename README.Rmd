@@ -46,7 +46,7 @@ print(airq.ens)
 
 We can plot a subsample of the rules (and or/linear terms) in the ensemble:
 
-```{r, fig.height=8, fig.width=8}
+```{r, fig.height=7, fig.width=7}
 plot(airq.ens, max.terms.plot = 9, cex = .75, penalty = "lambda.1se")
 ```
 
@@ -58,7 +58,7 @@ head(coef(airq.ens))
 
 We can assess the importance of the predictor variables, and each of the rules and/or linear terms in the ensemble:
 
-```{r}
+```{r, fig.height=7, fig.width=7}
 importance(airq.ens)
 ```
 
