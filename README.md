@@ -1,14 +1,15 @@
 pre: An R package for deriving prediction rule ensembles
 ========================================================
 
-pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with some improvements and adjustments. The most important improvements and adjustments are:
+pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in Jerome H. Friedman & Popescu (2008), with some improvements and adjustments. The most important improvements and adjustments are:
 
-1.  The pre package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble
-2.  An unbiased tree induction algorithm is used for deriving prediction rules. Friedman & Popescu (2008) employed the classification and regression tree (CART) algorithm, but this suffers from biased variable selection.
+1.  The package is completely R based, allowing users better accessible results and more control over the parameters used for generating the prediction rule ensemble
+2.  The unbiased tree induction algorithm of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, instead of the classification and regression tree (CART) algorithm, which suffers from biased variable selection.
 3.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 4.  The initial ensemble of prediction rules can be generated as a bagged, boosted and/or random forest ensemble.
+5.  Hinge functions of predictor variables may be included as baselearners in the ensemble, as in the multivariate adaptive regression splines technique of Jerome H Friedman (1991).
 
-The pre package is developed to provide useRs a completely R based implementation of the algorithm described by Friedman & Popescu (2008). However, note that pre is under development, and much work still needs to be done. See Fokkema, Smits, Kelderman, & Penninx (2015) for an application of the methods.
+The pre package is developed to provide useRs a completely R based implementation of the algorithm described by Jerome H. Friedman & Popescu (2008). However, note that pre is under development, and much work still needs to be done. See Fokkema, Smits, Kelderman, & Penninx (2015) for an application of the methods.
 
 Examples
 ========
@@ -19,7 +20,7 @@ To get a first impression of how pre works, we will fit a prediction rule ensemb
 library(pre)
 complete <- complete.cases(airquality)
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data = airquality[complete, ])
+airq.ens <- pre(identity(Ozone + Temp) ~ ., data = airquality[complete, ], standardize = TRUE)
 ```
 
 We can print the resulting ensemble:
@@ -28,47 +29,42 @@ We can print the resulting ensemble:
 print(airq.ens)
 #> 
 #> Final ensemble with cv error within 1se of minimum: 
-#>   lambda =  1.607146
-#>   number of terms = 14
-#>   mean cv error (se) = 299.798 (74.28342) 
+#>   lambda =  6.862571
+#>   number of terms = 9
+#>   mean cv error (se) = 764.909 (129.2821) 
 #> 
-#>          rule    coefficient                          description
-#>   (Intercept)   62.658099734                                 <NA>
-#>        rule72  -13.401881493              Wind > 5.7 & Temp <= 84
-#>       rule216    8.166292702         Wind <= 10.3 & Solar.R > 148
-#>       rule122    8.027236520                            Temp > 77
-#>       rule213   -7.901556274              Wind > 5.1 & Temp <= 87
-#>       rule201   -6.587690267  Wind > 5.7 & Temp <= 87 & Day <= 23
-#>        rule25   -5.524545249              Wind > 6.3 & Temp <= 82
-#>       rule179   -4.981266386              Wind > 5.7 & Temp <= 82
-#>         rule3    4.927105788              Temp > 78 & Wind <= 6.3
-#>       rule149   -3.427067580                Temp <= 87 & Wind > 8
-#>       rule212    3.315627932                        Solar.R > 201
-#>        rule89    2.588377937              Temp > 77 & Wind <= 8.6
-#>        rule76   -2.112110981              Wind > 6.3 & Temp <= 84
-#>       rule174   -1.315368661                           Wind > 6.9
-#>       rule119   -0.009507402                Wind > 8 & Temp <= 76
+#>          rule  coefficient                   description
+#>   (Intercept)  141.9909641                          <NA>
+#>        rule25  -17.3492833                    Wind > 5.7
+#>        rule72   12.2670362   Solar.R > 148 & Wind <= 8.6
+#>        rule12  -11.5242457       Wind > 6.3 & Month <= 5
+#>        rule62   10.9626070  Solar.R > 149 & Wind <= 10.3
+#>       rule104   10.7793652     Wind <= 8 & Solar.R > 201
+#>         rule4  -10.6405536                    Wind > 6.3
+#>        rule74   -8.5041926    Wind > 6.3 & Solar.R <= 78
+#>          Wind   -0.4078209         3.85 <= Wind <= 17.05
+#>        rule10   -0.2570948   Wind > 8.6 & Solar.R <= 149
 ```
 
 We can plot a subsample of the rules (and or/linear terms) in the ensemble:
 
 ``` r
-plot(airq.ens, max.terms.plot = 9, cex = .75)
+plot(airq.ens, max.terms.plot = 9, cex = .75, penalty = "lambda.1se")
 ```
 
-![](inst/README-figures/README-unnamed-chunk-4-1.png)![](inst/README-figures/README-unnamed-chunk-4-2.png)
+![](inst/README-figures/README-unnamed-chunk-4-1.png)
 
 We can obtain the estimated coefficients of the ensemble:
 
 ``` r
 head(coef(airq.ens))
-#>            rule coefficient                         description
-#> 194 (Intercept)   62.658100                                <NA>
-#> 56       rule72  -13.401881             Wind > 5.7 & Temp <= 84
-#> 170     rule216    8.166293        Wind <= 10.3 & Solar.R > 148
-#> 95      rule122    8.027237                           Temp > 77
-#> 167     rule213   -7.901556             Wind > 5.1 & Temp <= 87
-#> 159     rule201   -6.587690 Wind > 5.7 & Temp <= 87 & Day <= 23
+#>           rule coefficient                  description
+#> 86 (Intercept)   141.99096                         <NA>
+#> 16      rule25   -17.34928                   Wind > 5.7
+#> 48      rule72    12.26704  Solar.R > 148 & Wind <= 8.6
+#> 9       rule12   -11.52425      Wind > 6.3 & Month <= 5
+#> 41      rule62    10.96261 Solar.R > 149 & Wind <= 10.3
+#> 75     rule104    10.77937    Wind <= 8 & Solar.R > 201
 ```
 
 We can assess the importance of the predictor variables, and each of the rules and/or linear terms in the ensemble:
@@ -81,42 +77,21 @@ importance(airq.ens)
 
     #> $varimps
     #>   varname       imp
-    #> 1    Temp 14.992106
-    #> 2    Wind 13.550713
-    #> 3 Solar.R  3.691361
-    #> 4     Day  1.064621
+    #> 1    Wind 21.142565
+    #> 2 Solar.R  9.281859
+    #> 3   Month  2.346010
     #> 
     #> $baseimps
-    #>       rule                         description         imp   coefficient
-    #> 1   rule72             Wind > 5.7 & Temp <= 84 6.098127160 -13.401881493
-    #> 2  rule216        Wind <= 10.3 & Solar.R > 148 4.053274590   8.166292702
-    #> 3  rule122                           Temp > 77 4.011974345   8.027236520
-    #> 4  rule201 Wind > 5.7 & Temp <= 87 & Day <= 23 3.193863036  -6.587690267
-    #> 5  rule213             Wind > 5.1 & Temp <= 87 3.108749351  -7.901556274
-    #> 6   rule25             Wind > 6.3 & Temp <= 82 2.633249021  -5.524545249
-    #> 7  rule179             Wind > 5.7 & Temp <= 82 2.342414876  -4.981266386
-    #> 8    rule3             Temp > 78 & Wind <= 6.3 1.782470876   4.927105788
-    #> 9  rule149               Temp <= 87 & Wind > 8 1.677079000  -3.427067580
-    #> 10 rule212                       Solar.R > 201 1.664724095   3.315627932
-    #> 11  rule89             Temp > 77 & Wind <= 8.6 1.198545921   2.588377937
-    #> 12  rule76             Wind > 6.3 & Temp <= 84 0.985824758  -2.112110981
-    #> 13 rule174                          Wind > 6.9 0.543944896  -1.315368661
-    #> 14 rule119               Wind > 8 & Temp <= 76 0.004559346  -0.009507402
-    #>           sd
-    #> 1  0.4550202
-    #> 2  0.4963421
-    #> 3  0.4997952
-    #> 4  0.4848229
-    #> 5  0.3934351
-    #> 6  0.4766454
-    #> 7  0.4702449
-    #> 8  0.3617683
-    #> 9  0.4893627
-    #> 10 0.5020841
-    #> 11 0.4630490
-    #> 12 0.4667486
-    #> 13 0.4135304
-    #> 14 0.4795575
+    #>      rule                  description       imp coefficient        sd
+    #> 1  rule72  Solar.R > 148 & Wind <= 8.6 5.6323040  12.2670362 0.4591414
+    #> 2  rule62 Solar.R > 149 & Wind <= 10.3 5.4412030  10.9626070 0.4963421
+    #> 3  rule25                   Wind > 5.7 5.4116777 -17.3492833 0.3119251
+    #> 4  rule12      Wind > 6.3 & Month <= 5 4.6920208 -11.5242457 0.4071434
+    #> 5 rule104    Wind <= 8 & Solar.R > 201 4.1617027  10.7793652 0.3860805
+    #> 6   rule4                   Wind > 6.3 3.9398902 -10.6405536 0.3702712
+    #> 7  rule74   Wind > 6.3 & Solar.R <= 78 3.2177031  -8.5041926 0.3783667
+    #> 8    Wind        3.85 <= Wind <= 17.05 0.1631283  -0.4078209 0.4000000
+    #> 9  rule10  Wind > 8.6 & Solar.R <= 149 0.1108044  -0.2570948 0.4309865
 
 We can generate predictions for new observations:
 
@@ -139,15 +114,21 @@ set.seed(43)
 airq.cv <- cvpre(airq.ens)
 airq.cv$accuracy
 #> $MSE
-#> [1] 365.9738
+#> [1] 790.7663
 #> 
 #> $MAE
-#> [1] 13.77589
+#> [1] 22.09351
 ```
+
+More complex prediction ensembles can be derived with the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which in addition to rules and linear terms may also include hinge functions of the predictor variables Jerome H Friedman (1991). Addition of hinge functions may improve predictive accuracy (but may also reduce interpretability).
 
 References
 ==========
 
 Fokkema, M., Smits, N., Kelderman, H., & Penninx, B. W. (2015). Connecting clinical and actuarial prediction with rule-based methods. *Psychological Assessment*, *27*(2), 636.
 
+Friedman, J. H. (1991). Multivariate adaptive regression splines. *The Annals of Statistics*, 1–67.
+
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954. Retrieved from <http://www.jstor.org/stable/30245114>
+
+Hothorn, T., Hornik, K., & Zeileis, A. (2006). Unbiased recursive partitioning: A conditional inference framework. *Journal of Computational and Graphical Statistics*, *15*(3), 651–674.

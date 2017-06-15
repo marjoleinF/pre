@@ -1,5 +1,12 @@
 utils::globalVariables("%dopar%")
 
+#' Internal function for checking whether right partykit version is loaded:
+.onLoad <- function(...) {
+  if (packageVersion("partykit") > "1.1.1") {
+    packageStartupMessage("Package pre requires package partykit version 1.1.1 or lower. A later version seems to be installed on your system. Please be patient while we upgrade. In the meantime, package pre can be used by installing an older version of partykit.")
+  }
+}
+
 #' Derive a prediction rule ensemble
 #'
 #' \code{pre} derives a sparse ensemble of rules and/or linear functions for 
@@ -21,33 +28,30 @@ utils::globalVariables("%dopar%")
 #' \code{"logical"} (for binary variables), \code{"factor"} (for nominal input 
 #' variables with 2 or more levels), or \code{"ordered" "factor"} (for 
 #' ordered input variables).
+#' @param weights an optional vector of observation weights to be used for 
+#' deriving the ensemble.
 #' @param type character. Type of base learners to be included in ensemble. 
 #' Defaults to "both" (initial ensemble included both rules and linear functions). 
 #' Other option may be "rules" (for prediction rules only) or "linear" (for 
 #' linear functions only).
-#' @param weights an optional vector of observation weights to be used for 
-#' deriving the ensemble.
-#' @param sampfrac numeric value greater than 0 and smaller than or equal to 1. 
-#' Fraction of randomly selected training observations used to produce each 
-#' tree. Values smaller than 1 will result in subsamples being drawn without 
-#' replacement (i.e., subsampling), value equal to 1 will result in bootstrap 
-#' sampling.
-#' @param maxdepth numeric. Maximal number of conditions in rules.
+#' @param sampfrac numeric. Takes values \eqn{>0} and \eqn{\leq 1}, representing the 
+#' fraction of randomly selected training observations used to produce each 
+#' tree. Values \eqn{< 1} will result in subsamples being drawn without replacement 
+#' (i.e., subsampling), a value of 1 will result in bootstrap sampling. 
+#' Alteratively, users may supply their own sampling function like for example 
+#' \code{\link{gpe_sample}}.
+#' @param maxdepth numeric. Maximum number of conditions in rule
 #' @param learnrate numeric. Learning rate for sequentially induced trees. If 
 #' \code{NULL} (default), the learnrate is set to .01 for regression and to 0 
 #' for classification. Setting the learning rate to values > 0 for classification 
 #' dramatically increases computation time.
+#' @param mtry numeric. Number of randomly selected predictor variables for 
+#' creating each split in each tree.
+#' @param ntrees numeric. Number of trees to generate for the initial ensemble.
 #' @param removeduplicates logical. Remove rules from the ensemble which have 
 #' the exact same support in training data?
 #' @param removecomplements logical. Remove rules from the ensemble which have
 #' the same support in the training data as the inverse of other rules? 
-#' @param mtry numeric. Number of randomly selected predictor variables for 
-#' creating each split in each tree. Ignored for nominal output variables if
-#' \code{learnrate} > 0.
-#' @param thres numeric. Threshold for convergence. 
-#' @param standardize logical. Standardize rules and linear terms before 
-#' estimating the regression model? As this will also standardize dummy coded
-#' factors, users are advised to use the default: \code{standardize = FALSE}.
 #' @param winsfrac numeric. Quantiles of data distribution to be used for 
 #' winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
 #' that ordinal variables are included as linear terms in estimating the
@@ -58,13 +62,6 @@ utils::globalVariables("%dopar%")
 #' SD.
 #' @param nfolds numeric. Number of folds to be used in performing cross 
 #' validation for determining penalty parameter.
-#' @param mod.sel.crit character. Model selection criterion to be used for 
-#' deriving the final ensemble. The default is \code{"deviance"}, which uses 
-#' squared-error for gaussian models (a.k.a. \code{"mse"}) and binomial deviance 
-#' for logistic regression. \code{"class"} would give misclassification error, 
-#' \code{"auc"} would give area under the ROC curve. Further, \code{"mse"} or 
-#' \code{"mae"} (mean squared and mean absolute error) would measure the deviation 
-#' from the fitted mean to the binary or continuous response.
 #' @param verbose logical. Should information on the initial and final ensemble 
 #' be printed to the command line?
 #' @param par.init logical. Should parallel foreach be used to generate initial 
@@ -73,7 +70,8 @@ utils::globalVariables("%dopar%")
 #' @param par.final logical. Should parallel foreach be used to perform cross 
 #' validation for selecting the final ensemble? Must register parallel beforehand, 
 #' such as doMC or others.
-#' @param ntrees numeric. Number of trees to generate for the initial ensemble.
+#' @param tree.control list with control parameters to be passed to the tree 
+#' fitting function, see \code{\link[partykit]{ctree_control}]}.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' @note The code for deriving rules from the nodes of trees was taken from an 
@@ -91,14 +89,15 @@ utils::globalVariables("%dopar%")
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' 
-pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data)), 
-                sampfrac = .5, maxdepth = 3L, learnrate = NULL, 
-                removeduplicates = TRUE, mtry = Inf, ntrees = 500,
-                removecomplements = TRUE,
-                thres = 1e-07, standardize = FALSE, winsfrac = .025, 
-                normalize = TRUE, nfolds = 10L, mod.sel.crit = "deviance", 
-                verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)   
-{ ###################
+pre <- function(formula, data, weights = rep(1, times = nrow(data)), 
+                type = "both", sampfrac = .5, maxdepth = 3L, 
+                learnrate = NULL, mtry = Inf, ntrees = 500, 
+                removecomplements = TRUE, removeduplicates = TRUE, 
+                winsfrac = .025, normalize = TRUE, nfolds = 10L, 
+                verbose = FALSE, par.init = FALSE, par.final = FALSE, 
+                treecontrol = ctree_control(maxdepth = maxdepth, mtry = mtry),
+                ...)   { 
+  ###################
   ## Preliminaries ##
   ###################
   
@@ -112,8 +111,10 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   if (!is.data.frame(data)) {
     stop("data should be a data frame.")
   }
-  if (length(sampfrac) != 1 || sampfrac < 0.01 || sampfrac > 1) {
-    stop("Bad value for 'sampfrac'")
+  if (!(is.function(sampfrac))) {
+    if (length(sampfrac) != 1 || sampfrac < 0.01 || sampfrac > 1) {
+      stop("Bad value for 'sampfrac'")
+    }
   }
   if (length(type) != 1 || (type != "rules" & type != "both" & type != "linear")) {
     stop("Argument type should equal 'both', 'rules' or 'linear'")
@@ -153,10 +154,6 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
          Please coerce to class 'numeric', 'factor' or 'ordered' 'factor':", 
          x_names[sapply(data[,x_names], is.character)])
   }
-  if (classify & learnrate != 0 & !is.infinite(mtry)) {
-    warning("Value specified for mtry will not be used when the outcome variable
-            is binary and learnrate > 0", immediate. = TRUE)
-  }
   if (any(is.na(data))) {
     weights <- weights[complete.cases(data)]
     data <- data[complete.cases(data),]
@@ -178,19 +175,19 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
   
   if (type != "linear") {
     if (learnrate == 0) { # always use ctree()
-      input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
+      #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
+      input <- ctree_setup(formula, data = data, control = tree.control)
       if(par.init) {
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
             subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else { # else subsample
+          } else if (sampfrac < 1) { # else subsample
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
                                 prob = weights)
           }
           # Grow ctree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
-          #                mtry = mtry)
+          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
           tree <- with(input, ctree_minimal(
             dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
@@ -202,13 +199,12 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
             subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else { # else subsample
+          } else if (sampfrac < 1) { # else subsample
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
                                 prob = weights)
           }
           # Grow tree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
-          #                mtry = mtry)
+          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
           tree <- with(input, ctree_minimal(
             dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
@@ -220,17 +216,18 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
       rules <- c()
       if (!classify) {
         y_learn <- data[, y_name]
-        input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
+        #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
+        input <- ctree_setup(formula, data = data, control = tree.control)
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
             subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, prob = weights)
+          } else if (sampfrac < 1) { # else subsample
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                prob = weights)
           }
           # Grow tree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
-          #                mtry = mtry)
+          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
           input$dat[subsample, y_name] <- y_learn[subsample]
           tree <- with(input, ctree_minimal(
             dat[subsample, ], response, control, ytrafo, terms))
@@ -246,16 +243,19 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
                                         paste(x_names, collapse = "+")))
         for(i in 1:ntrees) {
           # Take subsample of dataset:
-          if (sampfrac == 1) { # then bootstrap:
+          if (sampfrac == 1) { # then bootstrap
             subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else { # else subsample:
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE,
+          } else if (sampfrac < 1) { # else subsample
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
                                 prob = weights)
           }
           subsampledata <- data2[subsample,]
           # Grow tree on subsample:
+          tree.control$maxdepth <- maxdepth + 1
           tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial", 
-                          maxdepth = maxdepth + 1,  
+                          maxdepth = maxdepth + 1, mtry = mtry, 
+                          alpha = tree.control$mincriterion,
+                          minsize = tree.control$minbucket,
                           offset = offset)
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
@@ -338,10 +338,10 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     } else {
       warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
     }
+    storage.mode(rulevars) <- "integer"
+    rulevars <- data.frame(rulevars)
   }
-  
-  storage.mode(rulevars) <- "integer"
-  rulevars <- data.frame(rulevars)
+  if (type == "linear") {rules <- rulevars <- NULL}
   
   ######################################################
   ## Prepare rules, linear terms and outcome variable ##
@@ -404,10 +404,8 @@ pre <- function(formula, data, type = "both", weights = rep(1, times = nrow(data
     family <- "gaussian"
   }
   
-  glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, standardize = standardize, 
-                          type.measure = mod.sel.crit, thres = thres, 
-                          weights = weights, family = family, parallel = par.final, 
-                          ...)
+  glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
+                          family = family, parallel = par.final, ...)
   
   ####################
   ## Return results ##
@@ -1564,6 +1562,10 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
     nplot <- floor((i - 1) / max.terms.plot)
     if (conditions[[i]][1] == "linear") { # create plot for linear terms:
       i_plot <- i - nplot * max.terms.plot
+      if((i-1) %% (plot.dim[1]*plot.dim[2]) == 0) {
+        grid::grid.newpage()
+        grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
+      }
       grid::pushViewport(grid::viewport(layout.pos.col = rep(1:plot.dim[2], times = i_plot)[i_plot],
                                         layout.pos.row = ceiling(i_plot/plot.dim[1])))
       grid::grid.text(paste("Linear effect of ", nonzeroterms$rule[i], 

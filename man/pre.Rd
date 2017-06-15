@@ -4,13 +4,12 @@
 \alias{pre}
 \title{Derive a prediction rule ensemble}
 \usage{
-pre(formula, data, type = "both", weights = rep(1, times = nrow(data)),
-  sampfrac = 0.5, maxdepth = 3L, learnrate = NULL,
-  removeduplicates = TRUE, mtry = Inf, ntrees = 500,
-  removecomplements = TRUE, thres = 1e-07, standardize = FALSE,
-  winsfrac = 0.025, normalize = TRUE, nfolds = 10L,
-  mod.sel.crit = "deviance", verbose = FALSE, par.init = FALSE,
-  par.final = FALSE, ...)
+pre(formula, data, weights = rep(1, times = nrow(data)), type = "both",
+  sampfrac = 0.5, maxdepth = 3L, learnrate = NULL, mtry = Inf,
+  ntrees = 500, removecomplements = TRUE, removeduplicates = TRUE,
+  winsfrac = 0.025, normalize = TRUE, nfolds = 10L, verbose = FALSE,
+  par.init = FALSE, par.final = FALSE,
+  treecontrol = ctree_control(maxdepth = maxdepth, mtry = mtry), ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -31,44 +30,38 @@ must be of class \code{"numeric"} (for continuous input variables),
 variables with 2 or more levels), or \code{"ordered" "factor"} (for 
 ordered input variables).}
 
+\item{weights}{an optional vector of observation weights to be used for 
+deriving the ensemble.}
+
 \item{type}{character. Type of base learners to be included in ensemble. 
 Defaults to "both" (initial ensemble included both rules and linear functions). 
 Other option may be "rules" (for prediction rules only) or "linear" (for 
 linear functions only).}
 
-\item{weights}{an optional vector of observation weights to be used for 
-deriving the ensemble.}
+\item{sampfrac}{numeric. Takes values \eqn{>0} and \eqn{\leq 1}, representing the 
+fraction of randomly selected training observations used to produce each 
+tree. Values \eqn{< 1} will result in subsamples being drawn without replacement 
+(i.e., subsampling), a value of 1 will result in bootstrap sampling. 
+Alteratively, users may supply their own sampling function like for example 
+\code{\link{gpe_sample}}.}
 
-\item{sampfrac}{numeric value greater than 0 and smaller than or equal to 1. 
-Fraction of randomly selected training observations used to produce each 
-tree. Values smaller than 1 will result in subsamples being drawn without 
-replacement (i.e., subsampling), value equal to 1 will result in bootstrap 
-sampling.}
-
-\item{maxdepth}{numeric. Maximal number of conditions in rules.}
+\item{maxdepth}{numeric. Maximum number of conditions in rule}
 
 \item{learnrate}{numeric. Learning rate for sequentially induced trees. If 
 \code{NULL} (default), the learnrate is set to .01 for regression and to 0 
 for classification. Setting the learning rate to values > 0 for classification 
 dramatically increases computation time.}
 
-\item{removeduplicates}{logical. Remove rules from the ensemble which have 
-the exact same support in training data?}
-
 \item{mtry}{numeric. Number of randomly selected predictor variables for 
-creating each split in each tree. Ignored for nominal output variables if
-\code{learnrate} > 0.}
+creating each split in each tree.}
 
 \item{ntrees}{numeric. Number of trees to generate for the initial ensemble.}
 
 \item{removecomplements}{logical. Remove rules from the ensemble which have
 the same support in the training data as the inverse of other rules?}
 
-\item{thres}{numeric. Threshold for convergence.}
-
-\item{standardize}{logical. Standardize rules and linear terms before 
-estimating the regression model? As this will also standardize dummy coded
-factors, users are advised to use the default: \code{standardize = FALSE}.}
+\item{removeduplicates}{logical. Remove rules from the ensemble which have 
+the exact same support in training data?}
 
 \item{winsfrac}{numeric. Quantiles of data distribution to be used for 
 winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
@@ -83,14 +76,6 @@ SD.}
 \item{nfolds}{numeric. Number of folds to be used in performing cross 
 validation for determining penalty parameter.}
 
-\item{mod.sel.crit}{character. Model selection criterion to be used for 
-deriving the final ensemble. The default is \code{"deviance"}, which uses 
-squared-error for gaussian models (a.k.a. \code{"mse"}) and binomial deviance 
-for logistic regression. \code{"class"} would give misclassification error, 
-\code{"auc"} would give area under the ROC curve. Further, \code{"mse"} or 
-\code{"mae"} (mean squared and mean absolute error) would measure the deviation 
-from the fitted mean to the binary or continuous response.}
-
 \item{verbose}{logical. Should information on the initial and final ensemble 
 be printed to the command line?}
 
@@ -104,6 +89,9 @@ such as doMC or others.}
 
 \item{...}{Additional arguments to be passed to 
 \code{\link[glmnet]{cv.glmnet}}.}
+
+\item{tree.control}{list with control parameters to be passed to the tree 
+fitting function, see \code{\link[partykit]{ctree_control}]}.}
 }
 \value{
 an object of class \code{pre}

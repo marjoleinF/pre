@@ -1,14 +1,13 @@
 % Encoding: UTF-8
-
-@Article{Fokkema15,
-  author    = {Fokkema, Marjolein and Smits, Niels and Kelderman, Henk and Penninx, Brenda WJH},
-  title     = {Connecting clinical and actuarial prediction with rule-based methods.},
-  journal   = {Psychological Assessment},
-  year      = {2015},
-  volume    = {27},
-  number    = {2},
-  pages     = {636},
-  publisher = {American Psychological Association},
+@article{Fokkema15,
+  title={Connecting clinical and actuarial prediction with rule-based methods.},
+  author={Fokkema, Marjolein and Smits, Niels and Kelderman, Henk and Penninx, Brenda WJH},
+  journal={Psychological assessment},
+  volume={27},
+  number={2},
+  pages={636},
+  year={2015},
+  publisher={American Psychological Association}
 }
 
 @article{Friedman08,
@@ -24,25 +23,15 @@
  volume = {2},
  year = {2008}
 }
-
 @Article{Hothorn06,
   author    = {Hothorn, Torsten and Hornik, Kurt and Zeileis, Achim},
   title     = {Unbiased recursive partitioning: A conditional inference framework},
-  journal   = {Journal of Computational and Graphical Statistics},
+  journal   = {Journal of Computational and Graphical statistics},
   year      = {2006},
   volume    = {15},
   number    = {3},
   pages     = {651--674},
   publisher = {Taylor \& Francis},
-}
-
-@Article{Friedman91,
-  author    = {Friedman, Jerome H},
-  title     = {Multivariate adaptive regression splines},
-  journal   = {The Annals of Statistics},
-  year      = {1991},
-  pages     = {1--67},
-  publisher = {JSTOR},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}

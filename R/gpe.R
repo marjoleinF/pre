@@ -3,20 +3,20 @@
 #' @description 
 #' Functions to get "learners" functions for \code{\link{gpe}}.
 #' 
-#' @param ... Unused
-#' @param remove_duplicates_complements \code{TRUE} if rules with complementary or duplicate support should be removed from trees
+#' @param ... Currently not used.
+#' @param remove_duplicates_complements \code{TRUE} should rules with complementary or duplicate support be removed?
 #' @param mtry Number of input variables randomly sampled as candidates at each node for random forest like algorithms.. The argument is passed the tree methods in \code{partykit} package
-#' @param ntrees Number of trees to fit
-#' @param maxdepth Maximum depth of trees 
-#' @param learnrate Learning rate for methods. It is the \eqn{\nu} parameter in Friedman & Popescu (2008)
-#' @param parallel \code{TRUE} if basis functions should be found in parallel
-#' @param use_grad \code{TRUE} if binary outcomes should use gradient boosting with regression trees when \code{learnrate > 0}. That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016)
-#' @param winsfrac Quantiles to winsorize linear terms at. The value should be in \eqn{[0,0.5)}
-#' @param normalize \code{TRUE} if value should be scaled by \eqn{0.4} times the inverse standard deviation. The \eqn{0.4} is from Friedman & Popescu (2008)
-#' @param degree Maximum degree of interactions in \code{\link{earth}} model
-#' @param nk Maximum number of basis functions in \code{\link{earth}} model
-#' @param ntrain Number of models to fit 
-#' @param cor_thresh A threshold on pairwise correlation for removal of basis functions. This is similar to \code{remove_duplicates_complements}. One of the basis function in pair where the correlation exceeds the threshold is excluded. \code{NULL} implies no exclusion. Setting a value closer to zero will decrease the time taken to fit the final model.
+#' @param ntrees Number of trees to fit.
+#' @param maxdepth Maximum depth of trees. 
+#' @param learnrate Learning rate for methods. Corresponds to the \eqn{\nu} parameter in Friedman & Popescu (2008).
+#' @param parallel \code{TRUE} Should basis functions be found in parallel?
+#' @param use_grad \code{TRUE} Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).
+#' @param winsfrac Quantiles to winsorize linear terms. The value should be in \eqn{[0,0.5)}
+#' @param normalize \code{TRUE} Should value be scaled by \eqn{0.4} times the inverse standard deviation? The \eqn{0.4} is suggested by Friedman & Popescu (2008) and gives each learner the same influence as a typical rule.
+#' @param degree Maximum degree of interactions in \code{\link{earth}} model.
+#' @param nk Maximum number of basis functions in \code{\link{earth}} model.
+#' @param ntrain Number of models to fit.
+#' @param cor_thresh A threshold on the pairwise correlation for removal of basis functions. This is similar to \code{remove_duplicates_complements}. One of the basis functions in pairs where the correlation exceeds the threshold is excluded. \code{NULL} implies no exclusion. Setting a value closer to zero will decrease the time needed to fit the final model.
 #' 
 #' 
 #' @details 
@@ -579,7 +579,7 @@ get_cv.glmnet_args <- function(args, x, y, weights, family){
 #' @param sampfrac Fraction of \code{n} to use for sampling. It is the \eqn{\eta / N} in Friedman & Popescu (2008)
 #' 
 #' @return 
-#' Returns a function that takes an \code{n} argument for the number of observation and an \code{weights} argument for the case weights. The function return a vector of indices
+#' Returns a function that takes an \code{n} argument for the number of observations and a \code{weights} argument for the case weights. The function returns a vector of indices.
 #' 
 #' @references
 #' 

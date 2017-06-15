@@ -43,10 +43,10 @@ test_that("bsnullinteract and interact gives previous results with airquality da
   airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
   
   set.seed(8969591)
-  nullmods <- bsnullinteract(airq.ens, nsamp = 2)
-  inter <- interact(airq.ens, c("Temp", "Wind", "Solar.R"), nullmods = nullmods, plot = FALSE)
+  nullmods <- bsnullinteract(airq.ens, nsamp = 1)
+  inter <- interact(airq.ens, c("Temp", "Wind"), nullmods = nullmods, plot = FALSE)
   
-  for(i in 1:2)
+  for(i in 1:1)
     nullmods[[i]] <- nullmods[[i]][!names(nullmods[[i]]) %in%  c(
       "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
   # save_to_test(nullmods, "airquality_w_bsnullinteract")

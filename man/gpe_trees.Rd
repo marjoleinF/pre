@@ -16,33 +16,33 @@ gpe_earth(..., degree = 3, nk = 11, normalize = TRUE, ntrain = 100,
   learnrate = 0.01, cor_thresh = 0.99)
 }
 \arguments{
-\item{...}{Unused}
+\item{...}{Currently not used.}
 
-\item{remove_duplicates_complements}{\code{TRUE} if rules with complementary or duplicate support should be removed from trees}
+\item{remove_duplicates_complements}{\code{TRUE} should rules with complementary or duplicate support be removed?}
 
 \item{mtry}{Number of input variables randomly sampled as candidates at each node for random forest like algorithms.. The argument is passed the tree methods in \code{partykit} package}
 
-\item{ntrees}{Number of trees to fit}
+\item{ntrees}{Number of trees to fit.}
 
-\item{maxdepth}{Maximum depth of trees}
+\item{maxdepth}{Maximum depth of trees.}
 
-\item{learnrate}{Learning rate for methods. It is the \eqn{\nu} parameter in Friedman & Popescu (2008)}
+\item{learnrate}{Learning rate for methods. Corresponds to the \eqn{\nu} parameter in Friedman & Popescu (2008).}
 
-\item{parallel}{\code{TRUE} if basis functions should be found in parallel}
+\item{parallel}{\code{TRUE} Should basis functions be found in parallel?}
 
-\item{use_grad}{\code{TRUE} if binary outcomes should use gradient boosting with regression trees when \code{learnrate > 0}. That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016)}
+\item{use_grad}{\code{TRUE} Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).}
 
-\item{winsfrac}{Quantiles to winsorize linear terms at. The value should be in \eqn{[0,0.5)}}
+\item{winsfrac}{Quantiles to winsorize linear terms. The value should be in \eqn{[0,0.5)}}
 
-\item{normalize}{\code{TRUE} if value should be scaled by \eqn{0.4} times the inverse standard deviation. The \eqn{0.4} is from Friedman & Popescu (2008)}
+\item{normalize}{\code{TRUE} Should value be scaled by \eqn{0.4} times the inverse standard deviation? The \eqn{0.4} is suggested by Friedman & Popescu (2008) and gives each learner the same influence as a typical rule.}
 
-\item{degree}{Maximum degree of interactions in \code{\link{earth}} model}
+\item{degree}{Maximum degree of interactions in \code{\link{earth}} model.}
 
-\item{nk}{Maximum number of basis functions in \code{\link{earth}} model}
+\item{nk}{Maximum number of basis functions in \code{\link{earth}} model.}
 
-\item{ntrain}{Number of models to fit}
+\item{ntrain}{Number of models to fit.}
 
-\item{cor_thresh}{A threshold on pairwise correlation for removal of basis functions. This is similar to \code{remove_duplicates_complements}. One of the basis function in pair where the correlation exceeds the threshold is excluded. \code{NULL} implies no exclusion. Setting a value closer to zero will decrease the time taken to fit the final model.}
+\item{cor_thresh}{A threshold on the pairwise correlation for removal of basis functions. This is similar to \code{remove_duplicates_complements}. One of the basis functions in pairs where the correlation exceeds the threshold is excluded. \code{NULL} implies no exclusion. Setting a value closer to zero will decrease the time needed to fit the final model.}
 }
 \value{
 A function that has formal arguments \code{formula, data, weights, sample_func, verbose, family, ...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link{cv.glmnet}}

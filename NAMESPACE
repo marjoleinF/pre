@@ -37,6 +37,6 @@ import(partykit)
 
 importFrom("MatrixModels", "model.Matrix")
 importFrom("methods", "as")
-importFrom("utils", "installed.packages", "head", "tail", "object.size")
+importFrom("utils", "installed.packages", "head", "tail", "object.size", "packageVersion")
 importFrom("earth", "earth")
 importFrom("stringr", "str_match")
