@@ -6,7 +6,8 @@ test_that("gpe works with default settings and gives previous results", {
   set.seed(8782650)
   fit <- gpe(
     Ozone ~ ., 
-    data=airquality[complete.cases(airquality),])
+    data = airquality[complete.cases(airquality),],
+    base_learners = list(gpe_trees(ntrees = 100)))
   
   fit <- fit$glmnet.fit$glmnet.fit
   fit <- fit[c("a0", "beta")]

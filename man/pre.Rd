@@ -7,8 +7,8 @@
 pre(formula, data, weights = rep(1, times = nrow(data)), type = "both",
   sampfrac = 0.5, maxdepth = 3L, learnrate = NULL, mtry = Inf,
   ntrees = 500, removecomplements = TRUE, removeduplicates = TRUE,
-  winsfrac = 0.025, normalize = TRUE, nfolds = 10L, verbose = FALSE,
-  par.init = FALSE, par.final = FALSE,
+  winsfrac = 0.025, normalize = TRUE, standardize = FALSE, nfolds = 10L,
+  verbose = FALSE, par.init = FALSE, par.final = FALSE,
   tree.control = ctree_control(maxdepth = maxdepth, mtry = mtry), ...)
 }
 \arguments{
@@ -72,6 +72,10 @@ regression model, and will also be winsorized.}
 regression model? Normalizing gives linear terms the same a priori influence 
 as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
 SD.}
+
+\item{standardize}{logical. Standardize rules and linear terms before 
+estimating the regression model? As this will also standardize dummy coded
+factors, users are advised to use the default: \code{standardize = FALSE}.}
 
 \item{nfolds}{numeric. Number of folds to be used in performing cross 
 validation for determining penalty parameter.}

@@ -636,7 +636,7 @@ gpe_sample <- function(sampfrac = .5){
 #' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees()))
 #'}
 #'     
-#' Products of hinge functions using MARS can be added to the ensemble above with the following calling:
+#' Products of hinge functions using MARS can be added to the ensemble above with the following call:
 #' 
 #' \code{
 #' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees(), gpe_earth))

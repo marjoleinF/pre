@@ -2,7 +2,7 @@ context("Tests the pre functions including S3 methods")
 
 test_that("Importance gives previous results with airquality data",{
   set.seed(42)
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], ntrees = 100)
   
   imp1 <- importance(airq.ens, plot = FALSE)
   # save_to_test(imp1, "airquality_w_importance1")
@@ -19,7 +19,7 @@ test_that("Importance gives previous results with airquality data",{
 
 test_that("Coef gives previous results with airquality data", {
   set.seed(42)
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], ntrees = 100)
   
   coefs <- coef(airq.ens)
   
@@ -29,7 +29,7 @@ test_that("Coef gives previous results with airquality data", {
 
 test_that("cvpre gives previous results with airquality data", {
   set.seed(42)
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], ntrees = 100)
   
   set.seed(7385056)
   airq.cv <- cvpre(airq.ens, k = 2)
@@ -40,7 +40,7 @@ test_that("cvpre gives previous results with airquality data", {
 
 test_that("bsnullinteract and interact gives previous results with airquality data", {
   set.seed(42)
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], ntrees = 100)
   
   set.seed(8969591)
   nullmods <- bsnullinteract(airq.ens, nsamp = 1)
@@ -61,7 +61,7 @@ test_that("Print gives previous resutls with airquality",{
   on.exit(options(digits = old))
   options(digits = 4)
   set.seed(42)
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], ntrees = 100)
   
   # save_to_test(capture.output(print(airq.ens)), "airquality_print_output")
   expect_equal(capture.output(print(airq.ens)), read_to_test("airquality_print_output"), tolerance = 1.490116e-08)
@@ -76,7 +76,7 @@ test_that("Print gives previous resutls with airquality",{
 
 test_that("Predict gives previous results with airquality data", {
   set.seed(42)
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], ntrees = 100)
   
   preds <- predict(airq.ens, airquality[complete.cases(airquality),])
   # save_to_test(preds, "airquality_preds")

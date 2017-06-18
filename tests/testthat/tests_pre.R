@@ -4,7 +4,7 @@ test_that("Get previous results with airquality and pre function", {
   set.seed(42)
   #####
   # With learning rate
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], ntrees = 100)
   
   # We remove some of the data to decrease the size
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
@@ -32,7 +32,7 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   
   #####
   # Without learning rate
-  fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, maxdepth = 3)
+  fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, ntrees = 100, maxdepth = 3)
   
   # We remove some of the data to decrease the size
   fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]

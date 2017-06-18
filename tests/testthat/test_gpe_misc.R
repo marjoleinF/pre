@@ -4,7 +4,8 @@ test_that("Print works for gpe", {
   set.seed(4825707)
   airq.ens <- gpe(
     Ozone ~ .,
-    data=airquality[complete.cases(airquality),])
+    data=airquality[complete.cases(airquality),],
+    base_learners = list(gpe_trees(ntrees = 100)))
   
   # save_to_test(capture.output(print(airq.ens)), "gpe_airquality_print_output")
   
@@ -15,7 +16,8 @@ test_that("Coef works for gpe", {
   set.seed(9116073)
   airq.ens <- gpe(
     Ozone ~ .,
-    data=airquality[complete.cases(airquality),])
+    data=airquality[complete.cases(airquality),],
+    base_learners = list(gpe_trees(ntrees = 100)))
   
   coefs <- coef(airq.ens)
   
@@ -29,7 +31,8 @@ test_that("Predict works for gpe and gives previous results", {
   set.seed(seed <- 9638602)
   airq.ens <- gpe(
     Ozone ~ .,
-    data=airquality[complete.cases(airquality),])
+    data=airquality[complete.cases(airquality),],
+    base_learners = list(gpe_trees(ntrees = 100)))
   
   preds <- predict(airq.ens)
   # plot(preds ~ airquality$Ozone[complete.cases(airquality)])
@@ -42,6 +45,7 @@ test_that("Predict works for gpe and gives previous results", {
   airq.ens <- gpe(
     Ozone ~ .,
     data=airquality[complete.cases(airquality),], 
+    base_learners = list(gpe_trees(ntrees = 100)),
     model = FALSE) # don't save model
   
   expect_null(airq.ens$data)

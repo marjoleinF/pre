@@ -5,13 +5,37 @@
 \title{Calculate importances of base learners (rules and linear terms) and input
 variables}
 \usage{
-importance(object, plot = TRUE, ylab = "Importance",
-  main = "Variable importances", global = TRUE,
-  penalty.par.val = "lambda.1se", quantprobs = c(0.75, 1), col = "grey",
-  round = NA, ...)
+importance(object, standardize = FALSE, global = TRUE,
+  quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se", round = NA,
+  plot = TRUE, ylab = "Importance", main = "Variable importances",
+  col = "grey", ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
+
+\item{standardize}{logical. Should importances be standardized with respect 
+to the outcome variable? If \code{TRUE}, importances have a minimum of 0 and
+a maximum of 1. Only used for ensembles with continuous outcome variables.}
+
+\item{global}{logical. Should global importances be calculated? If FALSE,
+local importances are calculated, given the quantiles of the predictions F(x)
+in \code{quantprobs}.}
+
+\item{quantprobs}{optional numeric vector of length two. Only used when
+\code{global = FALSE} (in which case specification of this argument is still
+optional). Probabilities for calculating sample quantiles of the range of F(X),
+over which local importances are calculated. The default provides variable
+importances calculated over the 25\% highest values of F(X).}
+
+\item{penalty.par.val}{character. Should model be selected with lambda giving
+minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
+standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
+value may be specified, corresponding to one of the values of lambda in the 
+sequence used by glmnet, for which estimated cv error can be inspected by 
+running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
+
+\item{round}{integer. Number of decimal places to round numeric results to.
+If NA (default), no rounding is performed.}
 
 \item{plot}{logical. Should variable importances be plotted?}
 
@@ -21,27 +45,8 @@ importance(object, plot = TRUE, ylab = "Importance",
 \item{main}{character string. Main title of the plot. Only used when
 \code{plot = TRUE}.}
 
-\item{global}{logical. Should global importances be calculated? If FALSE,
-local importances are calculated, given the quantiles of the predictions F(x)
-in \code{quantprobs}.}
-
-\item{penalty.par.val}{character. Should model be selected with lambda giving
-minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
-value may be specified, corresponding to one of the values of lambda in the 
-sequence used by glmnet, for which estimated cv error can be inspected by 
-running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
-
-\item{quantprobs}{optional numeric vector of length two. Only used when
-\code{global = FALSE} (in which case specification of this argument is still
-optional). Probabilities for calculating sample quantiles of the range of F(X),
-over which local importances are calculated. The default provides variable
-importances calculated over the 25\% highest values of F(X).}
-
-\item{col}{character string. Plotting color to be used for bars in barplot.}
-
-\item{round}{integer. Number of decimal places to round numeric results to.
-If NA (default), no rounding is performed.}
+\item{col}{character string. Plotting color to be used for bars in barplot.
+Only used when \code{plot = TRUE}.}
 
 \item{...}{further arguments to be passed to \code{barplot} (only used
 when \code{plot = TRUE}).}

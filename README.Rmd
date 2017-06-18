@@ -44,7 +44,7 @@ We can print the resulting ensemble:
 print(airq.ens)
 ```
 
-We can plot a subsample of the rules (and or/linear terms) in the ensemble:
+We can plot the rules (and or/linear terms) in the ensemble:
 
 ```{r, fig.height=7, fig.width=7}
 plot(airq.ens, max.terms.plot = 9, cex = .75, penalty = "lambda.1se")

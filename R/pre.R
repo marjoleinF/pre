@@ -53,6 +53,9 @@ utils::globalVariables("%dopar%")
 #' regression model? Normalizing gives linear terms the same a priori influence 
 #' as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
 #' SD.
+#' @param standardize logical. Standardize rules and linear terms before 
+#' estimating the regression model? As this will also standardize dummy coded
+#' factors, users are advised to use the default: \code{standardize = FALSE}.
 #' @param nfolds numeric. Number of folds to be used in performing cross 
 #' validation for determining penalty parameter.
 #' @param verbose logical. Should information on the initial and final ensemble 
@@ -83,11 +86,11 @@ utils::globalVariables("%dopar%")
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' 
 pre <- function(formula, data, weights = rep(1, times = nrow(data)), 
-                type = "both", sampfrac = .5, maxdepth = 3L, 
-                learnrate = NULL, mtry = Inf, ntrees = 500, 
-                removecomplements = TRUE, removeduplicates = TRUE, 
-                winsfrac = .025, normalize = TRUE, nfolds = 10L, 
-                verbose = FALSE, par.init = FALSE, par.final = FALSE, 
+                type = "both", sampfrac = .5, maxdepth = 3L, learnrate = NULL, 
+                mtry = Inf, ntrees = 500, removecomplements = TRUE, 
+                removeduplicates = TRUE, winsfrac = .025, normalize = TRUE, 
+                standardize = FALSE, nfolds = 10L, verbose = FALSE, 
+                par.init = FALSE, par.final = FALSE,
                 tree.control = ctree_control(maxdepth = maxdepth, mtry = mtry),
                 ...)   { 
   ###################
@@ -244,12 +247,8 @@ pre <- function(formula, data, weights = rep(1, times = nrow(data)),
           }
           subsampledata <- data2[subsample,]
           # Grow tree on subsample:
-          tree.control$maxdepth <- maxdepth + 1
           tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial", 
-                          maxdepth = maxdepth + 1, mtry = mtry, 
-                          alpha = tree.control$mincriterion,
-                          minsize = tree.control$minbucket,
-                          offset = offset)
+                          maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Update offset:
@@ -398,7 +397,8 @@ pre <- function(formula, data, weights = rep(1, times = nrow(data)),
   }
   
   glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
-                          family = family, parallel = par.final, ...)
+                          family = family, parallel = par.final, 
+                          standardize = standardize, ...)
   
   ####################
   ## Return results ##
@@ -1010,11 +1010,9 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' variables in the ensemble, and provides a bar plot of variable importances.
 #'
 #' @param object an object of class \code{\link{pre}}
-#' @param plot logical. Should variable importances be plotted?
-#' @param ylab character string. Plotting label for y-axis. Only used when
-#' \code{plot = TRUE}.
-#' @param main character string. Main title of the plot. Only used when
-#' \code{plot = TRUE}.
+#' @param standardize logical. Should importances be standardized with respect 
+#' to the outcome variable? If \code{TRUE}, importances have a minimum of 0 and
+#' a maximum of 1. Only used for ensembles with continuous outcome variables.
 #' @param global logical. Should global importances be calculated? If FALSE,
 #' local importances are calculated, given the quantiles of the predictions F(x)
 #' in \code{quantprobs}.
@@ -1023,15 +1021,21 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' optional). Probabilities for calculating sample quantiles of the range of F(X),
 #' over which local importances are calculated. The default provides variable
 #' importances calculated over the 25\% highest values of F(X).
-#' @param col character string. Plotting color to be used for bars in barplot.
-#' @param round integer. Number of decimal places to round numeric results to.
-#' If NA (default), no rounding is performed.
 #' @param penalty.par.val character. Should model be selected with lambda giving
 #' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
 #' standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
 #' value may be specified, corresponding to one of the values of lambda in the 
 #' sequence used by glmnet, for which estimated cv error can be inspected by 
 #' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @param round integer. Number of decimal places to round numeric results to.
+#' If NA (default), no rounding is performed.
+#' @param plot logical. Should variable importances be plotted?
+#' @param ylab character string. Plotting label for y-axis. Only used when
+#' \code{plot = TRUE}.
+#' @param main character string. Main title of the plot. Only used when
+#' \code{plot = TRUE}.
+#' @param col character string. Plotting color to be used for bars in barplot.
+#' Only used when \code{plot = TRUE}.
 #' @param ... further arguments to be passed to \code{barplot} (only used
 #' when \code{plot = TRUE}).
 #' @return A list with two dataframes: \code{$baseimps}, giving the importances for
@@ -1048,10 +1052,10 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 #' @export
 #' #' @seealso \code{\link{pre}}
-importance <- function(object, plot = TRUE, ylab = "Importance",
-                       main = "Variable importances", global = TRUE,
-                       penalty.par.val = "lambda.1se",
-                       quantprobs = c(.75, 1), col = "grey", round = NA, ...)
+importance <- function(object, standardize = FALSE, global = TRUE,
+                       quantprobs = c(.75, 1), penalty.par.val = "lambda.1se", 
+                       round = NA, plot = TRUE, ylab = "Importance",
+                       main = "Variable importances", col = "grey", ...)
 {
   ## Step 1: Calculate the importances of the base learners:
 
@@ -1066,6 +1070,9 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     # Get sds for every baselearner:
     if (global) {
       sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))
+      if(!object$classify && standardize) {
+        sd_y <- sd(object$data[,object$y_name])
+      }
     } else {
       preds <- predict.pre(object, newdata = object$orig_data, type = "response",
                            penalty.par.val = penalty.par.val)
@@ -1074,6 +1081,11 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
       if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2
                                   observations, importances cannot be calculated")}
       sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
+      if(!object$classify && standardize) {
+        sd_y <- sd(object$data[preds >= quantile(preds, probs = quantprobs[1]) &
+                                 preds <= quantile(preds, probs = quantprobs[2]),
+                               object$y_name])
+      }
     }
     names(sds)[1] <- "(Intercept)"
     sds <- sds[order(names(sds))]
@@ -1083,7 +1095,11 @@ importance <- function(object, plot = TRUE, ylab = "Importance",
     }
 
     # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
-    baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
+    if (standardize) {
+      baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds/sd_y)
+    } else {
+      baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
+    }
     
     
     ## Step 2: Calculate variable importances:
@@ -1511,6 +1527,8 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
 #' plots?
 #' @param exit.label character string. What label should be printed in nodes to 
 #' which the rule does not apply (``exit nodes'')?
+#' @param standardize logical. Should printed importances be standardized? See
+#' \code{\link{importance}}.
 #' @param ... Arguments to be passed to \code{\link[grid]{gpar}}.
 #' @examples
 #' \donttest{
@@ -1522,7 +1540,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
 #' @method plot pre
 plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
                      nterms = NULL, max.terms.plot = 16, ask = FALSE, 
-                     exit.label = "0", ...) {
+                     exit.label = "0", standardize = FALSE, ...) {
   # Preliminaries:
   if (!("grid" %in% installed.packages()[,1])) {
     stop("Function plot.pre requires package grid. Download and install package
@@ -1531,7 +1549,8 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
   max.terms.plot <- ceiling(sqrt(max.terms.plot))^2
   # Get nonzero terms from final ensemble:
   nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
-                      penalty.par.val = penalty.par.val)$baseimps
+                      penalty.par.val = penalty.par.val, 
+                      standardize = standardize)$baseimps
   if (!linear.terms) {
     nonzeroterms <- nonzeroterms[grep("rule", nonzeroterms$rule),]
   }

@@ -6,7 +6,7 @@
 \usage{
 \method{plot}{pre}(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
   nterms = NULL, max.terms.plot = 16, ask = FALSE, exit.label = "0",
-  ...)
+  standardize = FALSE, ...)
 }
 \arguments{
 \item{x}{an object of class \code{\link{pre}}.}
@@ -37,6 +37,9 @@ plots?}
 
 \item{exit.label}{character string. What label should be printed in nodes to 
 which the rule does not apply (``exit nodes'')?}
+
+\item{standardize}{logical. Should printed importances be standardized? See
+\code{\link{importance}}.}
 
 \item{...}{Arguments to be passed to \code{\link[grid]{gpar}}.}
 }

@@ -1,0 +1,48 @@
+% Encoding: UTF-8
+
+@Article{Fokkema15,
+  author    = {Fokkema, Marjolein and Smits, Niels and Kelderman, Henk and Penninx, Brenda WJH},
+  title     = {Connecting clinical and actuarial prediction with rule-based methods.},
+  journal   = {Psychological Assessment},
+  year      = {2015},
+  volume    = {27},
+  number    = {2},
+  pages     = {636},
+  publisher = {American Psychological Association},
+}
+
+@article{Friedman08,
+ ISSN = {19326157},
+ URL = {http://www.jstor.org/stable/30245114},
+ abstract = {General regression and classification models are constructed as linear combinations of simple rules derived from the data. Each rule consists of a conjunction of a small number of simple statements concerning the values of individual input variables. These rule ensembles are shown to produce predictive accuracy comparable to the best methods. However, their principal advantage lies in interpretation. Because of its simple form, each rule is easy to understand, as is its influence on individual predictions, selected subsets of predictions, or globally over the entire space of joint input variable values. Similarly, the degree of relevance of the respective input variables can be assessed globally, locally in different regions of the input space, or at individual prediction points. Techniques are presented for automatically identifying those variables that are involved in interactions with other variables, the strength and degree of those interactions, as well as the identities of the other variables with which they interact. Graphical representations are used to visualize both main and interaction effects.},
+ author = {Jerome H. Friedman and Bogdan E. Popescu},
+ journal = {The Annals of Applied Statistics},
+ number = {3},
+ pages = {916-954},
+ publisher = {Institute of Mathematical Statistics},
+ title = {Predictive Learning via Rule Ensembles},
+ volume = {2},
+ year = {2008}
+}
+
+@Article{Hothorn06,
+  author    = {Hothorn, Torsten and Hornik, Kurt and Zeileis, Achim},
+  title     = {Unbiased recursive partitioning: A conditional inference framework},
+  journal   = {Journal of Computational and Graphical Statistics},
+  year      = {2006},
+  volume    = {15},
+  number    = {3},
+  pages     = {651--674},
+  publisher = {Taylor \& Francis},
+}
+
+@Article{Friedman91,
+  author    = {Jerome H. Friedman},
+  title     = {Multivariate adaptive regression splines},
+  journal   = {The Annals of Statistics},
+  year      = {1991},
+  pages     = {1--67},
+  publisher = {JSTOR},
+}
+
+@Comment{jabref-meta: databaseType:bibtex;}
