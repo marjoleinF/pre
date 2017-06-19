@@ -76,60 +76,41 @@ head(coef(airq.ens))
 #> 140     rule179   -5.426586      Wind > 5.7 & Temp <= 82
 ```
 
-We can assess the importance of the predictor variables, and each of the rules and/or linear terms in the ensemble:
+We can assess the importance of the input variables and base learenrs in the ensemble:
 
 ``` r
-importance(airq.ens)
+importance(airq.ens, round = 4)
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-6-1.png)
 
     #> $varimps
-    #>   varname        imp
-    #> 1    Wind 14.5468307
-    #> 2    Temp 13.7227549
-    #> 3 Solar.R  2.8624749
-    #> 4     Day  0.7364116
+    #>   varname     imp
+    #> 1    Wind 14.5468
+    #> 2    Temp 13.7228
+    #> 3 Solar.R  2.8625
+    #> 4     Day  0.7364
     #> 
     #> $baseimps
-    #>       rule                         description         imp  coefficient
-    #> 1   rule72             Wind > 5.7 & Temp <= 84 5.519647770 -12.13055473
-    #> 2  rule213             Wind > 5.1 & Temp <= 87 4.404371858 -11.19466003
-    #> 3  rule216        Wind <= 10.3 & Solar.R > 148 3.664792431   7.38360232
-    #> 4  rule179             Wind > 5.7 & Temp <= 82 2.551823934  -5.42658558
-    #> 5  rule122                           Temp > 77 2.330744260   4.66339857
-    #> 6    rule3             Temp > 78 & Wind <= 6.3 2.288493988   6.32585482
-    #> 7  rule201 Wind > 5.7 & Temp <= 87 & Day <= 23 2.209234898  -4.55678752
-    #> 8   rule25             Wind > 6.3 & Temp <= 82 1.800522363  -3.77748826
-    #> 9   rule89             Temp > 77 & Wind <= 8.6 1.708971893   3.69069308
-    #> 10 rule196                          Wind > 5.7 1.272901872  -4.08079273
-    #> 11  rule76             Wind > 6.3 & Temp <= 84 1.085599698  -2.32587691
-    #> 12 rule119               Wind > 8 & Temp <= 76 1.054892354  -2.19972011
-    #> 13 rule212                       Solar.R > 201 0.980556740   1.95297306
-    #> 14 rule169             Wind > 6.9 & Temp <= 82 0.592118612  -1.20997908
-    #> 15  rule28             Temp <= 84 & Wind > 7.4 0.169826217  -0.34433752
-    #> 16 rule112               Wind > 8 & Temp <= 77 0.134929351  -0.27695874
-    #> 17 rule141         Wind > 6.3 & Solar.R <= 115 0.091890415  -0.21062503
-    #> 18 rule152         Wind > 6.9 & Solar.R <= 149 0.007153494  -0.01544867
-    #>           sd
-    #> 1  0.4550202
-    #> 2  0.3934351
-    #> 3  0.4963421
-    #> 4  0.4702449
-    #> 5  0.4997952
-    #> 6  0.3617683
-    #> 7  0.4848229
-    #> 8  0.4766454
-    #> 9  0.4630490
-    #> 10 0.3119251
-    #> 11 0.4667486
-    #> 12 0.4795575
-    #> 13 0.5020841
-    #> 14 0.4893627
-    #> 15 0.4931970
-    #> 16 0.4871821
-    #> 17 0.4362749
-    #> 18 0.4630490
+    #>       rule                         description    imp coefficient     sd
+    #> 1   rule72             Wind > 5.7 & Temp <= 84 5.5196    -12.1306 0.4550
+    #> 2  rule213             Wind > 5.1 & Temp <= 87 4.4044    -11.1947 0.3934
+    #> 3  rule216        Wind <= 10.3 & Solar.R > 148 3.6648      7.3836 0.4963
+    #> 4  rule179             Wind > 5.7 & Temp <= 82 2.5518     -5.4266 0.4702
+    #> 5  rule122                           Temp > 77 2.3307      4.6634 0.4998
+    #> 6    rule3             Temp > 78 & Wind <= 6.3 2.2885      6.3259 0.3618
+    #> 7  rule201 Wind > 5.7 & Temp <= 87 & Day <= 23 2.2092     -4.5568 0.4848
+    #> 8   rule25             Wind > 6.3 & Temp <= 82 1.8005     -3.7775 0.4766
+    #> 9   rule89             Temp > 77 & Wind <= 8.6 1.7090      3.6907 0.4630
+    #> 10 rule196                          Wind > 5.7 1.2729     -4.0808 0.3119
+    #> 11  rule76             Wind > 6.3 & Temp <= 84 1.0856     -2.3259 0.4667
+    #> 12 rule119               Wind > 8 & Temp <= 76 1.0549     -2.1997 0.4796
+    #> 13 rule212                       Solar.R > 201 0.9806      1.9530 0.5021
+    #> 14 rule169             Wind > 6.9 & Temp <= 82 0.5921     -1.2100 0.4894
+    #> 15  rule28             Temp <= 84 & Wind > 7.4 0.1698     -0.3443 0.4932
+    #> 16 rule112               Wind > 8 & Temp <= 77 0.1349     -0.2770 0.4872
+    #> 17 rule141         Wind > 6.3 & Solar.R <= 115 0.0919     -0.2106 0.4363
+    #> 18 rule152         Wind > 6.9 & Solar.R <= 149 0.0072     -0.0154 0.4630
 
 We can generate predictions for new observations:
 
@@ -171,7 +152,7 @@ airq.cv$accuracy
 #> 14.079477  1.270563
 ```
 
-More complex prediction ensembles can be derived with the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which in addition to rules and linear terms may also include hinge functions of the predictor variables Friedman (1991). Addition of hinge functions may improve predictive accuracy (but may also reduce interpretability).
+More complex prediction ensembles can be derived with the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may also include hinge functions of the predictor variables, in addition to rules and linear terms Friedman (1991). Addition of hinge functions may improve predictive accuracy (but may also reduce interpretability).
 
 References
 ==========

@@ -5,7 +5,7 @@
 \title{Create partial dependence plot for a single variable}
 \usage{
 singleplot(object, varname, penalty.par.val = "lambda.1se", nvals = NULL,
-  type = "response")
+  type = "response", ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -35,6 +35,9 @@ should the partial dependence plot be created?}
 \code{type = "response"} gives fitted values for continuous outputs and
 fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 values for continuous outputs and linear predictor values for nominal outputs.}
+
+\item{...}{Further arguments to be passed to 
+\code{\link[graphics]{plot.default}}.}
 }
 \description{
 \code{singleplot} creates a partial dependence plot, which shows the effect of

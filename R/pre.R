@@ -823,6 +823,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' corresponding to one of the values of lambda in the sequence used by glmnet,
 #' for which estimated cv error can be inspected by running 
 #' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @param ... Further arguments to be passed to 
+#' \code{\link[graphics]{plot.default}}.
 #' @details By default, a partial dependence plot will be created for each unique
 #' observed value of the specified predictor variable. When the number of unique
 #' observed values is large, this may take a long time to compute. In that case,
@@ -839,7 +841,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' @export
 #' @seealso \code{\link{pre}}, \code{\link{pairplot}}
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
-                       nvals = NULL, type = "response")
+                       nvals = NULL, type = "response", ...)
 {
   # preliminaries:
   if (length(varname) != 1) {
@@ -871,8 +873,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   # create plot:
   plot(aggregate(
     exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean),
-    type = "l", ylab = "predicted y", xlab = varname, main =
-      paste("partial dependence on", varname))
+    type = "l", ylab = "predicted y", xlab = varname, ...)
   # To be implemented:
   # qntl = trimming factor for plotting numeric variables. Plots are shown for variable values in the range [quantile (qntl) - quantile(1-qntl)]. (Ignored for categorical variables (factors).)
   # nval = maximum number of abscissa evaluation points for numeric variables. (Ignored for categorical variables (factors).)
@@ -1000,7 +1001,7 @@ pairplot <- function(object, varnames, type = "both",
                        pred_vals, duplicate = "mean")
   if (type == "heatmap" || type == "both") {
     if (is.null(match.call()$col)) {
-      image(xyz, xlab = varnames[1], ylab = varnames[2], col = rev(heat.colors(12)), ...)
+      image(xyz, xlab = varnames[1], ylab = varnames[2], col = rev(grDevices::heat.colors(12)), ...)
     } else {
       image(xyz, xlab = varnames[1], ylab = varnames[2], ...)
     }
