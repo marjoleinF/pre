@@ -55,10 +55,10 @@ print(airq.ens)
 #>       rule152   -0.01544867          Wind > 6.9 & Solar.R <= 149
 ```
 
-We can plot a subsample of the rules (and or/linear terms) in the ensemble:
+We can plot the rules (and or/linear terms) in the ensemble:
 
 ``` r
-plot(airq.ens, max.terms.plot = 9, cex = .75, penalty = "lambda.1se")
+plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-4-1.png)![](inst/README-figures/README-unnamed-chunk-4-2.png)
@@ -137,13 +137,24 @@ We can generate predictions for new observations:
 airq.preds <- predict(airq.ens, newdata = airquality[1:4,])
 ```
 
-We can assess the effect of a given predictor variable on the outcome through a partial dependence plot:
+We can assess the effect of a single predictor variable on the outcome through a partial dependence plot:
 
 ``` r
 singleplot(airq.ens, varname = "Temp")
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-8-1.png)
+
+We can assess the effect of a par of predictor variables on the outcome through a partial dependence plot:
+
+``` r
+pairplot(airq.ens, varnames = c("Temp", "Wind"))
+```
+
+![](inst/README-figures/README-unnamed-chunk-9-1.png)
+
+    #> NOTE: function pairplot uses package 'akima', which has an ACM license.
+    #>     See also https://www.acm.org/publications/policies/software-copyright-notice.
 
 We can assess the expected prediction error of the ensemble, by default calculated using 10-fold cross validation:
 
@@ -152,10 +163,12 @@ set.seed(43)
 airq.cv <- cvpre(airq.ens)
 airq.cv$accuracy
 #> $MSE
-#> [1] 375.8081
+#>       MSE        se 
+#> 375.80814  85.76707 
 #> 
 #> $MAE
-#> [1] 14.07948
+#>       MAE        se 
+#> 14.079477  1.270563
 ```
 
 More complex prediction ensembles can be derived with the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which in addition to rules and linear terms may also include hinge functions of the predictor variables Friedman (1991). Addition of hinge functions may improve predictive accuracy (but may also reduce interpretability).
