@@ -23,13 +23,14 @@ pre is an R package for deriving prediction rule ensembles for binary and contin
 2) The unbiased tree induction algorithm of [@Hothorn06] is used for deriving prediction rules, instead of the classification and regression tree (CART) algorithm, which suffers from biased variable selection.
 3) The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 4) The initial ensemble of prediction rules can be generated as a bagged, boosted and/or random forest ensemble.
-5) Hinge functions of predictor variables may be included as baselearners in the ensemble, as in the multivariate adaptive regression splines technique of [@Friedman91].
+5) Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of [@Friedman91].
 
-The pre package is developed to provide useRs a completely R based implementation of the algorithm described by [@Friedman08]. However, note that pre is under development, and much work still needs to be done. See [@Fokkema15] for an application of the methods.
+Note that pre is under development, and much work still needs to be done.
+
 
 # Examples
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. WE can fit a prediction rule ensemble using the pre() function:
+To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. We can fit a prediction rule ensemble using the pre() function:
 
 ```{r, results = FALSE}
 library(pre)
@@ -89,5 +90,10 @@ airq.cv$accuracy
 ```
 
 More complex prediction ensembles can be obtained using the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in [@Friedman91], in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability).  
+
+```{r}
+nullmods <- bsnullinteract(airq.ens)
+interact(airq.ens, varnames = c("Temp", "Wind"), nullmods = nullmods)
+```
 
 # References

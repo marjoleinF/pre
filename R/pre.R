@@ -1395,7 +1395,7 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param parallel logical. Should parallel foreach be used? Must register
 #' parallel beforehand, such as doMC or others.
-#' @param plot logical Should interaction statistics be plotted?
+#' @param plot logical. Should interaction statistics be plotted?
 #' @param col character vector of length two. Color for plotting bars used. Only
 #' used when \code{plot = TRUE}. Only first element of vector is used if
 #' \code{nullmods = NULL}.

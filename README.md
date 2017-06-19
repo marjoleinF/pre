@@ -7,14 +7,14 @@ pre is an R package for deriving prediction rule ensembles for binary and contin
 2.  The unbiased tree induction algorithm of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, instead of the classification and regression tree (CART) algorithm, which suffers from biased variable selection.
 3.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 4.  The initial ensemble of prediction rules can be generated as a bagged, boosted and/or random forest ensemble.
-5.  Hinge functions of predictor variables may be included as baselearners in the ensemble, as in the multivariate adaptive regression splines technique of Friedman (1991).
+5.  Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of Friedman (1991).
 
-The pre package is developed to provide useRs a completely R based implementation of the algorithm described by Friedman & Popescu (2008). However, note that pre is under development, and much work still needs to be done. See Fokkema, Smits, Kelderman, & Penninx (2015) for an application of the methods.
+Note that pre is under development, and much work still needs to be done.
 
 Examples
 ========
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. WE can fit a prediction rule ensemble using the pre() function:
+To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. We can fit a prediction rule ensemble using the pre() function:
 
 ``` r
 library(pre)
@@ -152,12 +152,34 @@ airq.cv$accuracy
 
 More complex prediction ensembles can be obtained using the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability).
 
+``` r
+nullmods <- bsnullinteract(airq.ens)
+interact(airq.ens, varnames = c("Temp", "Wind"), nullmods = nullmods)
+```
+
+![](inst/README-figures/README-unnamed-chunk-11-1.png)
+
+    #> $trainingH2
+    #>       Temp       Wind 
+    #> 0.06426579 0.06275869 
+    #> 
+    #> $nullH2
+    #>           Temp       Wind
+    #> 1  0.014196770 0.01494472
+    #> 2  0.009856334 0.02687144
+    #> 3  0.013610335 0.01722914
+    #> 4  0.010112472 0.01011247
+    #> 5  0.068207793 0.07190283
+    #> 6  0.015828734 0.03247627
+    #> 7  0.039113489 0.03884146
+    #> 8  0.020723226 0.01520694
+    #> 9  0.014160184 0.01416018
+    #> 10 0.016048370 0.01683364
+
 References
 ==========
 
-Fokkema, M., Smits, N., Kelderman, H., & Penninx, B. W. (2015). Connecting clinical and actuarial prediction with rule-based methods. *Psychological Assessment*, *27*(2), 636.
-
-Friedman, J. H. (1991). Multivariate adaptive regression splines. *The Annals of Statistics*, 1–67.
+Friedman, J. H. (1991). Multivariate adaptive regression splines. *The Annals of Statistics*, *19*(1), 1–67.
 
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954. Retrieved from <http://www.jstor.org/stable/30245114>
 

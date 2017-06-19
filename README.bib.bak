@@ -41,10 +41,10 @@
   title     = {Multivariate adaptive regression splines},
   journal   = {The Annals of Statistics},
   year      = {1991},
-  volume    = {19},
   pages     = {1--67},
   issue     = {1},
   publisher = {JSTOR},
+  volum     = {19},
 }
 
 @Comment{jabref-meta: databaseType:bibtex;}
