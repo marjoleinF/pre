@@ -1,4 +1,4 @@
-pre: An R package for deriving prediction rule ensembles
+pre: an R package for deriving prediction rule ensembles
 ========================================================
 
 pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
@@ -14,48 +14,43 @@ The pre package is developed to provide useRs a completely R based implementatio
 Examples
 ========
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset:
+To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. WE can fit a prediction rule ensemble using the pre() function:
 
 ``` r
 library(pre)
-complete <- complete.cases(airquality)
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data = airquality[complete, ], standardize = TRUE)
+airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
 ```
 
-We can print the resulting ensemble:
+We can print the resulting ensemble using the print function():
 
 ``` r
 print(airq.ens)
 #> 
 #> Final ensemble with cv error within 1se of minimum: 
-#>   lambda =  4.17647
-#>   number of terms = 18
-#>   mean cv error (se) = 317.0573 (78.75351) 
+#>   lambda =  1.607146
+#>   number of terms = 14
+#>   mean cv error (se) = 299.798 (74.28342) 
 #> 
-#>          rule   coefficient                          description
-#>   (Intercept)   67.15616051                                 <NA>
-#>        rule72  -12.13055473              Wind > 5.7 & Temp <= 84
-#>       rule213  -11.19466003              Wind > 5.1 & Temp <= 87
-#>       rule216    7.38360232         Wind <= 10.3 & Solar.R > 148
-#>         rule3    6.32585482              Temp > 78 & Wind <= 6.3
-#>       rule179   -5.42658558              Wind > 5.7 & Temp <= 82
-#>       rule122    4.66339857                            Temp > 77
-#>       rule201   -4.55678752  Wind > 5.7 & Temp <= 87 & Day <= 23
-#>       rule196   -4.08079273                           Wind > 5.7
-#>        rule25   -3.77748826              Wind > 6.3 & Temp <= 82
-#>        rule89    3.69069308              Temp > 77 & Wind <= 8.6
-#>        rule76   -2.32587691              Wind > 6.3 & Temp <= 84
-#>       rule119   -2.19972011                Wind > 8 & Temp <= 76
-#>       rule212    1.95297306                        Solar.R > 201
-#>       rule169   -1.20997908              Wind > 6.9 & Temp <= 82
-#>        rule28   -0.34433752              Temp <= 84 & Wind > 7.4
-#>       rule112   -0.27695874                Wind > 8 & Temp <= 77
-#>       rule141   -0.21062503          Wind > 6.3 & Solar.R <= 115
-#>       rule152   -0.01544867          Wind > 6.9 & Solar.R <= 149
+#>          rule    coefficient                          description
+#>   (Intercept)   62.658099734                                 <NA>
+#>        rule72  -13.401881493              Wind > 5.7 & Temp <= 84
+#>       rule216    8.166292702         Wind <= 10.3 & Solar.R > 148
+#>       rule122    8.027236520                            Temp > 77
+#>       rule213   -7.901556274              Wind > 5.1 & Temp <= 87
+#>       rule201   -6.587690267  Wind > 5.7 & Temp <= 87 & Day <= 23
+#>        rule25   -5.524545249              Wind > 6.3 & Temp <= 82
+#>       rule179   -4.981266386              Wind > 5.7 & Temp <= 82
+#>         rule3    4.927105788              Temp > 78 & Wind <= 6.3
+#>       rule149   -3.427067580                Temp <= 87 & Wind > 8
+#>       rule212    3.315627932                        Solar.R > 201
+#>        rule89    2.588377937              Temp > 77 & Wind <= 8.6
+#>        rule76   -2.112110981              Wind > 6.3 & Temp <= 84
+#>       rule174   -1.315368661                           Wind > 6.9
+#>       rule119   -0.009507402                Wind > 8 & Temp <= 76
 ```
 
-We can plot the rules (and or/linear terms) in the ensemble:
+We can plot the rules and linear terms in the ensemble using the plot() function:
 
 ``` r
 plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
@@ -63,20 +58,21 @@ plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
 
 ![](inst/README-figures/README-unnamed-chunk-4-1.png)![](inst/README-figures/README-unnamed-chunk-4-2.png)
 
-We can obtain the estimated coefficients of the ensemble:
+We can obtain the estimated coefficients for each of the baselearners using the coef() function:
 
 ``` r
-head(coef(airq.ens))
-#>            rule coefficient                  description
-#> 194 (Intercept)   67.156161                         <NA>
-#> 56       rule72  -12.130555      Wind > 5.7 & Temp <= 84
-#> 167     rule213  -11.194660      Wind > 5.1 & Temp <= 87
-#> 170     rule216    7.383602 Wind <= 10.3 & Solar.R > 148
-#> 3         rule3    6.325855      Temp > 78 & Wind <= 6.3
-#> 140     rule179   -5.426586      Wind > 5.7 & Temp <= 82
+coefs <- coef(airq.ens)
+coefs[1:6,]
+#>            rule coefficient                         description
+#> 194 (Intercept)   62.658100                                <NA>
+#> 56       rule72  -13.401881             Wind > 5.7 & Temp <= 84
+#> 170     rule216    8.166293        Wind <= 10.3 & Solar.R > 148
+#> 95      rule122    8.027237                           Temp > 77
+#> 167     rule213   -7.901556             Wind > 5.1 & Temp <= 87
+#> 159     rule201   -6.587690 Wind > 5.7 & Temp <= 87 & Day <= 23
 ```
 
-We can assess the importance of the input variables and base learenrs in the ensemble:
+We can assess the importance of the input variables as well as the baselearners in the ensemble using the importance() function:
 
 ``` r
 importance(airq.ens, round = 4)
@@ -86,39 +82,35 @@ importance(airq.ens, round = 4)
 
     #> $varimps
     #>   varname     imp
-    #> 1    Wind 14.5468
-    #> 2    Temp 13.7228
-    #> 3 Solar.R  2.8625
-    #> 4     Day  0.7364
+    #> 1    Temp 14.9921
+    #> 2    Wind 13.5507
+    #> 3 Solar.R  3.6914
+    #> 4     Day  1.0646
     #> 
     #> $baseimps
     #>       rule                         description    imp coefficient     sd
-    #> 1   rule72             Wind > 5.7 & Temp <= 84 5.5196    -12.1306 0.4550
-    #> 2  rule213             Wind > 5.1 & Temp <= 87 4.4044    -11.1947 0.3934
-    #> 3  rule216        Wind <= 10.3 & Solar.R > 148 3.6648      7.3836 0.4963
-    #> 4  rule179             Wind > 5.7 & Temp <= 82 2.5518     -5.4266 0.4702
-    #> 5  rule122                           Temp > 77 2.3307      4.6634 0.4998
-    #> 6    rule3             Temp > 78 & Wind <= 6.3 2.2885      6.3259 0.3618
-    #> 7  rule201 Wind > 5.7 & Temp <= 87 & Day <= 23 2.2092     -4.5568 0.4848
-    #> 8   rule25             Wind > 6.3 & Temp <= 82 1.8005     -3.7775 0.4766
-    #> 9   rule89             Temp > 77 & Wind <= 8.6 1.7090      3.6907 0.4630
-    #> 10 rule196                          Wind > 5.7 1.2729     -4.0808 0.3119
-    #> 11  rule76             Wind > 6.3 & Temp <= 84 1.0856     -2.3259 0.4667
-    #> 12 rule119               Wind > 8 & Temp <= 76 1.0549     -2.1997 0.4796
-    #> 13 rule212                       Solar.R > 201 0.9806      1.9530 0.5021
-    #> 14 rule169             Wind > 6.9 & Temp <= 82 0.5921     -1.2100 0.4894
-    #> 15  rule28             Temp <= 84 & Wind > 7.4 0.1698     -0.3443 0.4932
-    #> 16 rule112               Wind > 8 & Temp <= 77 0.1349     -0.2770 0.4872
-    #> 17 rule141         Wind > 6.3 & Solar.R <= 115 0.0919     -0.2106 0.4363
-    #> 18 rule152         Wind > 6.9 & Solar.R <= 149 0.0072     -0.0154 0.4630
+    #> 1   rule72             Wind > 5.7 & Temp <= 84 6.0981    -13.4019 0.4550
+    #> 2  rule216        Wind <= 10.3 & Solar.R > 148 4.0533      8.1663 0.4963
+    #> 3  rule122                           Temp > 77 4.0120      8.0272 0.4998
+    #> 4  rule201 Wind > 5.7 & Temp <= 87 & Day <= 23 3.1939     -6.5877 0.4848
+    #> 5  rule213             Wind > 5.1 & Temp <= 87 3.1087     -7.9016 0.3934
+    #> 6   rule25             Wind > 6.3 & Temp <= 82 2.6332     -5.5245 0.4766
+    #> 7  rule179             Wind > 5.7 & Temp <= 82 2.3424     -4.9813 0.4702
+    #> 8    rule3             Temp > 78 & Wind <= 6.3 1.7825      4.9271 0.3618
+    #> 9  rule149               Temp <= 87 & Wind > 8 1.6771     -3.4271 0.4894
+    #> 10 rule212                       Solar.R > 201 1.6647      3.3156 0.5021
+    #> 11  rule89             Temp > 77 & Wind <= 8.6 1.1985      2.5884 0.4630
+    #> 12  rule76             Wind > 6.3 & Temp <= 84 0.9858     -2.1121 0.4667
+    #> 13 rule174                          Wind > 6.9 0.5439     -1.3154 0.4135
+    #> 14 rule119               Wind > 8 & Temp <= 76 0.0046     -0.0095 0.4796
 
-We can generate predictions for new observations:
+We can generate predictions for new observations using the predict() function:
 
 ``` r
 airq.preds <- predict(airq.ens, newdata = airquality[1:4,])
 ```
 
-We can assess the effect of a single predictor variable on the outcome through a partial dependence plot:
+We can obtain a partial dependence plot to assess the effect of a single predictor variable on the outcome using the singleplot() function:
 
 ``` r
 singleplot(airq.ens, varname = "Temp")
@@ -126,7 +118,7 @@ singleplot(airq.ens, varname = "Temp")
 
 ![](inst/README-figures/README-unnamed-chunk-8-1.png)
 
-We can assess the effect of a par of predictor variables on the outcome through a partial dependence plot:
+We can obtain a partial dependence plot to assess the effect of a pair of predictor variables on the outcome using the pairplot() function:
 
 ``` r
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
@@ -137,7 +129,7 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
     #> NOTE: function pairplot uses package 'akima', which has an ACM license.
     #>     See also https://www.acm.org/publications/policies/software-copyright-notice.
 
-We can assess the expected prediction error of the ensemble, by default calculated using 10-fold cross validation:
+We can assess the expected prediction error of the ensemble through cross validation (10-fold, by default) using the cvpre() function:
 
 ``` r
 set.seed(43)
@@ -145,14 +137,14 @@ airq.cv <- cvpre(airq.ens)
 airq.cv$accuracy
 #> $MSE
 #>       MSE        se 
-#> 375.80814  85.76707 
+#> 365.97383  84.68306 
 #> 
 #> $MAE
 #>       MAE        se 
-#> 14.079477  1.270563
+#> 13.775890  1.265625
 ```
 
-More complex prediction ensembles can be derived with the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may also include hinge functions of the predictor variables, in addition to rules and linear terms Friedman (1991). Addition of hinge functions may improve predictive accuracy (but may also reduce interpretability).
+More complex prediction ensembles can be obtained using the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability).
 
 References
 ==========

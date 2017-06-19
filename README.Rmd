@@ -6,7 +6,7 @@ bibliography: README.bib
 csl: inst/bib_style.csl
 ---
 
-# pre: An R package for deriving prediction rule ensembles
+# pre: an R package for deriving prediction rule ensembles
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
@@ -29,58 +29,58 @@ The pre package is developed to provide useRs a completely R based implementatio
 
 # Examples
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset:
+To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. WE can fit a prediction rule ensemble using the pre() function:
 
 ```{r, results = FALSE}
 library(pre)
-complete <- complete.cases(airquality)
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data = airquality[complete, ], standardize = TRUE)
+airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
 ```
 
-We can print the resulting ensemble: 
+We can print the resulting ensemble using the print function(): 
 
 ```{r}
 print(airq.ens)
 ```
 
-We can plot the rules (and or/linear terms) in the ensemble:
+We can plot the rules and linear terms in the ensemble using the plot() function:
 
 ```{r, fig.height=6, fig.width=6}
 plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
 ```
 
-We can obtain the estimated coefficients of the ensemble:
+We can obtain the estimated coefficients for each of the baselearners using the coef() function:
 
 ```{r}
-head(coef(airq.ens))
+coefs <- coef(airq.ens)
+coefs[1:6,]
 ```
 
-We can assess the importance of the input variables and base learenrs in the ensemble:
+We can assess the importance of the input variables as well as the baselearners in the ensemble using the importance() function:
 
 ```{r, fig.height=4, fig.width=4}
 importance(airq.ens, round = 4)
 ```
 
-We can generate predictions for new observations:
+We can generate predictions for new observations using the predict() function:
 
 ```{r}
 airq.preds <- predict(airq.ens, newdata = airquality[1:4,])
 ```
 
-We can assess the effect of a single predictor variable on the outcome through a partial dependence plot:
+We can obtain a partial dependence plot to assess the effect of a single predictor variable on the outcome using the singleplot() function:
 
 ```{r, fig.width=5, fig.height=3}
 singleplot(airq.ens, varname = "Temp")
 ```
 
-We can assess the effect of a par of predictor variables on the outcome through a partial dependence plot:
+We can obtain a partial dependence plot to assess the effect of a pair of predictor variables on the outcome using the pairplot() function:
 
 ```{r,  fig.width=5, fig.height=5}
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
 ```
 
-We can assess the expected prediction error of the ensemble, by default calculated using 10-fold cross validation:
+We can assess the expected prediction error of the ensemble through cross validation (10-fold, by default) using the cvpre() function:
 
 ```{r}
 set.seed(43)
@@ -88,6 +88,6 @@ airq.cv <- cvpre(airq.ens)
 airq.cv$accuracy
 ```
 
-More complex prediction ensembles can be derived with the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may also include hinge functions of the predictor variables, in addition to rules and linear terms [@Friedman91]. Addition of hinge functions may improve predictive accuracy (but may also reduce interpretability).  
+More complex prediction ensembles can be obtained using the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in [@Friedman91], in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability).  
 
 # References
