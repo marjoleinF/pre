@@ -76,7 +76,7 @@ singleplot(airq.ens, varname = "Temp")
 
 We can assess the effect of a par of predictor variables on the outcome through a partial dependence plot:
 
-```{r,  fig.width=6, fig.height=6}
+```{r,  fig.width=5, fig.height=5}
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
 ```
 
