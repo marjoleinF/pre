@@ -152,29 +152,7 @@ airq.cv$accuracy
 
 More complex prediction ensembles can be obtained using the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability).
 
-``` r
-nullmods <- bsnullinteract(airq.ens)
-interact(airq.ens, varnames = c("Temp", "Wind"), nullmods = nullmods)
-```
-
 ![](inst/README-figures/README-unnamed-chunk-11-1.png)
-
-    #> $trainingH2
-    #>       Temp       Wind 
-    #> 0.06426579 0.06275869 
-    #> 
-    #> $nullH2
-    #>           Temp       Wind
-    #> 1  0.014196770 0.01494472
-    #> 2  0.009856334 0.02687144
-    #> 3  0.013610335 0.01722914
-    #> 4  0.010112472 0.01011247
-    #> 5  0.068207793 0.07190283
-    #> 6  0.015828734 0.03247627
-    #> 7  0.039113489 0.03884146
-    #> 8  0.020723226 0.01520694
-    #> 9  0.014160184 0.01416018
-    #> 10 0.016048370 0.01683364
 
 References
 ==========
