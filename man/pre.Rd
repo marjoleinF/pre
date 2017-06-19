@@ -47,10 +47,7 @@ Alteratively, users may supply their own sampling function like for example
 
 \item{maxdepth}{numeric. Maximum number of conditions in rule}
 
-\item{learnrate}{numeric. Learning rate for sequentially induced trees. If 
-\code{NULL} (default), the learnrate is set to .01 for regression and to 0 
-for classification. Setting the learning rate to values > 0 for classification 
-dramatically increases computation time.}
+\item{learnrate}{numeric. Learning rate or boosting parameter.}
 
 \item{mtry}{numeric. Number of randomly selected predictor variables for 
 creating each split in each tree.}

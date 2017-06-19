@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{importance}
 \alias{importance}
-\title{Calculate importances of base learners (rules and linear terms) and input
+\title{Calculate importances of baselearners (rules and linear terms) and input
 variables}
 \usage{
 importance(object, standardize = FALSE, global = TRUE,

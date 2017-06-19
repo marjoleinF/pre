@@ -4,9 +4,8 @@
 \alias{pairplot}
 \title{Create partial dependence plot for a pair of predictor variables}
 \usage{
-pairplot(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
-  theta = 315, col = "cyan", nvals = c(20, 20), ticktype = "detailed",
-  nticks = max(nvals), type = "response", ...)
+pairplot(object, varnames, type = "both", penalty.par.val = "lambda.1se",
+  legend = TRUE, nvals = c(20, 20), pred.type = "response", ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -15,6 +14,11 @@ pairplot(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
 be requested for non-nominal variables. If varnames specifies the name(s) of
 variables of class \code{"factor"}, an error will be printed.}
 
+\item{type}{character string. Type of plot to be generated. 
+\code{type = "heatmap"} yields a heatmap plot, \code{type = "contour"} yields 
+a contour plot, \code{type = "both"} yields a heatmap plot with added contours,
+\code{type = "perspective"} yields a three dimensional plot.}
+
 \item{penalty.par.val}{character. Should model be selected with lambda giving
 minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
 standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
@@ -22,29 +26,22 @@ value may be specified, corresponding to one of the values of lambda in the
 sequence used by glmnet, for which estimated cv error can be inspected by 
 running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
-\item{phi}{numeric. See \code{persp()} documentation.}
-
-\item{theta}{numeric. See \code{persp()} documentation.}
-
-\item{col}{character. Optional color to be used for surface in 3D plot.}
+\item{legend}{logical. Should legend be plotted? Only used when 
+\code{type = "heatmap"} or \code{type = "both"}.}
 
 \item{nvals}{optional numeric vector of length 2. For how many values of
 x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed
 values for the two predictor variables specified will be used (see details).}
 
-\item{ticktype}{character string. If \code{"simple"} draws an arrow parallel
-to the axes to indicate direction of increase; \code{"detailed"} draws ticks 
-on the axes as in 2D plots.}
-
-\item{nticks}{the (approximate) number of tick marks to draw on the axes. Has
-no effect if \code{ticktype = "simple"}.}
-
-\item{type}{character string. Type of prediction to be plotted on z-axis.
-\code{type = "response"} gives fitted values for continuous outputs and
-fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
+\item{pred.type}{character string. Type of prediction to be plotted on z-axis.
+\code{pred.type = "response"} gives fitted values for continuous outputs and
+fitted probabilities for nominal outputs. \code{pred.type = "link"} gives fitted
 values for continuous outputs and linear predictor values for nominal outputs.}
 
-\item{...}{Additional arguments to be passed to \code{\link[graphics]{persp}}.}
+\item{...}{Additional arguments to be passed to \code{\link[graphics]{image}}, 
+\code{\link[graphics]{contour}} or \code{\link[graphics]{persp}}, (depending on
+whether \code{type = "heatmap"}, \code{type = "contour"}, \code{type = "both"} 
+or \code{type = "perspective"} is specified).}
 }
 \description{
 \code{pairplot} creates a partial dependence plot to assess the effects of a
@@ -66,11 +63,11 @@ will be plotted. Furthermore, if none of the variables specified appears in
 the final prediction rule ensemble, an error will occur.
 }
 \note{
-The \code{pairplot} function uses the akima package to construct
-interpolated surfaces and  has an ACM license that restricts applications
-to non-commercial usage, see
+Function \code{pairplot} uses package akima to construct interpolated 
+surfaces and  has an ACM license that restricts applications to non-commercial 
+usage, see 
 \url{https://www.acm.org/publications/policies/software-copyright-notice}
-The \code{pairplot} function prints a note referring to this ACM licence.
+Function \code{pairplot} prints a note referring to this ACM licence.
 }
 \examples{
 \donttest{

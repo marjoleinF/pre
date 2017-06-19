@@ -34,10 +34,7 @@ utils::globalVariables("%dopar%")
 #' Alteratively, users may supply their own sampling function like for example 
 #' \code{\link{gpe_sample}}.
 #' @param maxdepth numeric. Maximum number of conditions in rule
-#' @param learnrate numeric. Learning rate for sequentially induced trees. If 
-#' \code{NULL} (default), the learnrate is set to .01 for regression and to 0 
-#' for classification. Setting the learning rate to values > 0 for classification 
-#' dramatically increases computation time.
+#' @param learnrate numeric. Learning rate or boosting parameter.
 #' @param mtry numeric. Number of randomly selected predictor variables for 
 #' creating each split in each tree.
 #' @param ntrees numeric. Number of trees to generate for the initial ensemble.
@@ -588,16 +585,23 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
   }
   accuracy <- list()
   if (object$classify) {
-    accuracy$SEL<- mean((as.numeric(object$data[,object$y_name]) - 1 - cvpreds)^2)
-    accuracy$AEL <- mean(abs(as.numeric(object$data[,object$y_name]) - 1 - cvpreds))
+    accuracy$SEL<- c(mean((as.numeric(object$data[,object$y_name]) - 1 - cvpreds)^2),
+                     sd((as.numeric(object$data[,object$y_name]) - 1 - cvpreds)^2))
+    names(accuracy$SEL) <- c("SEL", "se")    
+    accuracy$AEL <- c(mean(abs(as.numeric(object$data[,object$y_name]) - 1 - cvpreds)),
+                      sd(abs(as.numeric(object$data[,object$y_name]) - 1 - cvpreds)))
+    names(accuracy$AEL) <- c("AEL", "se")     
     cvpreds_d <- as.numeric(cvpreds > .5)
     accuracy$MCR <- 1 - sum(diag(prop.table(table(cvpreds_d, 
                                                   object$data[,object$y_name]))))
     accuracy$table <- prop.table(table(cvpreds_d, object$data[,object$y_name]))
-  }
-  else {
-    accuracy$MSE <- mean((object$data[,object$y_name] - cvpreds)^2)
-    accuracy$MAE <- mean(abs(object$data[,object$y_name] - cvpreds))
+  } else {
+    accuracy$MSE <- c(mean((object$data[,object$y_name] - cvpreds)^2),
+                      sd((object$data[,object$y_name] - cvpreds)^2)/sqrt(length(cvpreds)))
+    names(accuracy$MSE) <- c("MSE", "se")
+    accuracy$MAE <- c(mean(abs(object$data[,object$y_name] - cvpreds)),
+                      sd(abs(object$data[,object$y_name] - cvpreds))/sqrt(length(cvpreds)))
+    names(accuracy$MAE) <- c("MAE", "se")
   }
   result <- list(cvpreds = cvpreds, fold_indicators = folds, accuracy = accuracy)
   return(result)
@@ -906,22 +910,23 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' value may be specified, corresponding to one of the values of lambda in the 
 #' sequence used by glmnet, for which estimated cv error can be inspected by 
 #' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
-#' @param phi numeric. See \code{persp()} documentation.
-#' @param theta numeric. See \code{persp()} documentation.
-#' @param col character. Optional color to be used for surface in 3D plot.
+#' @param type character string. Type of plot to be generated. 
+#' \code{type = "heatmap"} yields a heatmap plot, \code{type = "contour"} yields 
+#' a contour plot, \code{type = "both"} yields a heatmap plot with added contours,
+#' \code{type = "perspective"} yields a three dimensional plot.
 #' @param nvals optional numeric vector of length 2. For how many values of
 #' x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed
 #' values for the two predictor variables specified will be used (see details).
-#' @param ticktype character string. If \code{"simple"} draws an arrow parallel
-#' to the axes to indicate direction of increase; \code{"detailed"} draws ticks 
-#' on the axes as in 2D plots.
-#' @param nticks the (approximate) number of tick marks to draw on the axes. Has
-#' no effect if \code{ticktype = "simple"}.
-#' @param type character string. Type of prediction to be plotted on z-axis.
-#' \code{type = "response"} gives fitted values for continuous outputs and
-#' fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
+#' @param pred.type character string. Type of prediction to be plotted on z-axis.
+#' \code{pred.type = "response"} gives fitted values for continuous outputs and
+#' fitted probabilities for nominal outputs. \code{pred.type = "link"} gives fitted
 #' values for continuous outputs and linear predictor values for nominal outputs.
-#' @param ... Additional arguments to be passed to \code{\link[graphics]{persp}}.
+#' @param legend logical. Should legend be plotted? Only used when 
+#' \code{type = "heatmap"} or \code{type = "both"}.
+#' @param ... Additional arguments to be passed to \code{\link[graphics]{image}}, 
+#' \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}}, (depending on
+#' whether \code{type = "heatmap"}, \code{type = "contour"}, \code{type = "both"} 
+#' or \code{type = "perspective"} is specified).
 #' @details By default, partial dependence will be plotted for each combination
 #' of 20 values of the specified predictor variables. When \code{nvals = NULL} is
 #' specified a dependence plot will be created for every combination of the unique
@@ -935,11 +940,12 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' minimum, maximum, and nvals - 2 intermediate values of the predictor variable
 #' will be plotted. Furthermore, if none of the variables specified appears in
 #' the final prediction rule ensemble, an error will occur.
-#' @note The \code{pairplot} function uses the akima package to construct
-#' interpolated surfaces and  has an ACM license that restricts applications
-#' to non-commercial usage, see
+#' 
+#' @note Function \code{pairplot} uses package akima to construct interpolated 
+#' surfaces and  has an ACM license that restricts applications to non-commercial 
+#' usage, see 
 #' \url{https://www.acm.org/publications/policies/software-copyright-notice}
-#' The \code{pairplot} function prints a note referring to this ACM licence.
+#' Function \code{pairplot} prints a note referring to this ACM licence.
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
@@ -948,9 +954,9 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @import graphics
 #' @export
 #' @seealso \code{\link{pre}}, \code{\link{singleplot}} 
-pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
-                     theta = 315, col = "cyan", nvals = c(20, 20), ticktype = "detailed",
-                     nticks = max(nvals), type = "response", ...)
+pairplot <- function(object, varnames, type = "both",
+                     penalty.par.val = "lambda.1se", legend = TRUE,
+                     nvals = c(20, 20), pred.type = "response", ...)
 {
   # preliminaries:
   if (!("akima" %in% installed.packages()[,1])) {
@@ -985,25 +991,35 @@ pairplot <- function(object, varnames, penalty.par.val = "lambda.1se", phi = 45,
                                    times = nobs1)
 
   # get predictions:
-  pred_vals <- predict.pre(object, newdata = exp_dataset, type = type,
+  pred_vals <- predict.pre(object, newdata = exp_dataset, type = pred.type,
                             penalty.par.val = penalty.par.val)
 
   # create plot:
-  if (is.null(nvals)) nvals <- 3
+  if (is.null(nvals)) {nvals <- 3}
   xyz <- akima::interp(exp_dataset[,varnames[1]], exp_dataset[,varnames[2]],
                        pred_vals, duplicate = "mean")
-  persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y",
-        phi = phi, theta = theta, col = col, ticktype = ticktype,
-        nticks = nticks, ...)
+  if (type == "heatmap" || type == "both") {
+    if (is.null(match.call()$col)) {
+      image(xyz, xlab = varnames[1], ylab = varnames[2], col = rev(heat.colors(12)), ...)
+    } else {
+      image(xyz, xlab = varnames[1], ylab = varnames[2], ...)
+    }
+    if (type == "both") {
+      contour(xyz, add = TRUE)
+    }
+  }
+  if (type == "contour") {
+    contour(xyz, xlab = varnames[1], ylab = varnames[2], ...) 
+  }
+  if (type == "perspective") {
+    persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y", ...)
+  }
   cat("NOTE: function pairplot uses package 'akima', which has an ACM license.
     See also https://www.acm.org/publications/policies/software-copyright-notice.")
 }
 
 
-
-
-
-#' Calculate importances of base learners (rules and linear terms) and input
+#' Calculate importances of baselearners (rules and linear terms) and input
 #' variables
 #'
 #' \code{importance} calculates importances for rules, linear terms and input
@@ -1069,23 +1085,27 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     coefs <- coefs[order(coefs$rule),]
     # Get sds for every baselearner:
     if (global) {
-      sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))
-      if(!object$classify && standardize) {
-        sd_y <- sd(object$data[,object$y_name])
+      # here, object$x_scales should be used to get correct SDs for linear terms:
+      sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))      
+      sd_y <- sd(object$data[,object$y_name])
+      if(object$normalize) {
+        sds[names(object$x_scales)] <- sds[names(object$x_scales)] * object$x_scales
       }
     } else {
       preds <- predict.pre(object, newdata = object$orig_data, type = "response",
                            penalty.par.val = penalty.par.val)
       local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
                                  preds <= quantile(preds, probs = quantprobs[2]),]
-      if (nrow(local_modmat) < 2) {stop("Requested range contains less than 2
+      if (nrow(local_modmat) < 2) {stop("Selected subregion contains less than 2
                                   observations, importances cannot be calculated")}
+      # here, object$x_scales should be used to get correct SDs for linear terms:
       sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
-      if(!object$classify && standardize) {
-        sd_y <- sd(object$data[preds >= quantile(preds, probs = quantprobs[1]) &
-                                 preds <= quantile(preds, probs = quantprobs[2]),
-                               object$y_name])
+      if(object$normalize) {
+        sds[names(object$x_scales)] <- sds[names(object$x_scales)] * object$x_scales
       }
+      sd_y <- sd(object$data[preds >= quantile(preds, probs = quantprobs[1]) &
+                               preds <= quantile(preds, probs = quantprobs[2]),
+                             object$y_name])
     }
     names(sds)[1] <- "(Intercept)"
     sds <- sds[order(names(sds))]
@@ -1096,6 +1116,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 
     # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
     if (standardize) {
+      #baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds/sd_y)
       baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds/sd_y)
     } else {
       baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
