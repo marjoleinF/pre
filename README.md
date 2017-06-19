@@ -11,8 +11,8 @@ pre is an R package for deriving prediction rule ensembles for binary and contin
 
 Note that pre is under development, and much work still needs to be done.
 
-Examples
-========
+Example using airquality data
+-----------------------------
 
 To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. We can fit a prediction rule ensemble using the pre() function:
 
@@ -150,9 +150,20 @@ airq.cv$accuracy
 #> 13.775890  1.265625
 ```
 
-More complex prediction ensembles can be obtained using the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability).
+We can assess the presence of input variable interactions using the interact() and bsnullinteract() funtions:
+
+``` r
+set.seed(44)
+nullmods <- bsnullinteract(airq.ens)
+int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R"))
+```
 
 ![](inst/README-figures/README-unnamed-chunk-11-1.png)
+
+Generalized prediction ensembles
+--------------------------------
+
+More complex prediction ensembles can be obtained using the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability).
 
 References
 ==========

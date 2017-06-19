@@ -1381,9 +1381,6 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' statistics should be calculated. If \code{NULL}, interaction statistics for
 #' all predictor variables with non-zeor coefficients will be calculated (which
 #' may take a long time).
-#' @param k integer. Calculating interaction test statistics is a computationally
-#' intensive, so  calculations are split up in several parts to prevent memory
-#' allocation errors. If a memory allocation error still occurs, increase k.
 #' @param nullmods object with bootstrapped null interaction models, resulting
 #' from application of \code{bsnullinteract}.
 #' @param penalty.par.val character. Which value of the penalty parameter
@@ -1393,18 +1390,26 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' value may be specified, corresponding to one of the values of lambda in the 
 #' sequence used by glmnet, for which estimated cv error can be inspected by 
 #' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
-#' @param parallel logical. Should parallel foreach be used? Must register
-#' parallel beforehand, such as doMC or others.
+#' @param quantprobs numeric vector of length two. Probabilities that should be
+#' used for plotting the range of bootstrapped null interaction model statistics.
+#' Only used when \code{nullmods} argument is specified and \code{plot = TRUE}.
+#' The default yields sample quantiles corresponding to .05 and .95 probabilities.  
 #' @param plot logical. Should interaction statistics be plotted?
-#' @param col character vector of length two. Color for plotting bars used. Only
-#' used when \code{plot = TRUE}. Only first element of vector is used if
-#' \code{nullmods = NULL}.
+#' @param col character vector of length one or two. Color for plotting 
+#' interaction statistics. The first color specified is used to plot the 
+#' interaction statistic from the training data, the second color specifed
+#' is used to plot the interaction statistic distribution from the bootstrapped
+#' null interaction models. Only used when \code{plot = TRUE}. Only the first 
+#' element of vector is used if \code{nullmods = NULL}.
 #' @param ylab character string. Label to be used for plotting y-axis.
 #' @param main character. Main title for the bar plot.
-#' @param legend logical. Should a legend be plotted in the top right corner of the
-#' barplot?
+#' @param k integer. Calculating interaction test statistics is a computationally
+#' intensive, so  calculations are split up in several parts to prevent memory
+#' allocation errors. If a memory allocation error still occurs, increase k.
 #' @param verbose logical. Should progress information be printed to the
 #' command line?
+#' @param parallel logical. Should parallel foreach be used? Must register
+#' parallel beforehand, such as doMC or others.
 #' @param ... Additional arguments to be passed to \code{barplot}.
 #' @examples
 #' \donttest{
@@ -1417,16 +1422,25 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' test statistic. If nullmods is specified, the function returns a list,
 #' with elements \code{$H}, which is the test statistic of the interaction
 #' strength, and \code{$nullH}, which is a vector of test statistics of the
-#' interaction in each of the bootstrapped null interaction models. In the barplot,
-#' yellow is used for plotting the interaction test statistic. When applicable,
-#' blue is used for the mean in the bootstrapped null models.
+#' interaction in each of the bootstrapped null interaction models. 
+#' If \code{plot = TRUE} (the default), a barplot is created, with the 
+#' interaction test statistic based on the selected ensemble and, if 
+#' \code{nullmods} is specified, the distribution of interaction test statistics 
+#' of the bootstrapped null interaction models, within the quantiles specified. 
+#' This allows for testing the null hypothesis of no interaction effect for 
+#' each of the input variables. If for an input variable the interaction test 
+#' statistic based on the selected ensemble exceeds the upper limit of the error 
+#' bar plotted for the bootstrapped null interaction models, the null hypothesis
+#' of no interaction with other input variables can be rejected at an alpha 
+#' level of quantprobs[2].   
 #' @export
 #' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
-interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TRUE,
-                     penalty.par.val = "lambda.1se", col = c("yellow", "blue"),
-                     ylab = "Interaction strength", parallel = FALSE,
-                     main = "Interaction test statistics", legend = TRUE,
-                     verbose = FALSE, ...)
+interact <- function(object, varnames = NULL, nullmods = NULL, 
+                     penalty.par.val = "lambda.1se", quantprobs = c(.05, .95),
+                     plot = TRUE, col = c("yellow", "blue"), 
+                     ylab = "Interaction strength", 
+                     main = "Interaction test statistics", 
+                     parallel = FALSE, k = 10, verbose = FALSE, ...)
 { # Preliminaries:
   # Preliminaries:
   if(parallel) {
@@ -1496,18 +1510,15 @@ interact <- function(object, varnames = NULL, nullmods = NULL, k = 10, plot = TR
     if (is.null(nullmods)) {
       barplot(H, col = col[1], main = main, ...)
     } else {
-      nullmeans <- vector()
-      for(i in 1:length(varnames)) {
-        nullmeans[i] <- mean(nullH[,i])
-      }
-      H2s <- as.vector(rbind(H, nullmeans))
-      barplot(H2s, col = col, ylab = ylab, main = main,
-              space = rep_len(1:0, length(H2s)), beside = TRUE,
-              names.arg = rep(varnames, each = 2), ...)
-       if (legend) {
-        legend("topright", c("observed", "bs null mod mean"), bty = "n",
-               col = col, pch = 15)
-      }
+      tabbedMeans <- rbind(H, apply(nullH, 2, mean))
+      lower_y <- apply(nullH, 2, quantile, probs = quantprobs[1])
+      upper_y <- apply(nullH, 2, quantile, probs = quantprobs[2])
+      barCenters <- barplot(tabbedMeans, beside = TRUE, ylim = c(0, max(upper_y)), 
+                            las = 1, main = main, col = col, ...)
+      x_coords <- barCenters[!1:nrow(barCenters)%%2,] 
+      segments(x_coords, lower_y, x_coords, upper_y)
+      arrows(x_coords, lower_y, x_coords, upper_y, lwd = 1.5, angle = 90, 
+             code = 3, length = 0.05)
     }
   }
   if(is.null(nullmods)) {
