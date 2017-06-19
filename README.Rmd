@@ -46,7 +46,7 @@ print(airq.ens)
 
 We can plot the rules (and or/linear terms) in the ensemble:
 
-```{r, fig.height=7, fig.width=7}
+```{r, fig.height=6, fig.width=6}
 plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
 ```
 
