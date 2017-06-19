@@ -3,7 +3,7 @@ pre: an R package for deriving prediction rule ensembles
 
 pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
 
-1.  The package is completely R based, allowing users better accessible results and more control over the parameters used for generating the prediction rule ensemble.
+1.  The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2.  The unbiased tree induction algorithm of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, instead of the classification and regression tree (CART) algorithm, which suffers from biased variable selection.
 3.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 4.  The initial ensemble of prediction rules can be generated as a bagged, boosted and/or random forest ensemble.
@@ -22,7 +22,7 @@ set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
 ```
 
-We can print the resulting ensemble using the print function():
+We can print the resulting ensemble using the print() function:
 
 ``` r
 print(airq.ens)
@@ -50,7 +50,7 @@ print(airq.ens)
 #>       rule119   -0.009507402                Wind > 8 & Temp <= 76
 ```
 
-We can plot the rules and linear terms in the ensemble using the plot() function:
+We can plot the baselarners in the ensemble using the plot() function:
 
 ``` r
 plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
@@ -62,7 +62,7 @@ We can obtain the estimated coefficients for each of the baselearners using the 
 
 ``` r
 coefs <- coef(airq.ens)
-coefs[1:6,]
+coefs[1:10,]
 #>            rule coefficient                         description
 #> 194 (Intercept)   62.658100                                <NA>
 #> 56       rule72  -13.401881             Wind > 5.7 & Temp <= 84
@@ -70,9 +70,13 @@ coefs[1:6,]
 #> 95      rule122    8.027237                           Temp > 77
 #> 167     rule213   -7.901556             Wind > 5.1 & Temp <= 87
 #> 159     rule201   -6.587690 Wind > 5.7 & Temp <= 87 & Day <= 23
+#> 16       rule25   -5.524545             Wind > 6.3 & Temp <= 82
+#> 140     rule179   -4.981266             Wind > 5.7 & Temp <= 82
+#> 3         rule3    4.927106             Temp > 78 & Wind <= 6.3
+#> 116     rule149   -3.427068               Temp <= 87 & Wind > 8
 ```
 
-We can assess the importance of the input variables as well as the baselearners in the ensemble using the importance() function:
+We can assess the importance of input variables as well as baselearners using the importance() function:
 
 ``` r
 importance(airq.ens, round = 4)
@@ -107,10 +111,12 @@ importance(airq.ens, round = 4)
 We can generate predictions for new observations using the predict() function:
 
 ``` r
-airq.preds <- predict(airq.ens, newdata = airquality[1:4,])
+predict(airq.ens, newdata = airquality[1:4,])
+#>        1        2        3        4 
+#> 28.99997 20.83368 17.39711 20.71273
 ```
 
-We can obtain a partial dependence plot to assess the effect of a single predictor variable on the outcome using the singleplot() function:
+We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the singleplot() function:
 
 ``` r
 singleplot(airq.ens, varname = "Temp")
@@ -118,7 +124,7 @@ singleplot(airq.ens, varname = "Temp")
 
 ![](inst/README-figures/README-unnamed-chunk-8-1.png)
 
-We can obtain a partial dependence plot to assess the effect of a pair of predictor variables on the outcome using the pairplot() function:
+We can obtain a partial dependence plot to assess the effects of pairs of predictor variables on the outcome using the pairplot() function:
 
 ``` r
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
@@ -129,7 +135,7 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
     #> NOTE: function pairplot uses package 'akima', which has an ACM license.
     #>     See also https://www.acm.org/publications/policies/software-copyright-notice.
 
-We can assess the expected prediction error of the ensemble through cross validation (10-fold, by default) using the cvpre() function:
+We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the cvpre() function:
 
 ``` r
 set.seed(43)
