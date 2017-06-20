@@ -412,3 +412,25 @@ test_that("gpe_cv.glmnet gives same results as cv.glmnet", {
   
   expect_equal(f1, f2)
 })
+
+test_that("gpe_earth works with ordered factors and does not alter contrast options", {
+  set.seed(1660180)
+  n <- 100
+  dat_frame <- data.frame(
+    y = rnorm(n),
+    # Ordered factor
+    x1 = as.ordered(sample.int(15, n, replace = TRUE)))
+  
+  old <- c('contr.treatment', 'contr.poly')
+  options (contrasts = old)
+  tmp <- gpe_earth(ntrain = 5)
+  
+  fit <- tmp(
+    formula = y ~ .,
+    data = dat_frame,
+    weights = rep(1, n),
+    sample_func = gpe_sample(.5), 
+    family = "gaussian")
+  
+  expect_equal(getOption("contrasts"), old)
+})

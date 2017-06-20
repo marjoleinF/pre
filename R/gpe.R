@@ -347,18 +347,22 @@ gpe_earth <- function(
     ###########
     
     n <- nrow(data)
+    # We dont want poly for ordered factors 
+    # See https://stat.ethz.ch/pipermail/r-help/2007-January/123268.html
+    old <- getOption("contrasts")
+    on.exit(options(contrasts = old))
+    options(contrasts = c("contr.treatment", "contr.treatment"))
     mf <- model.frame(formula, data = data)
     mt <- attr(mf, "terms")
     x <- model.matrix(mt, mf)
     y <- y_learn <- model.response(mf)
     
     # We later need to take care of the factor terms
-    factor_terms <- which(
-      attr(mt, "dataClasses")[
-        (1 + attr(mt, "response")):length(attr(mt, "dataClasses"))] == 
-        "factor")
+    dataClass <- attr(mt, "dataClasses")[
+      (1 + attr(mt, "response")):length(attr(mt, "dataClasses"))]
+    factor_terms <- which(dataClass %in% c("factor", "ordered"))
     n_factors <- length(factor_terms)
-    factor_terms <- names(factor_terms)
+    factor_terms <- names(dataClass)[factor_terms]
     
     if(n_factors > 0){
       add_escapes <- function(regexp)
@@ -370,8 +374,10 @@ gpe_earth <- function(
       regexp_find <- list()
       regexp_replace <- list()
       for(i in 1:n_factors){
-        regexp_find[[i]] <- add_escapes(paste0(
-          factor_terms[i], factor_labels[[i]]))
+        # TODO: make more neat way to do this
+        regexp_find[[i]] <- paste0(
+          "(?<=(h\\()|[*]|^)", add_escapes(paste0(
+          factor_terms[i], factor_labels[[i]])), "(?=[\\(*]|$)")
         regexp_replace[[i]] <- add_escapes(paste0(
           "(", factor_terms[i], " == '", factor_labels[[i]], "')"))
       }
