@@ -271,42 +271,78 @@ gpe_linear <- function(
     if(any(attr(mf, "order") > 1))
       stop("Terms with higher order is not implemented in with gpe_linear")
     
-    is_numeric_term <- attr(mt, "dataClasses")== "numeric"
-    if(attr(mt, "response") > 0)
-      is_numeric_term <- is_numeric_term & !seq_along(is_numeric_term) %in% attr(mt, "response")
-    is_numeric_term <- which(is_numeric_term)    
+    dataClasses <- attr(mt, "dataClasses")[-1] # Remove lhs. Assumes that 
+                                               # attr(mt, "response") = int 1
+    is_numeric_term <- which(dataClasses == "numeric")
+    is_factor_term <- which(dataClasses %in% c("factor", "ordered"))
+    # TODO: A group-lasso would be prefered for factors?
+    
+    # Get name of terms of and factor levels
+    names(is_numeric_term) <- attr(mt, "term.labels")[is_numeric_term]
+    if(has_factors <- length(is_factor_term) > 0){
+      X <- model.matrix(mt, mf)
+      is_factor_term <- unlist(lapply(
+        is_factor_term, function(x) which(x == attr(X, "assign"))))
+      names(is_factor_term) <- colnames(X)[is_factor_term]
+    }
     
     ####################################
     ## Winsorize if needed and return ##
     ####################################
     
+    # Get data frame to find sds and quantiles
+    if(length(inter <- intersect(names(is_factor_term), names(is_numeric_term))) > 0)
+      stop("Some of the terms match some factor levels. The matches are: ", 
+           paste0(sapply(inter, sQuote), collapse = ", "), 
+           ". Either re-name the factor levels or the terms.")
+    
+    if(length(is_numeric_term) > 0){
+      dat <- mf[, is_numeric_term + 1L] # Plus for the reponse
+    } else
+      dat <- structure(list(), row.names = 1:nrow(mf), class = "data.frame")
+    
+    if(length(is_factor_term) > 0)
+      dat <- cbind(dat, X[, is_factor_term])
+    
     if(winsfrac == 0){
       if(!normalize)
-        return(paste0("lTerm(", names(is_numeric_term), ")"))
+        return(paste0("lTerm(", colnames(dat), ")"))
       
-      sds <- apply(mf[, names(is_numeric_term)], 2, sd)
+      sds <- apply(dat, 2, sd)
       out <- mapply(function(x, s) paste0("lTerm(", x, ", scale = ", s, ")"), 
-                    x = names(is_numeric_term), s = signif(sds, 2))
+                    x = colnames(dat), s = signif(sds, 2))
       return(out)
     }
     
-    out <- sapply(is_numeric_term, function(i) {
-      x <- mf[, i]
-      x_name <- colnames(mf)[i]
-      qs <- quantile(x, c(winsfrac, 1 - winsfrac))
+    out <- sapply(1:ncol(dat), function(i) {
+      x <- dat[[i]]
+      x_name <- colnames(dat)[i]
       
-      if(!normalize)
-        return(
-          paste0("lTerm(", x_name, 
-                 ", lb = ", signif(qs[1], 2), 
-                 ", ub = ", signif(qs[2], 2), ")"))
+      sig <- function(x) signif(x, 2)
       
+      # Find string for lb and ub
+      if(x_name %in% names(is_factor_term)){
+        qs <- range(x)
+        lb_str <- ub_str <- ""
+        
+      } else {
+        qs <- quantile(x, c(winsfrac, 1 - winsfrac))
+        lb_str <- paste0(", lb = ", sig(qs[1]))
+        ub_str <- paste0(", ub = ", sig(qs[2]))
+        
+      }
       
-      sd <- sd(pmax(pmin(x, qs[2]), qs[1]))
-      paste0("lTerm(", x_name, 
-             ", lb = ", signif(qs[1], 2), 
-             ", ub = ", signif(qs[2], 2), 
-             ", scale = ", signif(sd, 2), ")")
+      # Find string for scale
+      if(!normalize){
+        scale_str <- ""
+        
+      } else{
+        scale_str <- paste0(
+          ", scale = ", sig(sd(pmax(pmin(x, qs[2]), qs[1]))))
+          
+      }
+      
+      paste0("lTerm(", x_name, lb_str, ub_str, scale_str, ")")
     })
     
     out
@@ -332,6 +368,7 @@ lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1 / 0.4){
 }
 
 #' @rdname gpe_trees
+#' @importFrom stringr str_replace_all
 #' @export
 gpe_earth <- function(
   ..., degree = 3, nk = 11, normalize = TRUE, 
@@ -395,8 +432,6 @@ gpe_earth <- function(
       if(learnrate > 0)
         eta <- rep(0, n)
     }
-    
-
     
     for(i in 1:ntrain){
       ##########################

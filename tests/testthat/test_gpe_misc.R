@@ -1,15 +1,40 @@
 context("Tests the gpe S3 functions")
 
 test_that("Print works for gpe", {
+  airquality <- airquality[complete.cases(airquality),]
+  
+  #####
+  # W/ linear terms
   set.seed(4825707)
   airq.ens <- gpe(
     Ozone ~ .,
-    data=airquality[complete.cases(airquality),],
-    base_learners = list(gpe_trees(ntrees = 100)))
+    data= airquality,
+    base_learners = list(gpe_linear()))
+  
+  # save_to_test(capture.output(print(airq.ens)), "gpe_airquality_print_output_linear")
+  expect_equal(capture.output(print(airq.ens)), read_to_test("gpe_airquality_print_output_linear"))
+  
+  #####
+  # W/ trees
+  airq.ens <- gpe(
+    Ozone ~ .,
+    data= airquality,
+    base_learners = list(gpe_trees(ntrees = 3)))
   
   # save_to_test(capture.output(print(airq.ens)), "gpe_airquality_print_output")
+  expect_equal(capture.output(print(airq.ens)), read_to_test("gpe_airquality_print_output"))
   
-  expect_equal(capture.output(print(airq.ens)), read_to_test("gpe_airquality_print_output"), tolerance = 0.00000001490116)
+  #####
+  # W/ earth
+  airq.ens <- gpe(
+    Ozone ~ .,
+    data= airquality,
+    base_learners = list(
+      gpe_earth(
+        ntrain = 3)))
+  
+  # save_to_test(capture.output(print(airq.ens)), "gpe_airquality_print_output_earth")
+  expect_equal(capture.output(print(airq.ens)), read_to_test("gpe_airquality_print_output_earth"))
 })
 
 test_that("Coef works for gpe", {

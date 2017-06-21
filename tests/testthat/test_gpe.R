@@ -7,7 +7,8 @@ test_that("gpe works with default settings and gives previous results", {
   fit <- gpe(
     Ozone ~ ., 
     data = airquality[complete.cases(airquality),],
-    base_learners = list(gpe_trees(ntrees = 100)))
+    base_learners = list(
+      gpe_trees(ntrees = 100)))
   
   fit <- fit$glmnet.fit$glmnet.fit
   fit <- fit[c("a0", "beta")]
@@ -317,6 +318,28 @@ test_that("gpe_earth gives expected_result for binary outcomes", {
   expect_equal(out1, read_to_test("gpe_earth_binary_no_learn"), tolerance = 1.490116e-08)
 })
 
+test_that("gpe_earth works with ordered factors and does not alter contrast options", {
+  set.seed(1660180)
+  n <- 100
+  dat_frame <- data.frame(
+    y = rnorm(n),
+    # Ordered factor
+    x1 = as.ordered(sample.int(15, n, replace = TRUE)))
+  
+  old <- c('contr.treatment', 'contr.poly')
+  options (contrasts = old)
+  tmp <- gpe_earth(ntrain = 5)
+  
+  fit <- tmp(
+    formula = y ~ .,
+    data = dat_frame,
+    weights = rep(1, n),
+    sample_func = gpe_sample(.5), 
+    family = "gaussian")
+  
+  expect_equal(getOption("contrasts"), old)
+})
+
 test_that("gpe_linear gives expected_result", {
   func <- gpe_linear()
   
@@ -351,7 +374,29 @@ test_that("gpe_linear gives expected_result", {
   
   out <- do.call(func, args)
   
-  expect_equal(out, c("lTerm(Solar.R)", "lTerm(Wind)"))
+  expect_equal(out[1:2], c("lTerm(Solar.R)", "lTerm(Wind)"))
+})
+
+test_that("gpe_linear returns terms for factor levels", {
+  set.seed(1660180)
+  n <- 20
+  dat_frame <- data.frame(
+    y = rnorm(n),
+    x1 = factor(sample.int(4, n, replace = TRUE)))
+  
+  tmp <- gpe_linear()
+  out <- tmp(y ~ x1, dat_frame)
+  
+  expect_length(out, 3)
+  expect_equal(out, c(
+    "lTerm(x12, scale = 0.41)", "lTerm(x13, scale = 0.5)", "lTerm(x14, scale = 0.41)"))
+  
+  # Also works w/ ordered factors
+  dat_frame$x1 <- ordered(dat_frame$x1)
+  
+  out <- tmp(y ~ x1, dat_frame)
+  
+  expect_length(out, 3)
 })
 
 test_that("eTerm works for logicals", {
@@ -411,26 +456,4 @@ test_that("gpe_cv.glmnet gives same results as cv.glmnet", {
     x = X, y = y, weights = ws, family = "poisson")
   
   expect_equal(f1, f2)
-})
-
-test_that("gpe_earth works with ordered factors and does not alter contrast options", {
-  set.seed(1660180)
-  n <- 100
-  dat_frame <- data.frame(
-    y = rnorm(n),
-    # Ordered factor
-    x1 = as.ordered(sample.int(15, n, replace = TRUE)))
-  
-  old <- c('contr.treatment', 'contr.poly')
-  options (contrasts = old)
-  tmp <- gpe_earth(ntrain = 5)
-  
-  fit <- tmp(
-    formula = y ~ .,
-    data = dat_frame,
-    weights = rep(1, n),
-    sample_func = gpe_sample(.5), 
-    family = "gaussian")
-  
-  expect_equal(getOption("contrasts"), old)
 })
