@@ -279,11 +279,33 @@ gpe_linear <- function(
     
     # Get name of terms of and factor levels
     names(is_numeric_term) <- attr(mt, "term.labels")[is_numeric_term]
+    
     if(has_factors <- length(is_factor_term) > 0){
+      # We dont want poly for ordered factors 
+      # See https://stat.ethz.ch/pipermail/r-help/2007-January/123268.html
+      old <- getOption("contrasts")
+      on.exit(options(contrasts = old))
+      options(contrasts = c("contr.treatment", "contr.treatment"))
       X <- model.matrix(mt, mf)
-      is_factor_term <- unlist(lapply(
-        is_factor_term, function(x) which(x == attr(X, "assign"))))
-      names(is_factor_term) <- colnames(X)[is_factor_term]
+      
+      factor_labels <- lapply(
+        mf[, is_factor_term + 1L, # 1L for response
+           drop = FALSE], levels)
+      factor_labels <- lapply(factor_labels, "[", -1) # remove one from contrast
+      
+      lbls <- lapply(is_factor_term, function(x) which(x == attr(X, "assign")))
+      
+      fct_names <- mapply(
+        get_factor_predictor_term, 
+        factor_term = names(dataClasses)[is_factor_term],
+        factor_labels = factor_labels, 
+        regexp_escape = FALSE, 
+        SIMPLIFY = FALSE)
+      
+      # Remove the outer parenthesis
+      fct_names <- str_replace_all(unlist(fct_names), "(^\\()|(\\)$)", "")
+      is_factor_term <- unlist(lbls)
+      names(is_factor_term) <- fct_names
     }
     
     ####################################
@@ -302,21 +324,23 @@ gpe_linear <- function(
       dat <- structure(list(), row.names = 1:nrow(mf), class = "data.frame")
     
     if(length(is_factor_term) > 0)
-      dat <- cbind(dat, X[, is_factor_term])
+      dat <- cbind(dat, X[, is_factor_term, drop = FALSE])
+    
+    v_names <- c(names(is_numeric_term), names(is_factor_term))
     
     if(winsfrac == 0){
       if(!normalize)
-        return(paste0("lTerm(", colnames(dat), ")"))
+        return(paste0("lTerm(", v_names, ")"))
       
       sds <- apply(dat, 2, sd)
       out <- mapply(function(x, s) paste0("lTerm(", x, ", scale = ", s, ")"), 
-                    x = colnames(dat), s = signif(sds, 2))
+                    x = v_names, s = signif(sds, 2))
       return(out)
     }
     
     out <- sapply(1:ncol(dat), function(i) {
       x <- dat[[i]]
-      x_name <- colnames(dat)[i]
+      x_name <- v_names[i]
       
       sig <- function(x) signif(x, 2)
       
@@ -352,8 +376,8 @@ gpe_linear <- function(
 #' @rdname rTerm
 #' @export
 lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1 / 0.4){
-  if(!is.numeric(x))
-    stop("lTerm must numeric")
+  if(!(is.numeric(x) || is.logical(x)))
+    stop("lTerm must numeric or logical")
   
   attr(x, "description") <- deparse(substitute(x))
   attr(x, "lb") <- lb
@@ -402,9 +426,6 @@ gpe_earth <- function(
     factor_terms <- names(dataClass)[factor_terms]
     
     if(n_factors > 0){
-      add_escapes <- function(regexp)
-        stringr::str_replace_all(regexp, "(\\W)", "\\\\\\1")
-      
       factor_terms_regexp <- add_escapes(factor_terms)
       factor_labels <- lapply(mf[, factor_terms, drop = FALSE], levels)
       
@@ -415,8 +436,8 @@ gpe_earth <- function(
         regexp_find[[i]] <- paste0(
           "(?<=(h\\()|[*]|^)", add_escapes(paste0(
           factor_terms[i], factor_labels[[i]])), "(?=[\\(*]|$)")
-        regexp_replace[[i]] <- add_escapes(paste0(
-          "(", factor_terms[i], " == '", factor_labels[[i]], "')"))
+        regexp_replace[[i]] <- get_factor_predictor_term(
+          factor_terms[i], factor_labels[[i]])
       }
     }
     
@@ -533,6 +554,15 @@ gpe_earth <- function(
   }
   
   out
+}
+
+add_escapes <- function(regexp)
+  stringr::str_replace_all(regexp, "(\\W)", "\\\\\\1")
+
+get_factor_predictor_term <- function(
+  factor_term, factor_labels, regexp_escape = TRUE){
+  f <- if(regexp_escape) add_escapes else I
+  f(paste0("(", factor_term, " == '", factor_labels, "')"))
 }
 
 #' @rdname rTerm

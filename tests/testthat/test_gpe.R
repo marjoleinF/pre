@@ -33,6 +33,19 @@ test_that("gpe works with default settings and gives previous results", {
   expect_equal(fit, read_to_test("gpe_fit1_binary"))
 })
 
+test_that("gpe works with factor predictor and gpe_linear", {
+  dat <- data.frame(
+    y = 1:30, 
+    x = factor(rep(1:3, 10)), 
+    z = factor(rep(1:2, 15)))
+  
+  expect_silent(fit <- gpe(y ~ ., dat, base_learners = list(gpe_linear())))
+  expect_equal(
+    row.names(fit$glmnet.fit$glmnet.fit$beta),
+    c("(Intercept)", "lTerm(x == \"2\", scale = 0.48)", 
+      "lTerm(x == \"3\", scale = 0.48)", "lTerm(z == \"2\", scale = 0.51)"))
+})
+
 test_that("Sampling and subsampling works and is used in gpe", {
   #####
   # Bootstrap sample
@@ -389,7 +402,8 @@ test_that("gpe_linear returns terms for factor levels", {
   
   expect_length(out, 3)
   expect_equal(out, c(
-    "lTerm(x12, scale = 0.41)", "lTerm(x13, scale = 0.5)", "lTerm(x14, scale = 0.41)"))
+    "lTerm(x1 == '2', scale = 0.41)", "lTerm(x1 == '3', scale = 0.5)",
+    "lTerm(x1 == '4', scale = 0.41)"))
   
   # Also works w/ ordered factors
   dat_frame$x1 <- ordered(dat_frame$x1)
