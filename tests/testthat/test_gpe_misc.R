@@ -2,6 +2,9 @@ context("Tests the gpe S3 functions")
 
 test_that("Print works for gpe", {
   airquality <- airquality[complete.cases(airquality),]
+  dig <- getOption("digits")
+  on.exit(options(digits = dig))
+  options(digits = 3)
   
   #####
   # W/ linear terms

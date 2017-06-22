@@ -15,7 +15,7 @@ test_that("gpe works with default settings and gives previous results", {
   fit$beta <- fit$beta[1:10, 1:10]
   
   # save_to_test(fit, "gpe_fit1")
-  expect_equal(fit, read_to_test("gpe_fit1"))
+  expect_equal(fit, read_to_test("gpe_fit1"), tolerance = 1.49e-08)
   
   #####
   # Binary outcome
@@ -24,7 +24,7 @@ test_that("gpe works with default settings and gives previous results", {
   set.seed(8782650)
   # We sub-sample to decrease computation time
   PimaIndiansDiabetes <- PimaIndiansDiabetes[
-    sample.int(768, 300, replace = FALSE), ]
+    sample.int(768, 200, replace = FALSE), ]
   fit <- gpe(diabetes ~ ., PimaIndiansDiabetes, 
               base_learners = list(gpe_linear(), gpe_trees(ntrees = 10)))
 
