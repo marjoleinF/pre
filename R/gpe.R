@@ -90,7 +90,7 @@ gpe_trees <- function(
           formula = formula, data = data[subsample, ], control = .ctree_control)
         
         # Collect rules from tree:
-        rules <- c(rules, list.rules(tree))
+        rules <- c(rules, list.all_rules_wo_complements(tree))
       }
     } else {
       rules <- c()
@@ -124,7 +124,7 @@ gpe_trees <- function(
             formula = formula, data = data[subsample, ], control = .ctree_control)
           
           # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
+          rules <- c(rules, list.all_rules_wo_complements(tree))
           
           # Substract predictions from current y:
           if(use_grad && family == "binomial"){
@@ -158,7 +158,7 @@ gpe_trees <- function(
             epsilon = 1e-4) # we set the relative change in the deviance lower
                             # to speed up the computations
           # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
+          rules <- c(rules, list.all_rules_wo_complements(tree))
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")

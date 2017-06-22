@@ -63,4 +63,6 @@ if(interactive()){
   library(partykit)
   
   list.rules <- environment(pre)$list.rules
+  list.all_rules_wo_complements <- 
+    environment(pre)$list.all_rules_wo_complements
 }
