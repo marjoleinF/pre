@@ -18,9 +18,33 @@ save_to_test <- function(obj, file_name, tolerance = sqrt(.Machine$double.eps)){
   
   cat("RDS file size is ", file.size(out_file) / 1000, "KB\n", sep = "")
   
-  cat("Call 'expect_equal(", deparse(substitute(obj)), ", read_to_test(\"",  file_name, "\"), tolerance = ",
-      tolerance, ")' to test\n", sep = "")
+  str_tol <- if(any_numeric(obj)) 
+    paste0(", tolerance = ", signif(tolerance, 4)) else ""
+  
+  cat("Call 'expect_equal(", deparse(substitute(obj)), ", read_to_test(\"",  file_name, "\")",
+      str_tol, ")' to test\n", sep = "")
 }
+
+any_numeric <- function(x){
+  if(!is.recursive(x))
+    return(is.numeric(x))
+  
+  for(i in x){
+    out <- any_numeric(i)
+    if(out)
+      return(TRUE)
+  }
+  
+  return(FALSE)
+}
+
+# Sanity check
+# any_numeric(c(1, 2))
+# any_numeric(c("a", "b"))
+# any_numeric(
+#   list(a = "a", b = list(a = "a", b = 1)))
+# any_numeric(
+#   list(a = "a", b = list(a = "a", b = "c")))
 
 #' @importFrom stringr str_match
 read_to_test <- function(file_name){
@@ -28,4 +52,15 @@ read_to_test <- function(file_name){
     paste0(stringr::str_match(getwd(), ".+pre"), "/tests/testthat/previous_results/")
   
   readRDS(paste0(path, file_name, ".RDS"))
+}
+
+#####
+# Load libraries if interactive
+if(interactive()){
+  library(pre)
+  library(stringr)
+  library(testthat)
+  library(partykit)
+  
+  list.rules <- environment(pre)$list.rules
 }

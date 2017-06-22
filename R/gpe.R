@@ -408,8 +408,8 @@ lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1 / 0.4){
 #' @importFrom stringr str_replace_all
 #' @export
 gpe_earth <- function(
-  ..., degree = 3, nk = 11, normalize = TRUE, 
-  ntrain = 100, learnrate = 0.01,
+  ..., degree = 3, nk = 8, normalize = TRUE, 
+  ntrain = 100, learnrate = 0.1,
   cor_thresh = 0.99){
   
   if(learnrate < 0 && learnrate > 1)
