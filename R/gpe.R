@@ -49,9 +49,12 @@
 gpe_trees <- function(
   ...,
   remove_duplicates_complements = TRUE,
-  mtry = Inf, ntrees = 500,
-  maxdepth = 3L, learnrate = 0.01,
-  parallel = FALSE, use_grad = FALSE){
+  mtry = Inf, ntrees = 100,
+  maxdepth = 3L, learnrate = 0.1,
+  parallel = FALSE, use_grad = TRUE,
+  teststat = "max",
+  testtype = "Teststatistic",
+  mincriterion = 0){
   if(learnrate < 0 && learnrate > 1)
     stop("learnrate must be between 0 and 1")
   
@@ -64,21 +67,28 @@ gpe_trees <- function(
     ## Find rules ##
     ################
   
+    .ctree_control <- ctree_control(
+      mtry = mtry, maxdepth = maxdepth, 
+      teststat = teststat, testtype = testtype,
+      mincriterion = mincriterion, 
+      saveinfo = FALSE)
+
+    if(!inherits(formula, "formula"))
+      formula <- stats::formula(formula)
+        
     if(learnrate == 0) { # always use ctree()
       if(parallel)
         stop("Not implemented")
       
-      input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
       rules <- c()
       n <- nrow(data)
       for(i in 1:ntrees) {
         # Take subsample of dataset
         subsample <- sample_func(n = n, weights = weights)
-        # Grow tree on subsample:
-        #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
-        #                mtry = mtry)
-        tree <- with(input, ctree_minimal(
-          dat[subsample, ], response, control, ytrafo, terms))
+        
+        tree <- ctree(
+          formula = formula, data = data[subsample, ], control = .ctree_control)
+        
         # Collect rules from tree:
         rules <- c(rules, list.rules(tree))
       }
@@ -88,6 +98,7 @@ gpe_trees <- function(
         family == "binomial" && use_grad)){
         mf <- model.frame(update(formula, . ~ -1), data = data)
         y_learn <- model.response(mf)
+        rsp_name <- as.character(attr(terms(mf), "variables")[[2]])
         
         if(family == "binomial"){
           if(length(levels(y_learn)) != 2)
@@ -99,26 +110,28 @@ gpe_trees <- function(
           data[, as.character(attr(mt,"variables")[[2]])] <- y_learn
         }
         
-        input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
         n <- nrow(data)
         
         for(i in 1:ntrees) {
+          # Update y
+          data[[rsp_name]] <- y_learn
+          
           # Take subsample of dataset
           subsample <- sample_func(n = n, weights = weights)
+          
           # Grow tree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
-          #                mtry = mtry)
-          input$dat[subsample, input$response] <- y_learn[subsample]
-          tree <- with(input, ctree_minimal(
-            dat[subsample, ], response, control, ytrafo, terms))
+          tree <- ctree(
+            formula = formula, data = data[subsample, ], control = .ctree_control)
+          
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
+          
           # Substract predictions from current y:
           if(use_grad && family == "binomial"){
-            eta <- eta + learnrate * predict_party_minimal(tree, newdata = data)
+            eta <- eta + learnrate * predict(tree, newdata = data)
             y_learn <- get_y_learn_logistic(eta, y)
           } else {
-            y_learn <- y_learn - learnrate * predict_party_minimal(tree, newdata = data)
+            y_learn <- y_learn - learnrate * predict(tree, newdata = data)
           }
         }
       } else if (family == "binomial"){

@@ -1,3 +1,6 @@
+#####
+# Useful scripts to save and load .RDS files for testing
+
 #' @importFrom utils head object.size
 #' @importFrom stringr str_match
 save_to_test <- function(obj, file_name, tolerance = sqrt(.Machine$double.eps)){
@@ -22,7 +25,7 @@ save_to_test <- function(obj, file_name, tolerance = sqrt(.Machine$double.eps)){
 #' @importFrom stringr str_match
 read_to_test <- function(file_name){
   path <- if(!interactive()) "./previous_results/" else
-    paste0(str_match(getwd(), ".+pre"), "/tests/testthat/previous_results/")
+    paste0(stringr::str_match(getwd(), ".+pre"), "/tests/testthat/previous_results/")
   
   readRDS(paste0(path, file_name, ".RDS"))
 }

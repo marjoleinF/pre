@@ -8,11 +8,11 @@ test_that("gpe works with default settings and gives previous results", {
     Ozone ~ ., 
     data = airquality[complete.cases(airquality),],
     base_learners = list(
-      gpe_trees(ntrees = 100)))
+      gpe_trees(ntrees = 10)))
   
   fit <- fit$glmnet.fit$glmnet.fit
   fit <- fit[c("a0", "beta")]
-  fit$beta <- fit$beta[1:100, 1:10]
+  fit$beta <- fit$beta[1:10, 1:10]
   
   # save_to_test(fit, "gpe_fit1")
   expect_equal(fit, read_to_test("gpe_fit1"))
@@ -22,8 +22,11 @@ test_that("gpe works with default settings and gives previous results", {
   data(PimaIndiansDiabetes, package = "mlbench")
   
   set.seed(8782650)
+  # We sub-sample to decrease computation time
+  PimaIndiansDiabetes <- PimaIndiansDiabetes[
+    sample.int(768, 300, replace = FALSE), ]
   fit <- gpe(diabetes ~ ., PimaIndiansDiabetes, 
-              base_learners = list(gpe_linear(), gpe_trees(ntrees = 20)))
+              base_learners = list(gpe_linear(), gpe_trees(ntrees = 10)))
 
   fit <- fit$glmnet.fit$glmnet.fit
   fit <- fit[c("a0", "beta")]
@@ -89,10 +92,10 @@ test_that("Sampling and subsampling works and is used in gpe", {
   expect_length(out, 50)
 })
 
-test_that("gpe_trees gives expected_result for continous outcomes", {
+test_that("gpe_trees gives previous results for continous outcomes", {
   #####
   # Default settings with fewer trees
-  func <- gpe_trees(ntrees = 100)
+  func <- gpe_trees(ntrees = 10)
   
   args <- list(
     formula = Ozone ~ Solar.R + Wind + 
