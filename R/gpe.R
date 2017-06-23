@@ -1,18 +1,18 @@
 #' @title Learner Functions Generators for gpe
 #' 
 #' @description 
-#' Functions to get "learners" functions for \code{\link{gpe}}.
+#' Functions to get "learner" functions for \code{\link{gpe}}.
 #' 
 #' @param ... Currently not used.
-#' @param remove_duplicates_complements \code{TRUE} should rules with complementary or duplicate support be removed?
-#' @param mtry Number of input variables randomly sampled as candidates at each node for random forest like algorithms.. The argument is passed the tree methods in \code{partykit} package
+#' @param remove_duplicates_complements \code{TRUE}. Should rules with complementary or duplicate support be removed?
+#' @param mtry Number of input variables randomly sampled as candidates at each node for random forest like algorithms. The argument is passed to the tree methods in the \code{partykit} package.
 #' @param ntrees Number of trees to fit.
 #' @param maxdepth Maximum depth of trees. 
 #' @param learnrate Learning rate for methods. Corresponds to the \eqn{\nu} parameter in Friedman & Popescu (2008).
-#' @param parallel \code{TRUE} Should basis functions be found in parallel?
-#' @param use_grad \code{TRUE} Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).
-#' @param winsfrac Quantiles to winsorize linear terms. The value should be in \eqn{[0,0.5)}
-#' @param normalize \code{TRUE} Should value be scaled by \eqn{0.4} times the inverse standard deviation? The \eqn{0.4} is suggested by Friedman & Popescu (2008) and gives each learner the same influence as a typical rule.
+#' @param parallel \code{TRUE}. Should basis functions be found in parallel?
+#' @param use_grad \code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).
+#' @param winsfrac Quantile to winsorize linear terms. The value should be in \eqn{[0,0.5)}
+#' @param normalize \code{TRUE}. Should value be scaled by .4 times the inverse standard deviation? If \code{TRUE}, gives linear terms the same influence as a typical rule.
 #' @param degree Maximum degree of interactions in \code{\link{earth}} model.
 #' @param nk Maximum number of basis functions in \code{\link{earth}} model.
 #' @param ntrain Number of models to fit.
@@ -33,15 +33,15 @@
 #' \code{\link{gpe}}, \code{\link{rTerm}}, \code{\link{lTerm}}, \code{\link{eTerm}}
 #' 
 #' @references 
-#' Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive partytioning in R. \emph{Journal of Machine Learning Research}, 16, 3905-3909.
+#' Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
 #' 
-#' Friedman, J. H. (1991). Multivariate adaptive regression splines. \emph{The Annals of Applied Statistics}, 1-67.
+#' Friedman, J. H. (1991). Multivariate adaptive regression splines. \emph{The Annals Statistics, 19}(1), 1-67.
 #' 
-#' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. \emph{The Annals of Applied Statistics}, 1189-1232.
+#' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
 #' 
-#' Stanford University. Laboratory for Computational Statistics, & Friedman, J. H. (1993). Fast MARS.
+#' Friedman, J. H. (1993). Fast MARS. Dept. of Statistics Technical Report No. 110, Stanford University.
 #' 
-#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' 
 #' Chen T., & Guestrin C. (2016). Xgboost: A scalable tree boosting system. \emph{Proceedings of the 22Nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}. ACM, 2016.
 #' 
@@ -205,18 +205,18 @@ gpe_trees <- function(
   out
 }
 
-#' @title Wrapper Functions for Terms in gpe
+#' @title Wrapper Functions for terms in gpe
 #' 
 #' @description 
 #' Wrapper functions for terms in gpe.
 #' 
-#' @param x Input symbol 
-#' @param lb Lower quantile when winsorizing. \code{-Inf} yields no winsorizing in the lower tail
-#' @param ub Lower quantile when winsorizing. \code{Inf} yields no winsorizing in the upper tail
-#' @param scale Inverse value to time \code{x} by. Usually the standard deviation is used. \eqn{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008)
+#' @param x Input symbol. 
+#' @param lb Lower quantile when winsorizing. \code{-Inf} yields no winsorizing in the lower tail.
+#' @param ub Lower quantile when winsorizing. \code{Inf} yields no winsorizing in the upper tail.
+#' @param scale Inverse value to time \code{x} by. Usually the standard deviation is used. \eqn{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008) and gives each linear term the same a-priori influence as a typical rule.
 #' 
 #' @details 
-#' The motivation to use wrappers is to ease getting the different terms as shown in the examples and simplify the formula passed to \code{\link{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescale and/or winsorize \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
+#' The motivation to use wrappers is to ease getting the different terms as shown in the examples and to simplify the formula passed to \code{\link{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescales and/or winsorizes \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
 #' 
 #' @return 
 #' \code{x} potentially transformed with additional information provided in the attributes.
@@ -237,7 +237,7 @@ gpe_trees <- function(
 #' 
 #' @references
 #' 
-#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' 
 #' @seealso 
 #' \code{\link{gpe}}, \code{\link{gpe_trees}} \code{\link{gpe_linear}} \code{\link{gpe_earth}}
@@ -530,10 +530,10 @@ get_y_learn_logistic <- function(eta, y){
 #' @description 
 #' Default "penalizer function" generator \code{\link{gpe}} which uses \code{\link{cv.glmnet}}.
 #' 
-#' @param ... arguments to \code{\link{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used
+#' @param ... arguments to \code{\link{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used.
 #' 
 #' @return 
-#' Returns a function with formal arguments \code{x, y, weights, family} and returns a fit object
+#' Returns a function with formal arguments \code{x, y, weights, family} and returns a fit object.
 #' 
 #' @seealso 
 #' \code{\link{gpe}}
@@ -576,14 +576,14 @@ get_cv.glmnet_args <- function(args, x, y, weights, family){
 #' @description 
 #' Provides a sample function for \code{\link{gpe}}.
 #'
-#' @param sampfrac Fraction of \code{n} to use for sampling. It is the \eqn{\eta / N} in Friedman & Popescu (2008)
+#' @param sampfrac Fraction of \code{n} to use for sampling. It is the \eqn{\eta / N} in Friedman & Popescu (2008).
 #' 
 #' @return 
 #' Returns a function that takes an \code{n} argument for the number of observations and a \code{weights} argument for the case weights. The function returns a vector of indices.
 #' 
 #' @references
 #' 
-#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #'
 #' @seealso 
 #' \code{\link{gpe}}
@@ -618,23 +618,23 @@ gpe_sample <- function(sampfrac = .5){
 #' @title Derive a General Prediction Ensemble (gpe)
 #' 
 #' @description 
-#' Provides an interface sparse prediction ensemble where basis functions are removed with the L1 penalty.
+#' Provides an interface for deriving sparse prediction ensembles where basis functions are selected through L1 penalization.
 #' 
-#' @param formula Symbolic description of the model to be fit of the form \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the formula) is a factor, an ensemble for binary classification is created. Otherwise, an ensemble for prediction of a continuous variable is created
-#' @param data \code{data.frame} containing the variables in the model
-#' @param base_learners List of functions which has formal arguments \code{formula, data, weights, sample_func, verbose} and \code{family} and returns a vector of characters with terms for the final formula passed to \code{cv.glmnet}. See \code{\link{gpe_linear}}, \code{\link{gpe_trees}}, and \code{\link{gpe_earth}}
-#' @param weights Case weights with length equal to number of rows in \code{data}
-#' @param sample_func Function used to sample when learning with base learners. The function should have formal argument \code{n} and \code{weights} and return a vector of indices. See \code{\link{gpe_sample}}
-#' @param verbose \code{TRUE} if comments should be posted throughout the computations
-#' @param penalized_trainer Function with formal arguments \code{x, y, weights, family} which returns a fit object. This can be changed to test other "penalized trainers" (like other function that perform an L1 penalty or L2 penalty and elastic net penalty). Not using \code{\link{cv.glmnet}} may cause other function for \code{gpe} objects to fail. See \code{\link{gpe_cv.glmnet}}
-#' @param model \code{TRUE} if the \code{data} should added to the returned object
+#' @param formula Symbolic description of the model to be fit of the form \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the formula) is a factor, an ensemble for binary classification is created. Otherwise, an ensemble for prediction of a continuous variable is created.
+#' @param data \code{data.frame} containing the variables in the model.
+#' @param base_learners List of functions which has formal arguments \code{formula, data, weights, sample_func, verbose} and \code{family} and returns a vector of characters with terms for the final formula passed to \code{cv.glmnet}. See \code{\link{gpe_linear}}, \code{\link{gpe_trees}}, and \code{\link{gpe_earth}}.
+#' @param weights Case weights with length equal to number of rows in \code{data}.
+#' @param sample_func Function used to sample when learning with base learners. The function should have formal argument \code{n} and \code{weights} and return a vector of indices. See \code{\link{gpe_sample}}.
+#' @param verbose \code{TRUE} if comments should be posted throughout the computations.
+#' @param penalized_trainer Function with formal arguments \code{x, y, weights, family} which returns a fit object. This can be changed to test other "penalized trainers" (like other function that perform an L1 penalty or L2 penalty and elastic net penalty). Not using \code{\link{cv.glmnet}} may cause other function for \code{gpe} objects to fail. See \code{\link{gpe_cv.glmnet}}.
+#' @param model \code{TRUE} if the \code{data} should added to the returned object.
 #' 
 #' @details 
 #' Provides a more general framework for making a sparse prediction ensemble than \code{\link{pre}}. A similar fit to \code{\link{pre}} can be estimated with the following call:
 #' 
 #' \code{
 #' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees()))
-#'}
+#' }
 #'     
 #' Products of hinge functions using MARS can be added to the ensemble above with the following call:
 #' 
@@ -642,16 +642,16 @@ gpe_sample <- function(sampfrac = .5){
 #' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees(), gpe_earth))
 #' }
 #' 
-#' Other customs base learners can be implemented. See \code{\link{gpe_trees}} \code{\link{gpe_linear}} or \code{\link{gpe_earth}} for details of the setup. The sampling function given by \code{sample_func} can also be replaced by a custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
+#' Other customs base learners can be implemented. See \code{\link{gpe_trees}}, \code{\link{gpe_linear}} or \code{\link{gpe_earth}} for details of the setup. The sampling function given by \code{sample_func} can also be replaced by a custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
 #' 
 #' @return 
-#' An object of class \code{gpe}
+#' An object of class \code{gpe}.
 #' 
 #' @seealso 
 #' \code{\link{pre}}, \code{\link{gpe_trees}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
 #' 
 #' @references 
-#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics The Annals of Applied Statistics, 2}(3), 916-954.
 #' 
 #' @export
 gpe <- function(

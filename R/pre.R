@@ -27,12 +27,10 @@ utils::globalVariables("%dopar%")
 #' Defaults to "both" (initial ensemble included both rules and linear functions). 
 #' Other option may be "rules" (for prediction rules only) or "linear" (for 
 #' linear functions only).
-#' @param sampfrac numeric. Takes values \eqn{>0} and \eqn{\leq 1}, representing the 
+#' @param sampfrac numeric. Takes values \eqn{>0} and \eqn{\le 1}, representing the 
 #' fraction of randomly selected training observations used to produce each 
 #' tree. Values \eqn{< 1} will result in subsamples being drawn without replacement 
 #' (i.e., subsampling), a value of 1 will result in bootstrap sampling. 
-#' Alteratively, users may supply their own sampling function like for example 
-#' \code{\link{gpe_sample}}.
 #' @param maxdepth numeric. Maximum number of conditions in rule
 #' @param learnrate numeric. Learning rate or boosting parameter.
 #' @param mtry numeric. Number of randomly selected predictor variables for 
@@ -82,28 +80,32 @@ utils::globalVariables("%dopar%")
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' 
-pre <- function(formula, data, weights = rep(1, times = nrow(data)), 
-                type = "both", sampfrac = .5, maxdepth = 3L, learnrate = NULL, 
-                mtry = Inf, ntrees = 500, removecomplements = TRUE, 
-                removeduplicates = TRUE, winsfrac = .025, normalize = TRUE, 
-                standardize = FALSE, nfolds = 10L, verbose = FALSE, 
-                par.init = FALSE, par.final = FALSE,
-                tree.control = ctree_control(maxdepth = maxdepth, mtry = mtry),
-                ...)   { 
+pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth = 3L, 
+                learnrate = NULL, mtry = Inf, ntrees = 500, 
+                removecomplements = TRUE, removeduplicates = TRUE, 
+                winsfrac = .025, normalize = TRUE, standardize = FALSE, 
+                nfolds = 10L, verbose = FALSE, par.init = FALSE, 
+                par.final = FALSE,tree.control, ...) { 
+  
   ###################
   ## Preliminaries ##
   ###################
   
-  if(par.init | par.final) {
+  if (missing(weights)) {weights <- rep(1, times = nrow(data))}
+  if (missing(tree.control)) {
+    tree.control <- ctree_control(maxdepth = maxdepth, mtry = mtry)
+  } else {
+    tree.control$maxdepth <- maxdepth
+    tree.control$mtry <- mtry
+  }
+  if (par.init | par.final) {
     if (!("foreach" %in% installed.packages()[,1])) {
       warning("Parallel computation requires package foreach, which is not installed. Argument parallel will be set to FALSE. 
               To run in parallel, download and install package foreach from CRAN, and run again.")   
       par.init <- par.final <- FALSE
     }
   }
-  if (!is.data.frame(data)) {
-    stop("data should be a data frame.")
-  }
+  if (!is.data.frame(data)) {stop("data should be a data frame.")}
   if (!(is.function(sampfrac))) {
     if (length(sampfrac) != 1 || sampfrac < 0.01 || sampfrac > 1) {
       stop("Bad value for 'sampfrac'")
@@ -115,9 +117,8 @@ pre <- function(formula, data, weights = rep(1, times = nrow(data)),
   if (length(winsfrac) != 1 || winsfrac < 0 || winsfrac > 0.5) {
     stop("Bad value for 'winsfrac'.")
   }
-  if (!is.logical(verbose)) {
-    stop("Bad value for 'verbose'.")
-  }  
+  if (!is.logical(verbose)) {stop("Bad value for 'verbose'.")}  
+  
   orig_data <- data
   data <- model.frame(formula, data, na.action = NULL)
   x_names <- attr(attr(data, "terms"), "term.labels")
@@ -447,7 +448,10 @@ pre <- function(formula, data, weights = rep(1, times = nrow(data)),
 #' and \code{plot(x$glmnet.fit)}.
 #' @param digits Number of digits to print
 #' @param ... Additional arguments, currently not used
-#' @return Prints information about the generated prediction rule ensembles, 
+#' @return Prints information about the fitted prediction rule ensemble.
+#' @details Note that the cv error is estimated with data that was also used 
+#' for learning rules and may be too optimistic. Use cvpre() to obtain an 
+#' accurate estimate of future prediction error.
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
@@ -457,8 +461,9 @@ pre <- function(formula, data, weights = rep(1, times = nrow(data)),
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
-print.pre <- function(
-  x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...) {
+print.pre <- function(x, penalty.par.val = "lambda.1se", 
+                      digits = getOption("digits"), ...) {
+  
   # function to round values
   rf <- function(x)
     signif(x, digits)
@@ -480,15 +485,13 @@ print.pre <- function(
   }
   cat("\n  number of terms = ", x$glmnet.fit$nzero[lambda_ind], 
       "\n  mean cv error (se) = ", rf(x$glmnet.fit$cvm[lambda_ind]), 
-        " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ") \n\n", sep = "")
+        " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ") *\n\n", sep = "")
   tmp <- coef(x, penalty.par.val = penalty.par.val)
   tmp <- tmp[tmp$coefficient != 0, ]
   
   print(tmp, print.gap = 2, quote = FALSE, row.names = FALSE, digits = digits)
-  
   invisible(tmp)
 }
-
 
 
 
@@ -874,22 +877,6 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   plot(aggregate(
     exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean),
     type = "l", ylab = "predicted y", xlab = varname, ...)
-  # To be implemented:
-  # qntl = trimming factor for plotting numeric variables. Plots are shown for variable values in the range [quantile (qntl) - quantile(1-qntl)]. (Ignored for categorical variables (factors).)
-  # nval = maximum number of abscissa evaluation points for numeric variables. (Ignored for categorical variables (factors).)
-  # nav = maximum number of observations used for averaging calculations. (larger values provide higher accuracy with a diminishing return; computation grows linearly with nav)
-  # catvals = vector of names for values (levels) of categorical variable (factor). (Ignored for numeric variables or length(vars) > 1)
-  # samescale = plot vertical scaling flag .
-  # samescale = TRUE / FALSE => do/don't require same vertical scale for all plots.
-  # horiz = plot orientation flag for categorical variable barplots
-  # horiz = T/F => do/don't plot bars horizontally
-  # las = label orientation flag for categorical variable plots (horiz = F, only)
-  # las = 1 => horizontal orientation of value (level) names stored in catvals (if present)
-  # las = 2 => vertical orientation of value (level) names stored in catvals (if present)
-  # cex.names = expansion factor for axis names (bar labels) for categorical variable barplots
-  # col = color of barplot for categorical variables
-  # denqnt = quantile for data density tick marks along upper plot boundary  for numeric variables ( < 1)
-  # denqnt <= 0 => no data density tick marks displayed
 }
 
 
@@ -1015,8 +1002,7 @@ pairplot <- function(object, varnames, type = "both",
   if (type == "perspective") {
     persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y", ...)
   }
-  cat("NOTE: function pairplot uses package 'akima', which has an ACM license.
-    See also https://www.acm.org/publications/policies/software-copyright-notice.")
+  message("NOTE: function pairplot uses package 'akima', which has an ACM license. See also https://www.acm.org/publications/policies/software-copyright-notice.")
 }
 
 
@@ -1051,13 +1037,14 @@ pairplot <- function(object, varnames, type = "both",
 #' \code{plot = TRUE}.
 #' @param main character string. Main title of the plot. Only used when
 #' \code{plot = TRUE}.
-#' @param col character string. Plotting color to be used for bars in barplot.
-#' Only used when \code{plot = TRUE}.
+#' @param diag.xlab logical. Should variable names be printed diagonally (that
+#' is, in a 45 degree angle)? Alternatively, variable names may be printed 
+#' vertically by specifying \code{diag.xlab = FALSE, las = 2}.
 #' @param ... further arguments to be passed to \code{barplot} (only used
 #' when \code{plot = TRUE}).
-#' @return A list with two dataframes: \code{$baseimps}, giving the importances for
-#' baselearners in the ensemble, and \code{$varimps}, giving the importances for
-#' variables that appear and do not appear in the ensemble.
+#' @return A list with two dataframes: \code{$baseimps}, giving the importances 
+#' for baselearners in the ensemble, and \code{$varimps}, giving the importances 
+#' for all predictor variables.
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
@@ -1072,7 +1059,7 @@ pairplot <- function(object, varnames, type = "both",
 importance <- function(object, standardize = FALSE, global = TRUE,
                        quantprobs = c(.75, 1), penalty.par.val = "lambda.1se", 
                        round = NA, plot = TRUE, ylab = "Importance",
-                       main = "Variable importances", col = "grey", ...)
+                       main = "Variable importances", diag.xlab = TRUE, ...)
 {
   ## Step 1: Calculate the importances of the base learners:
 
@@ -1187,9 +1174,16 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE, method = "radix"),]
     varimps <- varimps[order(varimps$imp, decreasing = TRUE, method = "radix"),]
     varimps <- varimps[varimps$imp != 0,]
-    if (plot == TRUE & nrow(varimps) > 0) {
-      barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
-              main = main, col = col)
+    if (plot & nrow(varimps) > 0) {
+      if (diag.xlab) {
+        xlab.pos <- barplot(height = varimps$imp, xlab = "", ylab = ylab, 
+                            main = main, ...)
+        text(xlab.pos, par("usr")[3], srt = 45, adj = 1, xpd = TRUE, 
+             labels = paste(varimps$varname, " "))
+      } else {
+        barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
+                main = main, ...)
+      }
     }
     if (!is.na(round)) {
       varimps[,"imp"] <- round(varimps[,"imp"], digits = round)
@@ -1403,6 +1397,8 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' element of vector is used if \code{nullmods = NULL}.
 #' @param ylab character string. Label to be used for plotting y-axis.
 #' @param main character. Main title for the bar plot.
+#' @param  se.linewidth numeric. Width of the whiskers of the plotted standard 
+#' error bars (in inches).
 #' @param k integer. Calculating interaction test statistics is a computationally
 #' intensive, so  calculations are split up in several parts to prevent memory
 #' allocation errors. If a memory allocation error still occurs, increase k.
@@ -1454,6 +1450,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
                      plot = TRUE, col = c("yellow", "blue"), 
                      ylab = "Interaction strength", 
                      main = "Interaction test statistics", 
+                     se.linewidth = .05,
                      parallel = FALSE, k = 10, verbose = FALSE, ...)
 { # Preliminaries:
   # Preliminaries:
@@ -1531,11 +1528,10 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
       x_coords <- barplot(medians, beside = TRUE, 
                           ylim = c(0, max(upper_quant, medians)), 
                           las = 1, main = main, col = col, ...)
-      whisker_width <- 0.25 * (x_coords[2] - x_coords[1])
       x_coords <- x_coords[!1:nrow(x_coords)%%2,] 
       segments(x_coords, lower_quant, x_coords, upper_quant)
       arrows(x_coords, lower_quant, x_coords, upper_quant, lwd = 1.5, angle = 90, 
-             code = 3, length = whisker_width)
+             code = 3, length = se.linewidth)
     }
   }
   if(is.null(nullmods)) {
@@ -1632,7 +1628,8 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                                         layout.pos.row = ceiling(i_plot/plot.dim[1])))
       grid::grid.text(paste("Linear effect of ", nonzeroterms$rule[i], 
                             "\n\n Coefficient = ", round(nonzeroterms$coefficient[i], digits = 3),
-                            "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3), sep = ""))
+                            "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3), sep = ""),
+                      gp = grid::gpar(...))
       grid::popViewport()
       if((i-1) %% (plot.dim[1]*plot.dim[2]) == 0) {
         grid::grid.newpage()

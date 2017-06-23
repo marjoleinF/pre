@@ -18,9 +18,9 @@ gpe_earth(..., degree = 3, nk = 11, normalize = TRUE, ntrain = 100,
 \arguments{
 \item{...}{Currently not used.}
 
-\item{remove_duplicates_complements}{\code{TRUE} should rules with complementary or duplicate support be removed?}
+\item{remove_duplicates_complements}{\code{TRUE}. Should rules with complementary or duplicate support be removed?}
 
-\item{mtry}{Number of input variables randomly sampled as candidates at each node for random forest like algorithms.. The argument is passed the tree methods in \code{partykit} package}
+\item{mtry}{Number of input variables randomly sampled as candidates at each node for random forest like algorithms. The argument is passed to the tree methods in the \code{partykit} package.}
 
 \item{ntrees}{Number of trees to fit.}
 
@@ -28,13 +28,13 @@ gpe_earth(..., degree = 3, nk = 11, normalize = TRUE, ntrain = 100,
 
 \item{learnrate}{Learning rate for methods. Corresponds to the \eqn{\nu} parameter in Friedman & Popescu (2008).}
 
-\item{parallel}{\code{TRUE} Should basis functions be found in parallel?}
+\item{parallel}{\code{TRUE}. Should basis functions be found in parallel?}
 
-\item{use_grad}{\code{TRUE} Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).}
+\item{use_grad}{\code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).}
 
-\item{winsfrac}{Quantiles to winsorize linear terms. The value should be in \eqn{[0,0.5)}}
+\item{winsfrac}{Quantile to winsorize linear terms. The value should be in \eqn{[0,0.5)}}
 
-\item{normalize}{\code{TRUE} Should value be scaled by \eqn{0.4} times the inverse standard deviation? The \eqn{0.4} is suggested by Friedman & Popescu (2008) and gives each learner the same influence as a typical rule.}
+\item{normalize}{\code{TRUE}. Should value be scaled by .4 times the inverse standard deviation? If \code{TRUE}, gives linear terms the same influence as a typical rule.}
 
 \item{degree}{Maximum degree of interactions in \code{\link{earth}} model.}
 
@@ -48,7 +48,7 @@ gpe_earth(..., degree = 3, nk = 11, normalize = TRUE, ntrain = 100,
 A function that has formal arguments \code{formula, data, weights, sample_func, verbose, family, ...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link{cv.glmnet}}
 }
 \description{
-Functions to get "learners" functions for \code{\link{gpe}}.
+Functions to get "learner" functions for \code{\link{gpe}}.
 }
 \details{
 \code{gpe_trees} provides learners for tree method. Either \code{\link{ctree}} or \code{\link{glmtree}} from the \code{partykit} package will be used.
@@ -58,15 +58,15 @@ Functions to get "learners" functions for \code{\link{gpe}}.
 \code{gpe_earth} provides basis functions where each factor is a hinge function. The model is estimated with \code{\link{earth}}.
 }
 \references{
-Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive partytioning in R. \emph{Journal of Machine Learning Research}, 16, 3905-3909.
+Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
 
-Friedman, J. H. (1991). Multivariate adaptive regression splines. \emph{The Annals of Applied Statistics}, 1-67.
+Friedman, J. H. (1991). Multivariate adaptive regression splines. \emph{The Annals Statistics, 19}(1), 1-67.
 
-Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. \emph{The Annals of Applied Statistics}, 1189-1232.
+Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
 
-Stanford University. Laboratory for Computational Statistics, & Friedman, J. H. (1993). Fast MARS.
+Friedman, J. H. (1993). Fast MARS. Dept. of Statistics Technical Report No. 110, Stanford University.
 
-Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 
 Chen T., & Guestrin C. (2016). Xgboost: A scalable tree boosting system. \emph{Proceedings of the 22Nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}. ACM, 2016.
 }

@@ -7,8 +7,8 @@
 interact(object, varnames = NULL, nullmods = NULL,
   penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95), plot = TRUE,
   col = c("yellow", "blue"), ylab = "Interaction strength",
-  main = "Interaction test statistics", parallel = FALSE, k = 10,
-  verbose = FALSE, ...)
+  main = "Interaction test statistics", se.linewidth = 0.05,
+  parallel = FALSE, k = 10, verbose = FALSE, ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
@@ -46,6 +46,9 @@ element of vector is used if \code{nullmods = NULL}.}
 \item{ylab}{character string. Label to be used for plotting y-axis.}
 
 \item{main}{character. Main title for the bar plot.}
+
+\item{se.linewidth}{numeric. Width of the whiskers of the plotted standard 
+error bars (in inches).}
 
 \item{parallel}{logical. Should parallel foreach be used? Must register
 parallel beforehand, such as doMC or others.}

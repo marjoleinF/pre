@@ -4,12 +4,11 @@
 \alias{pre}
 \title{Derive a prediction rule ensemble}
 \usage{
-pre(formula, data, weights = rep(1, times = nrow(data)), type = "both",
-  sampfrac = 0.5, maxdepth = 3L, learnrate = NULL, mtry = Inf,
-  ntrees = 500, removecomplements = TRUE, removeduplicates = TRUE,
-  winsfrac = 0.025, normalize = TRUE, standardize = FALSE, nfolds = 10L,
-  verbose = FALSE, par.init = FALSE, par.final = FALSE,
-  tree.control = ctree_control(maxdepth = maxdepth, mtry = mtry), ...)
+pre(formula, data, weights, type = "both", sampfrac = 0.5, maxdepth = 3L,
+  learnrate = NULL, mtry = Inf, ntrees = 500, removecomplements = TRUE,
+  removeduplicates = TRUE, winsfrac = 0.025, normalize = TRUE,
+  standardize = FALSE, nfolds = 10L, verbose = FALSE, par.init = FALSE,
+  par.final = FALSE, tree.control, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -38,12 +37,10 @@ Defaults to "both" (initial ensemble included both rules and linear functions).
 Other option may be "rules" (for prediction rules only) or "linear" (for 
 linear functions only).}
 
-\item{sampfrac}{numeric. Takes values \eqn{>0} and \eqn{\leq 1}, representing the 
+\item{sampfrac}{numeric. Takes values \eqn{>0} and \eqn{\le 1}, representing the 
 fraction of randomly selected training observations used to produce each 
 tree. Values \eqn{< 1} will result in subsamples being drawn without replacement 
-(i.e., subsampling), a value of 1 will result in bootstrap sampling. 
-Alteratively, users may supply their own sampling function like for example 
-\code{\link{gpe_sample}}.}
+(i.e., subsampling), a value of 1 will result in bootstrap sampling.}
 
 \item{maxdepth}{numeric. Maximum number of conditions in rule}
 

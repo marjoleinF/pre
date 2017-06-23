@@ -9,7 +9,7 @@
   digits = getOption("digits"), ...)
 
 \method{print}{pre}(x, penalty.par.val = "lambda.1se",
-  digits = getOption("digits"), ...)
+  digits = getOption("digits"), cv.warning = TRUE, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{pre}}.}
@@ -26,6 +26,10 @@ and \code{plot(x$glmnet.fit)}.}
 \item{digits}{Number of digits to print}
 
 \item{...}{Additional arguments, currently not used}
+
+\item{cv.warning}{logical. Should a warning be printed that the cv error
+for lambda was obtained using the same data that was used to train the
+rules?}
 }
 \value{
 Prints information about the generated prediction rule ensembles,

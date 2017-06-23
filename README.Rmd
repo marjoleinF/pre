@@ -91,7 +91,7 @@ airq.cv$accuracy
 
 We can assess the presence of input variable interactions using the interact() and bsnullinteract() funtions:
 
-```{r}
+```{r, fig.width=5, fig.height=5}
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R"))
