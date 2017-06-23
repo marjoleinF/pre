@@ -104,10 +104,13 @@ gpe_trees <- function(
           if(length(levels(y_learn)) != 2)
             stop("Factor for outcome in must have two levels in gpe_trees with a learning rate")
           
-          y_learn <- y <- as.numeric(y_learn == levels(y_learn)[1])
-          eta <- rep(0, length(y_learn))
-          mt <- terms(mf)
-          data[, as.character(attr(mt,"variables")[[2]])] <- y_learn
+          y <- y_learn == levels(y_learn)[1]
+
+          # Find intercept and setup y_learn 
+          eta_0 <- get_intercept_logistic(y, weights)
+          eta <- rep(eta_0, length(y))
+          p_0 <- 1 / (1 + exp(-eta))
+          y_learn <- ifelse(y, log(p_0), log(1 - p_0)) 
         }
         
         n <- nrow(data)
@@ -461,10 +464,17 @@ gpe_earth <- function(
         message("Beware that gpe_earth will use L2 loss to train")
       } else
         message("Beware that gpe_earth will use gradient boosting")
-      y <- y_learn <- as.numeric(y == levels(y)[1])
       
-      if(learnrate > 0)
-        eta <- rep(0, n)
+      y <- y == levels(y)[1]
+      
+      if(learnrate > 0){
+        # Find intercept and setup y_learn 
+        eta_0 <- get_intercept_logistic(y, weights)
+        eta <- rep(eta_0, length(y))
+        p_0 <- 1 / (1 + exp(-eta))
+        y_learn <- ifelse(y, log(p_0), log(1 - p_0))
+        
+      }
     }
     
     for(i in 1:ntrain){
@@ -597,16 +607,38 @@ eTerm <- function(x, scale = 1 / 0.4){
 #####
 # Functions for gradient boosting
 
-get_y_learn_logistic <- function(eta, y){
-  if(eta <= -6 || eta >= 6){
-    term <- pmax(sign(eta), 0)
-  } else{
-    exp_e <- exp(eta)
-    
-    term <- exp_e * (2 + exp_e) / (1 + exp_e)^2
-  }
+get_intercept_logistic <- function(y, ws = NULL){
+  # # page 484 of:
+  # # Bühlmann, Peter, and Torsten Hothorn. "Boosting algorithms: Regularization, 
+  # # prediction and model fitting." Statistical Science (2007): 477-505.
+  # # or check do the math an figure out that:
+  # n <- 1000
+  # y <- runif(n) > 1/(1 + exp(-1))
+  # w <- runif(n, 0, 2)
+  # 
+  # glm.fit(
+  #   matrix(rep(1, n), ncol = 1), 
+  #   y,
+  #   family = binomial(), 
+  #   weights = w)$coefficients
+  # 
+  # p <- weighted.mean(y, w)
+  # log(p / (1 - p))
   
-  term - y
+  p_bar <- if(is.null(ws)) mean(y) else weighted.mean(y, ws)
+  log(p_bar / (1 - p_bar))
+}
+
+get_y_learn_logistic <- function(eta, y){
+  # See LogitBoost on page 351 of:
+  # Friedman, J., Hastie, T., & Tibshirani, R. (2000). Additive logistic 
+  # regression: a statistical view of boosting (with discussion and a rejoinder 
+  # by the authors). The annals of statistics, 28(2), 337-407.
+  
+  trunc_fac <- 12
+  eta <- pmin(pmax(eta, -trunc_fac), trunc_fac)
+  p <- 1 / (1 + exp(-eta))
+  (y - p) / sqrt(p * (1 - p))
 }
 
 #' @title Default penalized trainer for gpe
