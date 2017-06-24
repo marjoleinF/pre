@@ -104,7 +104,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
       par.final <- FALSE
     }
   }
-  if (!is.data.frame(data)) {stop("data should be a data frame.")}
+  if (!(is.data.frame(data) || is.matrix(data))) {stop("Data should be a data frame or matrix.")}
   if (!(is.function(sampfrac))) {
     if (length(sampfrac) != 1 || sampfrac < 0.01 || sampfrac > 1) {
       stop("Bad value for 'sampfrac'")
@@ -136,23 +136,19 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
     }
   }
   if (!(is.numeric(data[,y_name]) | is.factor(data[,y_name]))) {
-    stop("Response variable should be continuous (class numeric) or binary (class 
-         factor)")
+    stop("Response variable should be continuous (class numeric) or binary (class factor)")
   }
   if (nlevels(data[,y_name]) > 2) {
     stop("No support for multinomial output variables yet.")
   }
   if (any(sapply(data[,x_names], is.character))) {
-    stop("Variables specified in formula and data argument are of class character. 
-         Please coerce to class 'numeric', 'factor' or 'ordered' 'factor':", 
-         x_names[sapply(data[,x_names], is.character)])
+    stop("Variables specified in formula and data argument are of class character. Please coerce to class 'numeric', 'factor' or 'ordered' 'factor':", x_names[sapply(data[,x_names], is.character)])
   }
   if (any(is.na(data))) {
     weights <- weights[complete.cases(data)]
     data <- data[complete.cases(data),]
     n <- nrow(data)
-    warning("Some observations have missing values and have been removed. 
-            New sample size is ", n, ".\n", immediate. = TRUE)
+    warning("Some observations have missing values and have been removed. New sample size is ", n, ".\n", immediate. = TRUE)
   }
   if (verbose) {
     if (classify) {
@@ -186,7 +182,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
         # Collect rules from tree:
         if (length(tree) > 1) {
           if (all.rules) {
-            rules <- c(rules, unique(get_rules_from_term_nodes(pre:::list.rules(tree))))
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
           } else {
             rules <- c(rules, list.rules(tree))
           }
@@ -215,7 +211,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
           # Collect rules from tree:
           if (length(tree) > 1) {
             if (all.rules) {
-              rules <- c(rules, unique(get_rules_from_term_nodes(pre:::list.rules(tree))))
+              rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
             } else {
               rules <- c(rules, list.rules(tree))
             }
@@ -320,11 +316,12 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
       if (verbose) {
         cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was succesfully created.")  
       }
+      storage.mode(rulevars) <- "integer"
+      rulevars <- data.frame(rulevars)
     } else {
       warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
+      rules <- rulevars <- NULL
     }
-    storage.mode(rulevars) <- "integer"
-    rulevars <- data.frame(rulevars)
   }
   if (type == "linear") {rules <- rulevars <- NULL}
   
