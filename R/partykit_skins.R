@@ -86,6 +86,24 @@ list.rules <- function (x, i = NULL, ...)
   paste(rule, collapse = " & ")
 }
 
+
+# Function for returning inner nodes in addition to terminal nodes
+get_rules_from_term_nodes <- function(rulelist) {
+  condition_list <- strsplit(rulelist, " & ")
+  rulelist2 <- list()
+  for(i in 1:length(condition_list)) {
+    rules <- condition_list[[i]][1]
+    if (length(condition_list[[i]]) > 1) {
+      for(j in 2:(length(condition_list[[i]]))) {
+        rules <-  c(rules, paste(rules[j-1], "&", condition_list[[i]][j]))
+      }
+    }
+    rulelist2[[i]] <- rules
+  }
+  return(unlist(rulelist2))
+}
+
+
 #####
 # Wrappers for ctree which returns the needed output to get rules
 

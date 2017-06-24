@@ -7,7 +7,7 @@
 pre(formula, data, weights, type = "both", sampfrac = 0.5, maxdepth = 3L,
   learnrate = NULL, mtry = Inf, ntrees = 500, removecomplements = TRUE,
   removeduplicates = TRUE, winsfrac = 0.025, normalize = TRUE,
-  standardize = FALSE, nfolds = 10L, verbose = FALSE, par.init = FALSE,
+  standardize = FALSE, nfolds = 10L, verbose = FALSE, all.rules = FALSE,
   par.final = FALSE, tree.control, ...)
 }
 \arguments{
@@ -77,9 +77,8 @@ validation for determining penalty parameter.}
 \item{verbose}{logical. Should information on the initial and final ensemble 
 be printed to the command line?}
 
-\item{par.init}{logical. Should parallel foreach be used to generate initial 
-ensemble? Only used when \verb{learnrate == 0}. Must register parallel 
-beforehand, such as doMC or others.}
+\item{all.rules}{logical. Should inner nodes be included as rules in the 
+initial ensemble, too?}
 
 \item{par.final}{logical. Should parallel foreach be used to perform cross 
 validation for selecting the final ensemble? Must register parallel beforehand, 

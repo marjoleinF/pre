@@ -36,6 +36,8 @@ utils::globalVariables("%dopar%")
 #' @param mtry numeric. Number of randomly selected predictor variables for 
 #' creating each split in each tree.
 #' @param ntrees numeric. Number of trees to generate for the initial ensemble.
+#' @param all.rules logical. Should inner nodes be included as rules in the 
+#' initial ensemble, too?
 #' @param removeduplicates logical. Remove rules from the ensemble which have 
 #' the exact same support in training data?
 #' @param removecomplements logical. Remove rules from the ensemble which have
@@ -55,9 +57,6 @@ utils::globalVariables("%dopar%")
 #' validation for determining penalty parameter.
 #' @param verbose logical. Should information on the initial and final ensemble 
 #' be printed to the command line?
-#' @param par.init logical. Should parallel foreach be used to generate initial 
-#' ensemble? Only used when \verb{learnrate == 0}. Must register parallel 
-#' beforehand, such as doMC or others.
 #' @param par.final logical. Should parallel foreach be used to perform cross 
 #' validation for selecting the final ensemble? Must register parallel beforehand, 
 #' such as doMC or others.
@@ -84,7 +83,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
                 learnrate = NULL, mtry = Inf, ntrees = 500, 
                 removecomplements = TRUE, removeduplicates = TRUE, 
                 winsfrac = .025, normalize = TRUE, standardize = FALSE, 
-                nfolds = 10L, verbose = FALSE, par.init = FALSE, 
+                nfolds = 10L, verbose = FALSE, all.rules = FALSE,
                 par.final = FALSE,tree.control, ...) { 
   
   ###################
@@ -98,11 +97,11 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
     tree.control$maxdepth <- maxdepth
     tree.control$mtry <- mtry
   }
-  if (par.init | par.final) {
+  if (par.final) {
     if (!("foreach" %in% installed.packages()[,1])) {
       warning("Parallel computation requires package foreach, which is not installed. Argument parallel will be set to FALSE. 
               To run in parallel, download and install package foreach from CRAN, and run again.")   
-      par.init <- par.final <- FALSE
+      par.final <- FALSE
     }
   }
   if (!is.data.frame(data)) {stop("data should be a data frame.")}
@@ -171,38 +170,26 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
     if (learnrate == 0) { # always use ctree()
       #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
       input <- ctree_setup(formula, data = data, control = tree.control)
-      if(par.init) {
-        rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
-          # Take subsample of dataset
-          if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else if (sampfrac < 1) { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                prob = weights)
-          }
-          # Grow ctree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
-          tree <- with(input, ctree_minimal(
-            dat[subsample, ], response, control, ytrafo, terms))
-          # Collect rules from tree:
-          list.rules(tree)
+      rules <- c()
+      for(i in 1:ntrees) {
+        # Take subsample of dataset
+        if (sampfrac == 1) { # then bootstrap
+          subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
+        } else if (sampfrac < 1) { # else subsample
+          subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                              prob = weights)
         }
-      } else {
-        rules <- c()
-        for(i in 1:ntrees) {
-          # Take subsample of dataset
-          if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else if (sampfrac < 1) { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                prob = weights)
+        # Grow tree on subsample:
+        #tree <- ctree(formula, data = data[subsample,], control = tree.control)
+        tree <- with(input, ctree_minimal(
+          dat[subsample, ], response, control, ytrafo, terms))
+        # Collect rules from tree:
+        if (length(tree) > 1) {
+          if (all.rules) {
+            rules <- c(rules, unique(get_rules_from_term_nodes(pre:::list.rules(tree))))
+          } else {
+            rules <- c(rules, list.rules(tree))
           }
-          # Grow tree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
-          tree <- with(input, ctree_minimal(
-            dat[subsample, ], response, control, ytrafo, terms))
-          # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
         }
       }
     }
@@ -226,7 +213,13 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
           tree <- with(input, ctree_minimal(
             dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
+          if (length(tree) > 1) {
+            if (all.rules) {
+              rules <- c(rules, unique(get_rules_from_term_nodes(pre:::list.rules(tree))))
+            } else {
+              rules <- c(rules, list.rules(tree))
+            }
+          }
           # Substract predictions from current y:
           y_learn <- y_learn - learnrate * predict_party_minimal(
             tree, newdata = data)
@@ -248,21 +241,23 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
           tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial", 
                           maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
+          if (length(tree) > 1) {
+            if (all.rules) {
+              rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
+            } else {
+              rules <- c(rules, list.rules(tree))
+            }
+          }
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")
         }
       } 
     }
-    nrules <- length(rules)
-    if (verbose){
-      cat("\nA total of", ntrees, "trees and ", nrules, "rules were generated initially.")
-    }
     # Keep unique, non-empty rules only:
     rules <- unique(rules[!rules==""])
     if (verbose) {
-      cat("\n\nA total of", nrules - length(rules), "rules were empty and removed from the initial ensemble.")
+      cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
     }
     # Create dataframe with 0-1 coded rules:
     if (length(rules) > 0) {
@@ -319,7 +314,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
         duplicates.removed <- NULL
       
       if (verbose && (removeduplicates|| removecomplements)) {
-        cat("\n\nA total of", sum(duplicates) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $duplicates.removed show which, if any).")
+        cat("\n\nA total of", sum(duplicates) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
       }
       
       if (verbose) {
@@ -485,7 +480,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
   }
   cat("\n  number of terms = ", x$glmnet.fit$nzero[lambda_ind], 
       "\n  mean cv error (se) = ", rf(x$glmnet.fit$cvm[lambda_ind]), 
-        " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ") *\n\n", sep = "")
+        " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ") \n\n", sep = "")
   tmp <- coef(x, penalty.par.val = penalty.par.val)
   tmp <- tmp[tmp$coefficient != 0, ]
   
