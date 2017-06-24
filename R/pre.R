@@ -104,7 +104,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
       par.final <- FALSE
     }
   }
-  if (!(is.data.frame(data) || is.matrix(data))) {stop("Data should be a data frame or matrix.")}
+  if (!is.data.frame(data)) {stop("Data should be a data frame.")}
   if (!(is.function(sampfrac))) {
     if (length(sampfrac) != 1 || sampfrac < 0.01 || sampfrac > 1) {
       stop("Bad value for 'sampfrac'")
