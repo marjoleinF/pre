@@ -54,6 +54,9 @@ list.rules <- function (x, i = NULL, ...)
       if (is.null(index))
         index <- ((1:nlevels(dat[, svar])) > split$breaks) + 1
       slevels <- levels(dat[, svar])[index == whichkid]
+      # factor levels not occurring in the node will be coded as NA
+      # and should be removed from rule description:
+      slevels <- slevels[!is.na(slevels)]
       srule <- paste(svar, " %in% c(\"", paste(slevels, 
                                                collapse = "\", \"", sep = ""), "\")", sep = "")
     }

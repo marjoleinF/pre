@@ -91,7 +91,7 @@ gpe_trees <- function(
         
         if(family == "binomial"){
           if(length(levels(y_learn)) != 2)
-            stop("Factor for outcome in must have two levels in gpe_trees with a learning rate")
+            stop("Factor for outcome must have two levels in gpe_trees with a learning rate")
           
           y_learn <- y <- as.numeric(y_learn == levels(y_learn)[1])
           eta <- rep(0, length(y_learn))
@@ -177,7 +177,7 @@ gpe_trees <- function(
         rules <- rules[-duplicates]
       }
       
-      # Remove compliments
+      # Remove complements
       sds <- apply(rulevars, 2, sd)
       sds_distinct <- 
         sapply(base::unique.default(sds), function(x) c(x, sum(sds == x)))

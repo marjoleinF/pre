@@ -113,11 +113,13 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
   if (length(type) != 1 || (type != "rules" & type != "both" & type != "linear")) {
     stop("Argument type should equal 'both', 'rules' or 'linear'")
   }
+  
   if (length(winsfrac) != 1 || winsfrac < 0 || winsfrac > 0.5) {
     stop("Bad value for 'winsfrac'.")
   }
   if (!is.logical(verbose)) {stop("Bad value for 'verbose'.")}  
   
+  # prepare model frame:
   orig_data <- data
   data <- model.frame(formula, data, na.action = NULL)
   x_names <- attr(attr(data, "terms"), "term.labels")
@@ -135,14 +137,17 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
       learnrate <- .01
     }
   }
+  
   if (!(is.numeric(data[,y_name]) | is.factor(data[,y_name]))) {
     stop("Response variable should be continuous (class numeric) or binary (class factor)")
   }
+  
   if (nlevels(data[,y_name]) > 2) {
     stop("No support for multinomial output variables yet.")
   }
+  
   if (any(sapply(data[,x_names], is.character))) {
-    stop("Variables specified in formula and data argument are of class character. Please coerce to class 'numeric', 'factor' or 'ordered' 'factor':", x_names[sapply(data[,x_names], is.character)])
+    stop("Variables specified in formula and data argument are of class character. Please coerce to class 'numeric', 'factor' or 'ordered' 'factor':", paste(x_names[sapply(data[,x_names], is.character)], sep = ", "))
   }
   if (any(is.na(data))) {
     weights <- weights[complete.cases(data)]
@@ -331,13 +336,10 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
 
   if (type == "rules" & length(rules) > 0) {
     x <- rulevars
-    x_scales <- NULL
   } else { # if type is not rules, linear terms should be prepared:
     x <- data[,x_names]
-    
     # convert ordered categorical predictor variables to linear terms:
     x[,sapply(x, is.ordered)] <- as.numeric(as.character(x[,sapply(x, is.ordered)]))
-    
     # Winsorize numeric variables (section 5 of F&P(2008)):
     if (winsfrac > 0) {
       wins_points <- data.frame(varname = names(x), value = NA)
@@ -349,8 +351,6 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
           wins_points$value[i] <- paste(lim[1], "<=", names(x)[i], "<=", lim[2])
         }
       }
-    } else {
-      wins_points <- NULL 
     }
     # normalize numeric variables:
     if (normalize) { 
@@ -360,12 +360,8 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
         x_scales <- sapply(x[, is_numeric], sd, na.rm = TRUE) / 0.4
         x[, is_numeric] <- scale(
           x[, is_numeric], center = FALSE, scale = x_scales)
-      } else {
-        x_scales <- NULL
       }
-    } else {
-      x_scales <- NULL
-    } 
+    }
     # If both rules and linear terms are in ensemble, combine both:
     if (type == "both" & length(rules) > 0) {
       x <- data.frame(x, rulevars)
@@ -375,6 +371,9 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
     paste(" ~ -1 +", paste(colnames(x), collapse = "+")))
   x <- model.matrix(modmat_formula, data = x)
   y <- data[,y_name]
+  
+  if (!exists("wins_points")) {wins_points <- NULL}
+  if (!exists("x_scales")) {x_scales <- NULL}
     
   ##################################################
   ## Perform penalized regression on the ensemble ##
@@ -456,7 +455,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
 print.pre <- function(x, penalty.par.val = "lambda.1se", 
                       digits = getOption("digits"), ...) {
   
-  # function to round values
+  # function to round values:
   rf <- function(x)
     signif(x, digits)
   
@@ -477,12 +476,16 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
   }
   cat("\n  number of terms = ", x$glmnet.fit$nzero[lambda_ind], 
       "\n  mean cv error (se) = ", rf(x$glmnet.fit$cvm[lambda_ind]), 
-        " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ") \n\n", sep = "")
-  tmp <- coef(x, penalty.par.val = penalty.par.val)
-  tmp <- tmp[tmp$coefficient != 0, ]
+        " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ")", "\n\n  cv error type : ",
+      x$glmnet.fit$name, "\n\n", sep = "")
+  coefs <- coef(x, penalty.par.val = penalty.par.val)
+  coefs <- coefs[coefs$coefficient != 0, ]
+  # always put intercept first:
+  coefs <- rbind(coefs[coefs$rule == "(Intercept)",], 
+                 coefs[coefs$rule != "(Intercept)",])
   
-  print(tmp, print.gap = 2, quote = FALSE, row.names = FALSE, digits = digits)
-  invisible(tmp)
+  print(coefs, print.gap = 2, quote = FALSE, row.names = FALSE, digits = digits)
+  invisible(coefs)
 }
 
 
@@ -711,7 +714,9 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     if (!is.data.frame(newdata)) {
       stop("newdata should be a data frame.")
     }
-    newdata <- model.frame(object$call$formula, newdata, na.action = NULL)
+    
+    # newdata <- model.frame(object$call$formula, newdata, na.action = NULL)
+    newdata <- model.frame(formula(terms(object$data)), newdata, na.action = NULL)
     # check if newdata has the same columns as object$orig_data:
     if (!all(names(object$data) %in% c(names(newdata), object$y_name))) {
       stop("newdata does not contain all predictor variables from the ensemble")
@@ -735,7 +740,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       # get names of rules with nonzero and zero coefficients:
       nonzerorulenames <- names(coefs[coefs!=0,])[grep("rule", names(coefs[coefs!=0,]))]
       zerorulenames <- names(coefs[coefs==0,])[grep("rule", names(coefs[coefs==0,]))]
-      if (length(nonzerorulenames) > 0) {
+      if (length(nonzerorulenames) > 0) { #  assess rules with non-zero coefficients
         nonzeroterms <- as.character(
           object$rules$description[object$rules$rule %in% nonzerorulenames])
         newrulevars <- data.frame(r1 = as.numeric(with(newdata, eval(parse(
@@ -753,7 +758,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
             newrulevars[,i] <- 0
           }
         }
-      } else { # only check and assess rules with non-zero coefficients
+      } else { # set all rules with zero coefficients to 0:
         if (length(zerorulenames) > 0) {
           newrulevars <- data.frame(r1 = rep(0, times = nrow(newdata)))
           names(newrulevars) <- zerorulenames[1]
@@ -769,11 +774,15 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 
     # linear terms normalized before application of glmnet should also be
     # normalized before applying predict.glmnet:
-    if (object$normalize & object$type != "rules") {
-      newdata[,names(object$x_scales)] <- scale(
-        newdata[,names(object$x_scales)], center = FALSE, scale = object$x_scales)
+    if (object$type != "rules") {
+      if (object$normalize) {
+        if (!is.null(object$x_scales)) {
+        newdata[,names(object$x_scales)] <- scale(
+          newdata[,names(object$x_scales)], center = FALSE, scale = object$x_scales)
+        }
+      }
     }
-    if (object$type != "linear") {
+    if (object$type != "linear" && (length(zerorulenames) > 0 || length(nonzerorulenames) > 0)) {
       newdata <- data.frame(newdata, newrulevars)
     }
     newdata <- model.Matrix(object$modmat_formula, data = newdata,
@@ -1061,7 +1070,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
   if (sum(coefs$coefficient != 0) > 1) { 
     # give factors a description:
     coefs$description[is.na(coefs$description)] <-
-      paste(as.character(coefs$rule)[is.na(coefs$description)], " ", sep = "")
+      paste0(as.character(coefs$rule)[is.na(coefs$description)], " ")
     coefs <- coefs[order(coefs$rule),]
     # Get sds for every baselearner:
     if (global) {
@@ -1141,10 +1150,10 @@ importance <- function(object, standardize = FALSE, global = TRUE,
         #   (Note: EXACT matches are needed, so 1) there should be a space before 
         #     and after the variable name in the rule and thus 2) there should be 
         #     a space added before the description of the rule)
-        if(grepl(paste(" ", varimps$varname[i], " ", sep = ""), paste(" ", baseimps$description[j], sep =""))) {
+        if(grepl(paste0(" ", varimps$varname[i], " "), paste0(" ", baseimps$description[j]))) {
           # then count the number of times it appears in the rule:
-          n_occ <- length(gregexpr(paste(" ", varimps$varname[i], " ", sep = ""),
-                                   paste(" ", baseimps$description[j], sep =""), fixed = TRUE)[[1]])
+          n_occ <- length(gregexpr(paste0(" ", varimps$varname[i], " "),
+                                   paste0(" ", baseimps$description[j]), fixed = TRUE)[[1]])
           # and add it to the importance of the variable:
           varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] /
                                                 baseimps$nterms[j])
@@ -1618,9 +1627,9 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       }
       grid::pushViewport(grid::viewport(layout.pos.col = rep(1:plot.dim[2], times = i_plot)[i_plot],
                                         layout.pos.row = ceiling(i_plot/plot.dim[1])))
-      grid::grid.text(paste("Linear effect of ", nonzeroterms$rule[i], 
+      grid::grid.text(paste0("Linear effect of ", nonzeroterms$rule[i], 
                             "\n\n Coefficient = ", round(nonzeroterms$coefficient[i], digits = 3),
-                            "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3), sep = ""),
+                            "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3)),
                       gp = grid::gpar(...))
       grid::popViewport()
       if((i-1) %% (plot.dim[1]*plot.dim[2]) == 0) {
@@ -1728,7 +1737,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                                         layout.pos.row = ceiling(i_plot/plot.dim[1])))
       fftree <- party(nodes[[lev * 2 + 1]], data = treeplotdata)
       plot(fftree, newpage = FALSE, 
-           main = paste(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3), sep = ""),
+           main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
            inner_panel = node_inner(fftree, id = FALSE),
            terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))
       grid::popViewport()
