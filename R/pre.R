@@ -64,6 +64,14 @@ utils::globalVariables("%dopar%")
 #' fitting function, see \code{\link[partykit]{ctree_control}]}.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link[glmnet]{cv.glmnet}}.
+#' @details In rare cases, duplucated variable names may appear in the model.
+#' For example, when the first variable is named 'V1' and is a factor, and 
+#' there is a variable called 'V10' and/or 'V11' and/or 'V12' (etc), which 
+#' is/are numeric. For the binary factor V1, dummy contrast variables were 
+#' created to fit the model, called 'V10', 'V11', 'V12' (etc). As should be 
+#' clear from this example, this yields replicated variable names, which may
+#' yield errors or incorrect results. Users should avoid this situation by
+#' renaming the variables prior to the analysis.
 #' @note The code for deriving rules from the nodes of trees was taken from an 
 #' internal function of the \code{partykit} package of Achim Zeileis and Torsten 
 #' Hothorn.
@@ -374,7 +382,13 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
   
   if (!exists("wins_points")) {wins_points <- NULL}
   if (!exists("x_scales")) {x_scales <- NULL}
-    
+  
+  # check whether there's duplicates in the variable names:
+  # (can happen, for example, due to labeling of dummy indicators for factors)
+  if (!(length(unique(colnames(x))) == length(colnames(x)))) { 
+    warning("There are variables in the model with overlapping variable names. Rename variables and rerun the analysis. See 'Details' under ?pre.") 
+  } 
+  
   ##################################################
   ## Perform penalized regression on the ensemble ##
   ##################################################
@@ -626,6 +640,14 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
 #' @return returns a dataframe with 3 columns: coefficient, rule (rule or 
 #' variable name) and description (\code{NA} for linear terms, conditions for 
 #' rules).
+#' @details In rare cases, duplucated variable names may appear in the model.
+#' For example, when the first variable is named 'V1' and is a factor, and 
+#' there is a variable called 'V10' and/or 'V11' and/or 'V12' (etc), which 
+#' is/are numeric. For the binary factor V1, dummy contrast variables were 
+#' created to fit the model, called 'V10', 'V11', 'V12' (etc). As should be 
+#' clear from this example, this yields replicated variable names, which may
+#' yield errors or incorrect results. Users should avoid this situation by
+#' renaming the variables prior to the analysis.
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
@@ -646,6 +668,14 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   }
   coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs), 
                       stringsAsFactors = FALSE)
+  # check whether there's duplicates in the variable names:
+  # (can happen, for example, due to labeling of dummy indicators for factors)
+  if (!(length(unique(coefs$rule)) == length(coefs$rule))) { 
+    replicates_in_variable_names <- TRUE
+    warning("There are variables in the model with overlapping variable names. This may result in errors, or results may not be valid. See 'Details' under ?coef.pre.") 
+  } else {
+    replicates_in_variable_names <- FALSE
+  }
   if (object$type != "linear" & !is.null(object$rules)) {
     # We set sort to FALSE to get comparable results across platforms
     coefs <- base::merge.data.frame(coefs, object$rules, all.x = TRUE, sort = FALSE)
@@ -656,8 +686,9 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
                         coefficient = coefs[,1],
                         stringsAsFactors = FALSE)
   }
-  if(!is.null(object$wins_points)) { # include winsorizing points in the 
-    # description if they were used in generating the ensemble:
+  # include winsorizing points in the description if they were used in 
+  # generating the ensemble (and if there are no duplicate variable names):  
+  if (!is.null(object$wins_points) && !replicates_in_variable_names) { 
     wp <- object$wins_points[!is.na(object$wins_points$value), ]
     coefs[coefs$rule %in% wp$varname, ][
       order(coefs[coefs$rule %in% wp$varname,]$rule), ]$description <- 
@@ -1074,9 +1105,11 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     coefs <- coefs[order(coefs$rule),]
     # Get sds for every baselearner:
     if (global) {
-      # here, object$x_scales should be used to get correct SDs for linear terms:
-      sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))      
-      sd_y <- sd(object$data[,object$y_name])
+      # object$x_scales should be used to get correct SDs for linear terms:
+      sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))  
+      if (standardize) {
+        sd_y <- sd(object$data[,object$y_name])
+      }
       if(object$normalize) {
         sds[names(object$x_scales)] <- sds[names(object$x_scales)] * object$x_scales
       }
@@ -1087,25 +1120,27 @@ importance <- function(object, standardize = FALSE, global = TRUE,
                                  preds <= quantile(preds, probs = quantprobs[2]),]
       if (nrow(local_modmat) < 2) {stop("Selected subregion contains less than 2
                                   observations, importances cannot be calculated")}
-      # here, object$x_scales should be used to get correct SDs for linear terms:
+      # object$x_scales should be used to get correct SDs for linear terms:
       sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
       if(object$normalize) {
         sds[names(object$x_scales)] <- sds[names(object$x_scales)] * object$x_scales
       }
-      sd_y <- sd(object$data[preds >= quantile(preds, probs = quantprobs[1]) &
-                               preds <= quantile(preds, probs = quantprobs[2]),
-                             object$y_name])
+      if (standardize) {
+        sd_y <- sd(object$data[preds >= quantile(preds, probs = quantprobs[1]) & 
+                                 preds <= quantile(preds, probs = quantprobs[2]),
+                               object$y_name])
+      }
     }
     names(sds)[1] <- "(Intercept)"
     sds <- sds[order(names(sds))]
+    ## TODO: Is this next part even helpful?
     if (all(names(sds) != coefs$rule)) {
-      stop("There seems to be a problem with the ordering or size of the
+      warning("There seems to be a problem with the ordering or size of the
            coefficient and sd vectors. Importances cannot be calculated.")
     }
 
     # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
     if (standardize) {
-      #baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds/sd_y)
       baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds/sd_y)
     } else {
       baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
