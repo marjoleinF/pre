@@ -4,11 +4,11 @@
 \alias{pre}
 \title{Derive a prediction rule ensemble}
 \usage{
-pre(formula, data, weights, type = "both", sampfrac = 0.5, maxdepth = 3L,
-  learnrate = NULL, mtry = Inf, ntrees = 500, removecomplements = TRUE,
-  removeduplicates = TRUE, winsfrac = 0.025, normalize = TRUE,
-  standardize = FALSE, nfolds = 10L, verbose = FALSE, all.rules = FALSE,
-  par.final = FALSE, tree.control, ...)
+pre(formula, data, count = FALSE, weights, type = "both", sampfrac = 0.5,
+  maxdepth = 3L, learnrate = NULL, mtry = Inf, ntrees = 500,
+  removecomplements = TRUE, removeduplicates = TRUE, winsfrac = 0.025,
+  normalize = TRUE, standardize = FALSE, nfolds = 10L, verbose = FALSE,
+  all.rules = FALSE, par.final = FALSE, tree.control, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -28,6 +28,9 @@ must be of class \code{"numeric"} (for continuous input variables),
 \code{"logical"} (for binary variables), \code{"factor"} (for nominal input 
 variables with 2 or more levels), or \code{"ordered" "factor"} (for 
 ordered input variables).}
+
+\item{count}{logical. Is the numeric outcome a count variable and 
+consequently, should a poisson regression model be fitted?}
 
 \item{weights}{an optional vector of observation weights to be used for 
 deriving the ensemble.}

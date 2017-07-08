@@ -21,6 +21,8 @@ utils::globalVariables("%dopar%")
 #' \code{"logical"} (for binary variables), \code{"factor"} (for nominal input 
 #' variables with 2 or more levels), or \code{"ordered" "factor"} (for 
 #' ordered input variables).
+#' @param count logical. Is the numeric outcome a count variable and 
+#' consequently, should a poisson regression model be fitted? 
 #' @param weights an optional vector of observation weights to be used for 
 #' deriving the ensemble.
 #' @param type character. Type of base learners to be included in ensemble. 
@@ -87,8 +89,8 @@ utils::globalVariables("%dopar%")
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' 
-pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth = 3L, 
-                learnrate = NULL, mtry = Inf, ntrees = 500, 
+pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac = .5, 
+                maxdepth = 3L, learnrate = NULL, mtry = Inf, ntrees = 500, 
                 removecomplements = TRUE, removeduplicates = TRUE, 
                 winsfrac = .025, normalize = TRUE, standardize = FALSE, 
                 nfolds = 10L, verbose = FALSE, all.rules = FALSE,
@@ -204,7 +206,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
     }
     if (learnrate > 0) {
       rules <- c()
-      if (!classify) {
+      if (!classify && !count) {
         y_learn <- data[, y_name]
         #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
         input <- ctree_setup(formula, data = data, control = tree.control)
@@ -233,7 +235,7 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
           y_learn <- y_learn - learnrate * predict_party_minimal(
             tree, newdata = data)
         }
-      } else { # if (classify)
+      } else if (classify) { 
         data2 <- data.frame(data, offset = 0)
         glmtreeformula <- formula(paste(paste(y_name, " ~ 1 |"), 
                                         paste(x_names, collapse = "+")))
@@ -261,7 +263,37 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")
         }
-      } 
+      } else if (count) { # fit poisson regressions:
+        
+        data2 <- data.frame(data, offset = 0)
+        glmtreeformula <- formula(paste(paste(y_name, " ~ 1 |"), 
+                                        paste(x_names, collapse = "+")))
+        for(i in 1:ntrees) {
+          # Take subsample of dataset:
+          if (sampfrac == 1) { # then bootstrap
+            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
+          } else if (sampfrac < 1) { # else subsample
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                prob = weights)
+          }
+          subsampledata <- data2[subsample,]
+          # Grow tree on subsample:
+          tree <- glmtree(glmtreeformula, data = subsampledata, family = "poisson", 
+                          maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
+          # Collect rules from tree:
+          if (length(tree) > 1) {
+            if (all.rules) {
+              rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
+            } else {
+              rules <- c(rules, list.rules(tree))
+            }
+          }
+          # Update offset:
+          data2$offset <- data2$offset + learnrate * predict(
+            tree, newdata = data2, type = "link")
+        }
+        
+      }
     }
     # Keep unique, non-empty rules only:
     rules <- unique(rules[!rules==""])
@@ -395,6 +427,8 @@ pre <- function(formula, data, weights, type = "both", sampfrac = .5, maxdepth =
   
   if (classify) {
     family <- "binomial"
+  } else if (count) {
+    family = "poisson"
   } else {
     family <- "gaussian"
   }
@@ -514,8 +548,9 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' @param k integer. The number of cross validation folds to be used.
 #' @param verbose logical. Should progress of the cross validation be printed 
 #' to the command line?
-#' @param pclass numeric. Only used for classification. Cut-off value between 
-#' 0 and 1 to be used for classifying to second class. 
+#' @param pclass numeric. Only used for classification. Cut-off value for the 
+#' predicted probabilities that should be used to classify observations to the
+#' second class. 
 #' @param penalty.par.val character. Calculate cross-validated error for ensembles 
 #' with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
 #' or giving cv error that is within 1 standard error of minimum cv error 
@@ -553,7 +588,7 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
       cl$verbose <- FALSE
       cl$data <- object$orig_data[folds != i,]
       cvobject <- eval(cl)
-      if (object$classify) {
+      if (object$classify || ifelse(is.null(object$call$count), FALSE, object$call$count)) {
         data.frame(fold = rep(i, times = length(folds) - nrow(cvobject$orig_data)), 
                    preds = predict.pre(cvobject, type = "response", 
                                        newdata = object$orig_data[folds == i,], 
@@ -581,7 +616,7 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
       cl$verbose <- FALSE
       cl$data <- object$orig_data[folds != i,]
       cvobject <- eval(cl)
-      if (object$classify) {
+      if (object$classify || ifelse(is.null(object$call$count), FALSE, object$call$count)) {
         cvpreds[folds == i] <- predict.pre(
           cvobject, newdata = object$orig_data[folds == i,], type = "response", 
           penalty.par.val = penalty.par.val)
@@ -1597,7 +1632,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' running \code{x$glmnet.fit} and \code{plot(x$glmnet.fit)}.
 #' @param linear.terms logical. Should linear terms be included in the plot?
 #' @param nterms numeric. The total number of terms (or rules, if 
-#' \code{linear.terms = FALSE}) to be plotted. Default is \code{NULL}, 
+#' \code{linear.terms = FALSE}) being plotted. Default is \code{NULL}, 
 #' resulting in all terms of the final ensemble to be plotted.
 #' @param max.terms.plot numeric. The maximum number of terms per plot. Rules 
 #' are plotted in a square pattern, so \code{is.integer(sqrt(max.terms.plot))} 
