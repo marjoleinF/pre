@@ -8,7 +8,8 @@ pre(formula, data, count = FALSE, weights, type = "both", sampfrac = 0.5,
   maxdepth = 3L, learnrate = NULL, mtry = Inf, ntrees = 500,
   removecomplements = TRUE, removeduplicates = TRUE, winsfrac = 0.025,
   normalize = TRUE, standardize = FALSE, nfolds = 10L, verbose = FALSE,
-  all.rules = FALSE, par.final = FALSE, tree.control, ...)
+  all.rules = FALSE, par.init = FALSE, par.final = FALSE, tree.control,
+  ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -83,6 +84,10 @@ be printed to the command line?}
 \item{all.rules}{logical. Should inner nodes be included as rules in the 
 initial ensemble, too?}
 
+\item{par.init}{logical. Should parallel foreach be used to generate initial 
+ensemble? Only used when \verb{learnrate == 0} and \code{count = FALSE}. Must 
+register parallel beforehand, such as doMC or others.}
+
 \item{par.final}{logical. Should parallel foreach be used to perform cross 
 validation for selecting the final ensemble? Must register parallel beforehand, 
 such as doMC or others.}
@@ -111,7 +116,7 @@ yield errors or incorrect results. Users should avoid this situation by
 renaming the variables prior to the analysis.
 
 Inputs can be continuous, ordered or factor variables. Output can be
-continuous or binary categorical.
+a continuous, count or binary categorical variable.
 }
 \note{
 The code for deriving rules from the nodes of trees was taken from an 

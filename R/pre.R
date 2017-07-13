@@ -59,6 +59,9 @@ utils::globalVariables("%dopar%")
 #' validation for determining penalty parameter.
 #' @param verbose logical. Should information on the initial and final ensemble 
 #' be printed to the command line?
+#' @param par.init logical. Should parallel foreach be used to generate initial 
+#' ensemble? Only used when \verb{learnrate == 0} and \code{count = FALSE}. Must 
+#' register parallel beforehand, such as doMC or others.
 #' @param par.final logical. Should parallel foreach be used to perform cross 
 #' validation for selecting the final ensemble? Must register parallel beforehand, 
 #' such as doMC or others.
@@ -79,7 +82,7 @@ utils::globalVariables("%dopar%")
 #' Hothorn.
 #' @return an object of class \code{pre} 
 #' @details Inputs can be continuous, ordered or factor variables. Output can be
-#' continuous or binary categorical.
+#' a continuous, count or binary categorical variable.
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
@@ -94,7 +97,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                 removecomplements = TRUE, removeduplicates = TRUE, 
                 winsfrac = .025, normalize = TRUE, standardize = FALSE, 
                 nfolds = 10L, verbose = FALSE, all.rules = FALSE,
-                par.final = FALSE,tree.control, ...) { 
+                par.init = FALSE, par.final = FALSE, tree.control, ...) { 
   
   ###################
   ## Preliminaries ##
@@ -169,7 +172,11 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
     if (classify) {
       cat("A rule ensemble for prediction of a categorical output variable will be created.\n")
     } else {
-      cat("A rule ensemble for prediction of a continuous output variable will be created.\n")
+      if (count) {
+        cat("A rule ensemble for prediction of a coount output variable will be created.\n")        
+      } else {
+        cat("A rule ensemble for prediction of a continuous output variable will be created.\n")
+      }
     }
   }  
   
@@ -181,25 +188,43 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
     if (learnrate == 0) { # always use ctree()
       #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
       input <- ctree_setup(formula, data = data, control = tree.control)
-      rules <- c()
-      for(i in 1:ntrees) {
-        # Take subsample of dataset
-        if (sampfrac == 1) { # then bootstrap
-          subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-        } else if (sampfrac < 1) { # else subsample
-          subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                              prob = weights)
+      if(par.init) {
+        rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
+          # Take subsample of dataset
+          if (sampfrac == 1) { # then bootstrap
+            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
+          } else if (sampfrac < 1) { # else subsample
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                prob = weights)
+          }
+          # Grow ctree on subsample:
+          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
+          tree <- with(input, ctree_minimal(
+            dat[subsample, ], response, control, ytrafo, terms))
+          # Collect rules from tree:
+          list.rules(tree)
         }
-        # Grow tree on subsample:
-        #tree <- ctree(formula, data = data[subsample,], control = tree.control)
-        tree <- with(input, ctree_minimal(
-          dat[subsample, ], response, control, ytrafo, terms))
-        # Collect rules from tree:
-        if (length(tree) > 1) {
-          if (all.rules) {
-            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
-          } else {
-            rules <- c(rules, list.rules(tree))
+      } else {
+        rules <- c()
+        for(i in 1:ntrees) {
+          # Take subsample of dataset
+          if (sampfrac == 1) { # then bootstrap
+            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
+          } else if (sampfrac < 1) { # else subsample
+            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                prob = weights)
+          }
+          # Grow tree on subsample:
+          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
+          tree <- with(input, ctree_minimal(
+            dat[subsample, ], response, control, ytrafo, terms))
+          # Collect rules from tree:
+          if (length(tree) > 1) {
+            if (all.rules) {
+              rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
+            } else {
+              rules <- c(rules, list.rules(tree))
+            }
           }
         }
       }
@@ -363,7 +388,9 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
       }
       storage.mode(rulevars) <- "integer"
       rulevars <- data.frame(rulevars)
-    } else {
+    }
+    # again check if rules were generated:
+    if (length(rules) == 0) {
       warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
       rules <- rulevars <- NULL
     }
@@ -374,8 +401,12 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
   ## Prepare rules, linear terms and outcome variable ##
   ######################################################
 
-  if (type == "rules" & length(rules) > 0) {
-    x <- rulevars
+  if (type == "rules") {
+    if (length(rules) > 0) {
+      x <- rulevars
+    } else {
+      return(NULL)
+    }
   } else { # if type is not rules, linear terms should be prepared:
     x <- data[,x_names]
     # convert ordered categorical predictor variables to linear terms:
