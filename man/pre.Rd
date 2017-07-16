@@ -8,8 +8,7 @@ pre(formula, data, count = FALSE, weights, type = "both", sampfrac = 0.5,
   maxdepth = 3L, learnrate = NULL, mtry = Inf, ntrees = 500,
   removecomplements = TRUE, removeduplicates = TRUE, winsfrac = 0.025,
   normalize = TRUE, standardize = FALSE, nfolds = 10L, verbose = FALSE,
-  all.rules = FALSE, par.init = FALSE, par.final = FALSE, tree.control,
-  ...)
+  par.init = FALSE, par.final = FALSE, tree.control, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -80,9 +79,6 @@ validation for determining penalty parameter.}
 
 \item{verbose}{logical. Should information on the initial and final ensemble 
 be printed to the command line?}
-
-\item{all.rules}{logical. Should inner nodes be included as rules in the 
-initial ensemble, too?}
 
 \item{par.init}{logical. Should parallel foreach be used to generate initial 
 ensemble? Only used when \verb{learnrate == 0} and \code{count = FALSE}. Must 

@@ -38,8 +38,6 @@ utils::globalVariables("%dopar%")
 #' @param mtry numeric. Number of randomly selected predictor variables for 
 #' creating each split in each tree.
 #' @param ntrees numeric. Number of trees to generate for the initial ensemble.
-#' @param all.rules logical. Should inner nodes be included as rules in the 
-#' initial ensemble, too?
 #' @param removeduplicates logical. Remove rules from the ensemble which have 
 #' the exact same support in training data?
 #' @param removecomplements logical. Remove rules from the ensemble which have
@@ -96,7 +94,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                 maxdepth = 3L, learnrate = NULL, mtry = Inf, ntrees = 500, 
                 removecomplements = TRUE, removeduplicates = TRUE, 
                 winsfrac = .025, normalize = TRUE, standardize = FALSE, 
-                nfolds = 10L, verbose = FALSE, all.rules = FALSE,
+                nfolds = 10L, verbose = FALSE,
                 par.init = FALSE, par.final = FALSE, tree.control, ...) { 
   
   ###################
@@ -220,11 +218,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
             dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           if (length(tree) > 1) {
-            if (all.rules) {
-              rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
-            } else {
-              rules <- c(rules, list.rules(tree))
-            }
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
           }
         }
       }
@@ -250,11 +244,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
             dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           if (length(tree) > 1) {
-            if (all.rules) {
-              rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
-            } else {
-              rules <- c(rules, list.rules(tree))
-            }
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
           }
           # Substract predictions from current y:
           y_learn <- y_learn - learnrate * predict_party_minimal(
@@ -278,11 +268,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                           maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
           if (length(tree) > 1) {
-            if (all.rules) {
-              rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
-            } else {
-              rules <- c(rules, list.rules(tree))
-            }
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
           }
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
@@ -307,11 +293,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                           maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
           if (length(tree) > 1) {
-            if (all.rules) {
-              rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
-            } else {
-              rules <- c(rules, list.rules(tree))
-            }
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
           }
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
