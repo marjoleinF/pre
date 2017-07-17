@@ -1,17 +1,28 @@
 # Internal function for transforming tree into a set of rules:
 # Taken and modified from package partykit, written by Achim Zeileis and 
 # Torsten Hothorn
-list.rules <- function (x, i = NULL, ...) 
-{
+# It has been changed to return all the rules at each node and not just the 
+# rules at the terminal nodes. This is done to get the rules as in: 
+#   Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
+#   ensembles. The Annals of Applied Statistics, 916-954.
+list.rules <- function (x, i = NULL, ...){
   if (is.null(i)) 
     i <- partykit::nodeids(x, terminal = TRUE)
   if (length(i) > 1) {
-    ret <- sapply(i, list.rules, x = x)
-    names(ret) <- if (is.character(i)) 
-      i
-    else names(x)[i]
-    return(ret)
+    # ret <- sapply(i, list.rules, x = x)
+    # TODO: Benjamin Christoffersen changed this part. This can be done smarter
+    # then finding all and then removing duplicates. I guess the computational
+    # cost is low, though
+    ret <- lapply(i, list.rules, x = x, simplify = FALSE)
+    ret <- unlist(ret)
+    ret <- ret[!duplicated(ret)]
+    # TODO: this still leaves us with complements for non-terminal rules
+    # names(ret) <- if (is.character(i)) 
+    #   i else names(x)[i]
+    return(ret) # Root node returns here
   }
+  
+  # Non-root nodes starts here
   if (is.character(i) && !is.null(names(x))) 
     i <- which(names(x) %in% i)
   #stopifnot(length(i) == 1 & is.numeric(i))
@@ -83,221 +94,82 @@ list.rules <- function (x, i = NULL, ...)
   }
   # node <- recFun(partykit::node_party(x))
   node <- recFun(x$node)
-  paste(rule, collapse = " & ")
+  # paste(rule, collapse = " & ")
+  sapply(seq_along(rule), function(r) paste(rule[1:r], collapse = " & "))
 }
 
-#####
-# Wrappers for ctree which returns the needed output to get rules
 
-#' @importFrom stats model.weights na.pass
-ctree_setup <- function(
-  formula, data, weights, subset, na.action = na.pass, 
-  control = ctree_control(...), ytrafo = NULL, scores = NULL, 
-  ...
-){
-  if (missing(data)) 
-    data <- environment(formula)
-  mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula", "data", "subset", "weights", "na.action"), 
-             names(mf), 0)
-  mf <- mf[c(1, m)]
-  formula <- Formula::Formula(formula)
-  mf$formula <- formula
-  mf$drop.unused.levels <- FALSE
-  mf$na.action <- na.action
-  mf[[1]] <- quote(stats::model.frame)
-  mf <- eval(mf, parent.frame())
-  response <- names(Formula::model.part(formula, mf, lhs = 1))
-  weights <- model.weights(mf)
-  dat <- mf[, colnames(mf) != "(weights)"]
-  if (!is.null(scores)) {
-    for (n in names(scores)) {
-      sc <- scores[[n]]
-      if (is.ordered(dat[[n]]) && nlevels(dat[[n]]) == 
-          length(sc)) {
-        attr(dat[[n]], "scores") <- as.numeric(sc)
-      }
-      else {
-        warning("scores for variable ", sQuote(n), " ignored")
-      }
-    }
+# This an adaptation of the above that gives rules at each node as in:
+#   Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
+#   ensembles. The Annals of Applied Statistics, 916-954
+# but without complements
+list.all_rules_wo_complements <- function(tree, me, dat, leaves){
+  #####
+  # Part used for the tree
+  if(missing(me)){
+    leaves <- partykit::nodeids(tree, terminal = TRUE)
+    
+    return(list.all_rules_wo_complements(
+      tree = tree, me = tree$node, dat = tree$data, leaves = leaves))
   }
-  if (is.null(weights)) 
-    weights <- rep(1, nrow(mf))
-  storage.mode(weights) <- "integer"
-  nvar <- sum(!(colnames(dat) %in% response))
   
-  control$cfun <- eval(bquote(function(...) {
-    if (.(control$teststat == "quad")) 
-      p <- .pX2(..., pval = .(control$testtype != "Teststatistic"))
-    if (.(control$teststat == "max"))
-      p <- .pmaxT(..., pval = .(control$testtype != "Teststatistic"))
-    names(p) <- c("statistic", "p.value")
-    if (.(control$testtype == "Bonferroni")) 
-      p["p.value"] <- p["p.value"] * .(min(nvar, control$mtry))
-    crit <- p["statistic"]
-    if (.(control$testtype != "Teststatistic")) 
-      crit <- p["p.value"]
-    c(crit, p)
-  }))
-  environment(control$cfun) <- environment(partykit::ctree)
+  #####
+  # Part used for nodes
+  if (me$id %in% leaves) # we reach leaf
+    return(NULL)
   
-  list(dat = dat, response = response, weights = weights, 
-       control = control, ytrafo = ytrafo, terms = terms(mf))
-}
-
-ctree_minimal <- function (
-  dat, response, control, ytrafo, terms, ...) 
-{
-  .ctree_fit <- with(environment(ctree), .ctree_fit)
+  kids <- sapply(me$kids, function(x) x$id)
   
-  weights <- rep(1, nrow(dat))
-  tree <- .ctree_fit(dat, response, weights = weights, ctrl = control, 
-                     ytrafo = ytrafo)
+  # Get rules from child nodes
+  if(length(kids) > 0)
+    kid_rules <- lapply(
+      partykit::kids_node(me), 
+      list.all_rules_wo_complements, 
+      tree = tree, dat = dat, leaves = leaves)
   
-  # fitted <- data.frame(`(fitted)` = fitted_node(tree, dat),
-  #                      `(weights)` = weights, check.names = FALSE)
-  # fitted[[3]] <- dat[, response, drop = length(response) == 1]
-  # names(fitted)[3] <- "(response)"
+  # Get rules from this node
+  split <- me$split
+  ivar <- split$varid
+  svar <- names(dat)[ivar]
+  index <- split$index
   
-  # We compute the outcome in each node to start with to reduce the computation
-  # time in predict. I guess this is not done because we lose some information 
-  # here. E.g. we cannot get predicted probabilities, densties etc. with 
-  # predict
-  
-  end_nodes <- fitted_node(tree, dat)
-  resps <- dat[[response]]
-  
-  # We assume that we either have factors or numeric is used
-  FUN <- if(is.numeric(resps))
-    with(environment(ctree), .pred_numeric_response) else
-      with(environment(ctree), .pred_factor_response)
-  
-  # We assume a weight of one
-  FUN_wrap <- function(y) FUN(y, rep(1, length(y)))
-  fits <- tapply(resps, end_nodes, FUN_wrap)
-  
-  fitted <- list( # We dont need a data.frame with predict_party_minimal
-    as.integer(names(fits)),
-    rep(1, length(fits)),
-    fits)
-  names(fitted) <- c("(fitted)", "(weights)", "(response)")
-  
-  ret <- party_minimal(tree, data = dat, fitted)
-  # ret <- party(tree, data = dat, fitted = fitted
-               # , info = list(call = match.call(), control = control))
-  class(ret) <- c("constparty", class(ret))
-  ret$terms <- terms
-  return(ret)
-}
-
-party_minimal <- function (
-  node, data, fitted = NULL, ...) {
-  # stopifnot(inherits(node, "partynode"))
-  # stopifnot(inherits(data, "data.frame"))
-  # ids <- nodeids(node)[!nodeids(node) %in% nodeids(node, terminal = TRUE)]
-  # varids <- unique(unlist(nodeapply(node, ids = ids, FUN = function(x) varid_split(split_node(x)))))
-  # stopifnot(varids %in% 1:ncol(data))
-  # if (!is.null(fitted)) {
-  #   stopifnot(inherits(fitted, "data.frame"))
-  #   stopifnot(nrow(data) == 0L | nrow(data) == nrow(fitted))
-  #   if (nrow(data) > 0L) {
-  #     if (!("(fitted)" %in% names(fitted))) 
-  #       fitted[["(fitted)"]] <- fitted_node(node, data = data)
-  #   }
-  #   else {
-  #     stopifnot("(fitted)" == names(fitted)[1L])
-  #   }
-  #   nt <- nodeids(node, terminal = TRUE)
-  #   stopifnot(all(fitted[["(fitted)"]] %in% nt))
-  #   node <- as.partynode(node, from = 1L)
-  #   nt2 <- nodeids(node, terminal = TRUE)
-  #   fitted[["(fitted)"]] <- nt2[match(fitted[["(fitted)"]], 
-  #                                     nt)]
-  # }
-  # else {
-  #   node <- as.partynode(node, from = 1L)
-  #   if (nrow(data) > 0L & missing(fitted)) 
-  #     fitted <- data.frame(`(fitted)` = fitted_node(node, 
-  #                                                   data = data), check.names = FALSE)
-  # }
-  node <- as.partynode(node, from = 1L)
-  party <- list(node = node, data = data, fitted = fitted, 
-                terms = NULL, names = NULL, info = NULL)
-  class(party) <- "party"
-  # if (!is.null(terms)) {
-  #   stopifnot(inherits(terms, "terms"))
-  #   party$terms <- terms
-  # }
-  # if (!is.null(names)) {
-  #   n <- length(nodeids(party, terminal = FALSE))
-  #   if (length(names) != n) 
-  #     stop("invalid", " ", sQuote("names"), " ", "argument")
-  #   party$names <- names
-  # }
-  party
-}
-
-#' @importFrom stats delete.reponse
-predict_party_minimal <- function (object, newdata = NULL, perm = NULL, ...) 
-{
-  fitted <- if (is.null(newdata)) {
-    object$fitted[["(fitted)"]]
+  if (is.factor(dat[, svar])) {
+    # TODO: test with factor
+    if (is.null(index))
+      index <- ((1:nlevels(dat[, svar])) > split$breaks) + 1
+    slevels <- 
+      sapply(sort(unique(index)),function(idx)
+        levels(dat[, svar])[index == idx], simplify = FALSE)
+    
+    my_rules <- sapply(
+      slevels, function(lvls) paste(
+        svar, " %in% c(\"", paste(
+          lvls, collapse = "\", \"", sep = ""), "\")", sep = ""))
+    
+  } else {
+    my_break <- split$breaks
+    right <- split$right
+    
+    my_rules <- vector("character", 2)
+    my_rules[1] <- paste(svar, ifelse(right, "<=", "<"), my_break)
+    my_rules[2] <- paste(svar, ifelse(right, ">", ">="), my_break)
   }
-  else {
-    terminal <- nodeids(object, terminal = TRUE)
-    if (max(terminal) == 1L) {
-      rep.int(1L, NROW(newdata))
-    }
-    else {
-      inner <- 1L:max(terminal)
-      inner <- inner[-terminal]
-      primary_vars <- nodeapply(object, ids = inner, by_node = TRUE, 
-                                FUN = function(node) {
-                                  varid_split(split_node(node))
-                                })
-      surrogate_vars <- nodeapply(object, ids = inner, 
-                                  by_node = TRUE, FUN = function(node) {
-                                    surr <- surrogates_node(node)
-                                    if (is.null(surr)) 
-                                      return(NULL)
-                                    else return(sapply(surr, varid_split))
-                                  })
-      vnames <- names(object$data)
-      if (!is.null(perm)) {
-        stopifnot(all(perm %in% vnames))
-        perm <- match(perm, vnames)
-      }
-      unames <- vnames[unique(unlist(c(primary_vars, surrogate_vars)))]
-      vclass <- structure(lapply(object$data, class), 
-                          .Names = vnames)
-      ndnames <- names(newdata)
-      ndclass <- structure(lapply(newdata, class), .Names = ndnames)
-      checkclass <- all(sapply(unames, function(x) isTRUE(all.equal(vclass[[x]], 
-                                                                    ndclass[[x]]))))
-      factors <- sapply(unames, function(x) inherits(object$data[[x]], 
-                                                     "factor"))
-      checkfactors <- all(sapply(unames[factors], function(x) isTRUE(all.equal(levels(object$data[[x]]), 
-                                                                               levels(newdata[[x]])))))
-      if (all(unames %in% ndnames) && checkclass && checkfactors) {
-        vmatch <- match(vnames, ndnames)
-        fitted_node(node_party(object), data = newdata, 
-                    vmatch = vmatch, perm = perm)
-      }
-      else {
-        if (!is.null(object$terms)) {
-          mf <- model.frame(delete.response(object$terms), 
-                            newdata)
-          fitted_node(node_party(object), data = mf, 
-                      vmatch = match(vnames, names(mf)), perm = perm)
-        }
-        else stop("")
-      }
-    }
-  }
-  # predict_party
   
-  # Assume that the fitted element has exactly one match with the right value
-  # in reponse for the end_node given in each element of the vector  fitted
-  object$fitted[["(response)"]][match(fitted, object$fitted[["(fitted)"]])]
+  is_any_kid_a_leaf <- any(sapply(kid_rules, is.null))
+  
+  my_rules <- sapply(1:2, function(i){
+    if(!is.null(kid_rules[[i]])){
+      out <-  paste(
+        my_rules[i], kid_rules[[i]], sep = " & ")
+    } else
+      out <- NULL
+    
+    # We only return the first rule
+    if(i == 2)
+      return(out)
+    
+    c(my_rules[i], out)
+  }, simplify = FALSE) 
+  
+  do.call(c, my_rules)
 }

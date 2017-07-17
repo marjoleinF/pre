@@ -1,57 +1,68 @@
 context("Tests the 'skin' versions of the partykit functions")
 
-ctree_setup <- with(environment(pre), ctree_setup)
-ctree_minimal <- with(environment(pre), ctree_minimal)
-list.rules <- with(environment(pre), list.rules)
-
-test_that("wrapper for ctree gives the same",{
-  dat <- airquality[complete.cases(airquality),]
-  
-  set.seed(seed <- 2649390)
-  org <- ctree(Ozone ~ ., data = dat, maxdepth = 3, mtry = Inf)
-  
-  set.seed(seed)
-  tmp <- ctree_setup(Ozone ~ ., data = dat, maxdepth = 3, mtry = Inf)
-  mini <- ctree_minimal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
-  
-  org <- unclass(org)
-  mini <- unclass(mini)
-  for(i in seq_along(org))
-    expect_equal(org$node, mini$node)
-  
-  # save_to_test(mini$node, "tree_nodes_from_minimal")
-  expect_equal(mini$node, read_to_test("tree_nodes_from_minimal"), tolerance = 0.00000001490116)
-  
-  #####
-  # Had an error which motivated this test
-  set.seed(6772769)
-  tmp_dat <- airquality[complete.cases(airquality),]
-  n <- nrow(tmp_dat)
-  pick <- gpe_sample(.5)(n, rep(1, n))
-  tmp_dat <- tmp_dat[pick, ]
-  
-  tmp <- ctree_setup(
-    Ozone ~ Solar.R + Wind + cut(Wind, breaks = 3), 
-    data = tmp_dat, maxdepth = 3, mtry = Inf)
-  mini <- ctree_minimal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
-  
-  # save_to_test(unclass(mini), "tree_nodes_from_minimal_xtra")
-  expect_equal(unclass(mini), read_to_test("tree_nodes_from_minimal_xtra"), tolerance = 1.490116e-08)
-  
-  # save_to_test(list.rules(mini), "tree_nodes_from_minimal_xtra_unlist")
-  expect_equal(list.rules(mini), read_to_test("tree_nodes_from_minimal_xtra_unlist"), tolerance = 1.490116e-08)
-})
-
 test_that("list.rules gives the same as previously",{
+  #####
+  # Depth 3 
   dat <- airquality[complete.cases(airquality),]
   
-  set.seed(2649390)
-  tmp <- ctree_setup(Ozone ~ ., data = dat, maxdepth = 3, mtry = Inf)
-  mini <- ctree_minimal(tmp$dat, tmp$response, tmp$control, tmp$ytrafo, tmp$terms)
+  tree <- ctree(Ozone ~ ., data = dat, 
+                control = ctree_control(maxdepth = 3, mtry = Inf))
   
-  rules <- list.rules(mini)
+  rules <- list.rules(tree)
+  
+  expect_length(rules, length(tree) - 1L)
   
   # save_to_test(rules, "tree_nodes_rules")
-  expect_equal(rules, read_to_test("tree_nodes_rules"), tolerance = 0.00000001490116)
+  expect_equal(rules, read_to_test("tree_nodes_rules"))
+  
+  #####
+  # Stump
+  tree <- ctree(Ozone ~ ., data = dat, 
+                control = ctree_control(maxdepth = 1, mtry = Inf))
+  
+  rules <- list.rules(tree)
+  
+  expect_length(rules, length(tree) - 1L)
+  
+  # save_to_test(rules, "tree_nodes_rules_stump")
+  expect_equal(rules, read_to_test("tree_nodes_rules_stump"))
 })
 
+test_that("list.all_rules_wo_complements gives a subset of list.rules w/ and w/o factors", {
+  #####
+  # Depth 3
+  dat <- airquality[complete.cases(airquality),]
+  
+  tree <- ctree(Ozone ~ ., data = dat, 
+                control = ctree_control(maxdepth = 3, mtry = Inf))
+  
+  superset <- list.rules(tree)
+  subset <- list.all_rules_wo_complements(tree)
+  
+  expect_true(all(subset %in% superset))
+  expect_length(subset, length(partykit::nodeids(tree, terminal = TRUE)) - 1L)
+  
+  #####
+  # Stumps
+  tree <- ctree(Ozone ~ ., data = dat, 
+                control = ctree_control(maxdepth = 1, mtry = Inf))
+  
+  superset <- list.rules(tree)
+  subset <- list.all_rules_wo_complements(tree)
+  
+  expect_true(all(subset %in% superset))
+  expect_length(subset, length(partykit::nodeids(tree, terminal = TRUE)) - 1L)
+  
+  #####
+  # Depth 3 w/ factors
+  dat$Wind_cut <- cut(dat$Wind, breaks = 4)
+  
+  tree <- ctree(Ozone ~ Temp + Wind_cut, data = dat, 
+                control = ctree_control(maxdepth = 3, mtry = Inf))
+  
+  superset <- list.rules(tree)
+  subset <- list.all_rules_wo_complements(tree)
+  
+  expect_true(all(subset %in% superset))
+  expect_length(subset, length(partykit::nodeids(tree, terminal = TRUE)) - 1L)
+})
