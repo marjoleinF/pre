@@ -4,7 +4,7 @@ test_that("Get previous results with airquality and pre function", {
   set.seed(42)
   #####
   # With learning rate
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], ntrees = 100)
+  airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   
   # We remove some of the data to decrease the size
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
@@ -15,8 +15,7 @@ test_that("Get previous results with airquality and pre function", {
   
   #####
   # Without learning rate
-  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),], 
-                  learnrate = 0)
+  airq.ens <- pre(Ozone ~ ., data=airquality, learnrate = 0, ntrees = 10)
   
   # We remove some of the data to decrease the size
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
@@ -27,19 +26,17 @@ test_that("Get previous results with airquality and pre function", {
 })
 
 test_that("Get previous results with PimaIndiansDiabetes and pre function", {
-  set.seed(7385056)
-  data(PimaIndiansDiabetes, package = "mlbench")
-  
   #####
   # Without learning rate
-  fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, ntrees = 100, maxdepth = 3)
+  set.seed(7385056)
+  fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, ntrees = 10, maxdepth = 3)
   
   # We remove some of the data to decrease the size
   fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]
   fit$glmnet.fit <- fit$glmnet.fit["glmnet.fit"]
   fit$glmnet.fit$glmnet.fit <- fit$glmnet.fit$glmnet.fit["beta"]
   fit$glmnet.fit$glmnet.fit[["beta"]] <- head(fit$glmnet.fit$glmnet.fit$beta@x, 200)
-  fit$rules <- as.matrix(fit$rules)[1:100, ]
+  fit$rules <- as.matrix(fit$rules)
   # save_to_test(fit, "PimaIndiansDiabetes_w_pre_no_LR")
   expect_equal(fit, read_to_test("PimaIndiansDiabetes_w_pre_no_LR"), tolerance = 1.490116e-08)
   
@@ -47,7 +44,7 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   # With learning rate
   set.seed(4989935)
   fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, learnrate = .01,
-             ntrees = 20, maxdepth = 3)
+             ntrees = 10, maxdepth = 3)
   
   # We remove some of the data to decrease the size
   fit <- fit[!names(fit) %in%  c(

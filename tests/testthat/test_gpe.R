@@ -6,7 +6,7 @@ test_that("gpe works with default settings and gives previous results", {
   set.seed(8782650)
   fit <- gpe(
     Ozone ~ ., 
-    data = airquality[complete.cases(airquality),],
+    data = airquality,
     base_learners = list(
       gpe_trees(ntrees = 10)))
   
@@ -19,18 +19,12 @@ test_that("gpe works with default settings and gives previous results", {
   
   #####
   # Binary outcome
-  data(PimaIndiansDiabetes, package = "mlbench")
-  
-  set.seed(8782650)
-  # We sub-sample to decrease computation time
-  PimaIndiansDiabetes <- PimaIndiansDiabetes[
-    sample.int(768, 200, replace = FALSE), ]
   fit <- gpe(diabetes ~ ., PimaIndiansDiabetes, 
               base_learners = list(gpe_linear(), gpe_trees(ntrees = 10)))
 
   fit <- fit$glmnet.fit$glmnet.fit
   fit <- fit[c("a0", "beta")]
-  fit$beta <- fit$beta[1:50, 1:10]
+  fit$beta <- fit$beta[, 1:10]
   
   # save_to_test(fit, "gpe_fit1_binary")
   expect_equal(fit, read_to_test("gpe_fit1_binary"))
@@ -95,8 +89,8 @@ test_that("Sampling and subsampling works and is used in gpe", {
 test_that("gpe_trees gives previous results for continous outcomes", {
   # partykit-1.2.0 cannot handle transformation in formulas in the development
   # version. Thus, we "cut" Wind prior to get a factor
-  airquality <- airquality[complete.cases(airquality), ]
   airquality$Wind_cut <- cut(airquality$Wind, breaks = 3)
+  on.exit(airquality$Wind_cut <- NULL)
   
   #####
   # Default settings with fewer trees
@@ -134,7 +128,6 @@ test_that("gpe_trees gives previous results for continous outcomes", {
   set.seed(seed)
   out3 <- do.call(func, args)
   
-  expect_true(any(!out3 %in% out))
   # save_to_test(out3, "gpe_tree_3")
   expect_equal(out3, read_to_test("gpe_tree_3"))
   
@@ -155,11 +148,6 @@ test_that("gpe_trees gives previous results for continous outcomes", {
 test_that("gpe_trees gives previous results for binary outcomes", {
   #####
   # Works with binomial outcome
-  data(PimaIndiansDiabetes, package = "mlbench")
-  set.seed(36468747)
-  PimaIndiansDiabetes <- PimaIndiansDiabetes[
-    sample.int(nrow(PimaIndiansDiabetes), 300, replace = FALSE), ]
-  
   func <- gpe_trees(ntrees = 10)
   
   args <- list(
@@ -182,8 +170,8 @@ test_that("gpe_trees gives previous results for binary outcomes", {
   
   expect_true(any(!out2 %in% out))
   
-  # save_to_test(out2, "gpe_tree_binary_1_w_L2")
-  expect_equal(out2, read_to_test("gpe_tree_binary_1_w_L2"))
+  # save_to_test(out2, "gpe_tree_binary_1_w_glm")
+  expect_equal(out2, read_to_test("gpe_tree_binary_1_w_glm"))
   
   #####
   # Binary without learning rate
@@ -205,7 +193,7 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
     formula = Ozone ~ Solar.R + Wind + 
       cut(Wind, breaks = 5), # Notice that we include a factor. There where  
                              # some issues with factor at one point 
-    data = airquality[complete.cases(airquality),],
+    data = airquality,
     weights = rep(1, sum(complete.cases(airquality))),
     sample_func = gpe_sample(.5), 
     family = "gaussian")
@@ -293,7 +281,7 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
       cut(Wind, breaks = 5) + # Notice that we include a factor. There where  
       cut(Temp, breaks = 5),  # some issues with factor at one point 
                                 
-    data = airquality[complete.cases(airquality),],
+    data = airquality,
     weights = rep(1, sum(complete.cases(airquality))),
     sample_func = gpe_sample(.5), 
     family = "gaussian")
@@ -306,11 +294,6 @@ test_that("gpe_earth gives expected_result for continous outcomes", {
 })
 
 test_that("gpe_earth gives previous results for binary outcomes", {
-  data(PimaIndiansDiabetes, package = "mlbench")
-  set.seed(29399882)
-  PimaIndiansDiabetes <- PimaIndiansDiabetes[
-    sample.int(nrow(PimaIndiansDiabetes), 100), ]
-  
   #####
   # With learning rate
   func <- gpe_earth(ntrain = 20)
@@ -370,7 +353,7 @@ test_that("gpe_linear gives expected_result", {
   
   args <- list(
     formula = Ozone ~ Solar.R + Wind + cut(Wind, breaks = 3), 
-    data = airquality[complete.cases(airquality),],
+    data = airquality,
     weights = rep(1, sum(complete.cases(airquality))))
   
   out <- do.call(func, args)

@@ -183,9 +183,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
   #############################
   
   if (type != "linear") {
-    if (learnrate == 0) { # always use ctree()
-      #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
-      input <- ctree_setup(formula, data = data, control = tree.control)
+    if (learnrate == 0) {
       if(par.init) {
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
@@ -196,9 +194,8 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                                 prob = weights)
           }
           # Grow ctree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
-          tree <- with(input, ctree_minimal(
-            dat[subsample, ], response, control, ytrafo, terms))
+          tree <- ctree(
+            formula = formula, data = data[subsample, ], control = tree.control)
           # Collect rules from tree:
           list.rules(tree)
         }
@@ -213,13 +210,11 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                                 prob = weights)
           }
           # Grow tree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
-          tree <- with(input, ctree_minimal(
-            dat[subsample, ], response, control, ytrafo, terms))
+          tree <- ctree(
+            formula = formula, data = data[subsample, ], control = tree.control)
+          
           # Collect rules from tree:
-          if (length(tree) > 1) {
-            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
-          }
+          rules <- c(rules, list.rules(tree))
         }
       }
     }
@@ -227,8 +222,6 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
       rules <- c()
       if (!classify && !count) {
         y_learn <- data[, y_name]
-        #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
-        input <- ctree_setup(formula, data = data, control = tree.control)
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
@@ -239,16 +232,14 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
           }
           # Grow tree on subsample:
           #tree <- ctree(formula, data = data[subsample,], control = tree.control)
-          input$dat[subsample, y_name] <- y_learn[subsample]
-          tree <- with(input, ctree_minimal(
-            dat[subsample, ], response, control, ytrafo, terms))
+          data[subsample, y_name] <- y_learn[subsample]
+          tree <- ctree(
+            formula = formula, data = data[subsample, ], control = tree.control)
           # Collect rules from tree:
-          if (length(tree) > 1) {
-            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
-          }
+          rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:
-          y_learn <- y_learn - learnrate * predict_party_minimal(
-            tree, newdata = data)
+          browser()
+          y_learn <- y_learn - learnrate * predict(tree, newdata = data)
         }
       } else if (classify) { 
         data2 <- data.frame(data, offset = 0)
@@ -268,7 +259,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                           maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
           if (length(tree) > 1) {
-            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
+            rules <- c(rules, list.rules(tree))
           }
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
@@ -293,13 +284,12 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                           maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
           if (length(tree) > 1) {
-            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
+            rules <- c(rules, list.rules(tree))
           }
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")
         }
-        
       }
     }
     # Keep unique, non-empty rules only:
@@ -515,7 +505,6 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 print.pre <- function(x, penalty.par.val = "lambda.1se", 
                       digits = getOption("digits"), ...) {
-  
   # function to round values:
   rf <- function(x)
     signif(x, digits)
@@ -542,8 +531,10 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
   coefs <- coef(x, penalty.par.val = penalty.par.val)
   coefs <- coefs[coefs$coefficient != 0, ]
   # always put intercept first:
-  coefs <- rbind(coefs[coefs$rule == "(Intercept)",], 
-                 coefs[coefs$rule != "(Intercept)",])
+  is_intercept <- 
+    if(is.null(coefs$rule))
+      rownames(coefs) == "(Intercept)" else coefs$rule == "(Intercept)"
+  coefs <- rbind(coefs[is_intercept,], coefs[!is_intercept,])
   
   print(coefs, print.gap = 2, quote = FALSE, row.names = FALSE, digits = digits)
   invisible(coefs)

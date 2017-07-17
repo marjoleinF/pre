@@ -49,12 +49,11 @@
 gpe_trees <- function(
   ...,
   remove_duplicates_complements = TRUE,
-  mtry = Inf, ntrees = 100,
-  maxdepth = 3L, learnrate = 0.1,
+  mtry = Inf, ntrees = 500,
+  maxdepth = 3L, learnrate = 0.01,
   parallel = FALSE, use_grad = TRUE,
-  teststat = "max",
-  testtype = "Teststatistic",
-  mincriterion = 0){
+  tree.control = ctree_control(
+    mtry = mtry, maxdepth = maxdepth, saveinfo= FALSE)){
   if(learnrate < 0 && learnrate > 1)
     stop("learnrate must be between 0 and 1")
   
@@ -66,13 +65,7 @@ gpe_trees <- function(
     ################
     ## Find rules ##
     ################
-  
-    .ctree_control <- ctree_control(
-      mtry = mtry, maxdepth = maxdepth, 
-      teststat = teststat, testtype = testtype,
-      mincriterion = mincriterion, 
-      saveinfo = FALSE)
-
+    
     if(!inherits(formula, "formula"))
       formula <- stats::formula(formula)
         
@@ -87,10 +80,10 @@ gpe_trees <- function(
         subsample <- sample_func(n = n, weights = weights)
         
         tree <- ctree(
-          formula = formula, data = data[subsample, ], control = .ctree_control)
+          formula = formula, data = data[subsample, ], control = tree.control)
         
         # Collect rules from tree:
-        rules <- c(rules, list.all_rules_wo_complements(tree))
+        rules <- c(rules, list.rules(tree))
       }
     } else {
       rules <- c()
@@ -124,10 +117,10 @@ gpe_trees <- function(
           
           # Grow tree on subsample:
           tree <- ctree(
-            formula = formula, data = data[subsample, ], control = .ctree_control)
+            formula = formula, data = data[subsample, ], control = tree.control)
           
           # Collect rules from tree:
-          rules <- c(rules, list.all_rules_wo_complements(tree))
+          rules <- c(rules, list.rules(tree))
           
           # Substract predictions from current y:
           if(use_grad && family == "binomial"){
@@ -161,7 +154,7 @@ gpe_trees <- function(
             epsilon = 1e-4) # we set the relative change in the deviance lower
                             # to speed up the computations
           # Collect rules from tree:
-          rules <- c(rules, list.all_rules_wo_complements(tree))
+          rules <- c(rules, list.rules(tree))
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")

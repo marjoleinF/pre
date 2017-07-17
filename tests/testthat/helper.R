@@ -63,6 +63,20 @@ if(interactive()){
   library(partykit)
   
   list.rules <- environment(pre)$list.rules
-  list.all_rules_wo_complements <- 
-    environment(pre)$list.all_rules_wo_complements
 }
+
+#####
+# Prepare data sets for test
+
+data(PimaIndiansDiabetes, package = "mlbench", envir = environment())
+# We sub-sample to decrease computation time
+set.seed(58594084)
+PimaIndiansDiabetes_full <- PimaIndiansDiabetes
+PimaIndiansDiabetes <- PimaIndiansDiabetes[
+  sample.int(nrow(PimaIndiansDiabetes), 200 , replace = FALSE), ]
+
+airquality <- airquality[complete.cases(airquality), ]
+
+
+
+
