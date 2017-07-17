@@ -65,6 +65,9 @@ list.rules <- function (x, i = NULL, ...){
       if (is.null(index))
         index <- ((1:nlevels(dat[, svar])) > split$breaks) + 1
       slevels <- levels(dat[, svar])[index == whichkid]
+      # factor levels not occurring in the node will be coded as NA
+      # and should be removed from rule description:
+      slevels <- slevels[!is.na(slevels)]
       srule <- paste(svar, " %in% c(\"", paste(slevels, 
                                                collapse = "\", \"", sep = ""), "\")", sep = "")
     }
@@ -97,7 +100,6 @@ list.rules <- function (x, i = NULL, ...){
   # paste(rule, collapse = " & ")
   sapply(seq_along(rule), function(r) paste(rule[1:r], collapse = " & "))
 }
-
 
 # This an adaptation of the above that gives rules at each node as in:
 #   Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 

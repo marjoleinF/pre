@@ -4,12 +4,11 @@
 \alias{pre}
 \title{Derive a prediction rule ensemble}
 \usage{
-pre(formula, data, weights = rep(1, times = nrow(data)), type = "both",
-  sampfrac = 0.5, maxdepth = 3L, learnrate = NULL, mtry = Inf,
-  ntrees = 500, removecomplements = TRUE, removeduplicates = TRUE,
-  winsfrac = 0.025, normalize = TRUE, standardize = FALSE, nfolds = 10L,
-  verbose = FALSE, par.init = FALSE, par.final = FALSE,
-  tree.control = ctree_control(maxdepth = maxdepth, mtry = mtry), ...)
+pre(formula, data, count = FALSE, weights, type = "both", sampfrac = 0.5,
+  maxdepth = 3L, learnrate = NULL, mtry = Inf, ntrees = 500,
+  removecomplements = TRUE, removeduplicates = TRUE, winsfrac = 0.025,
+  normalize = TRUE, standardize = FALSE, nfolds = 10L, verbose = FALSE,
+  par.init = FALSE, par.final = FALSE, tree.control, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -30,6 +29,9 @@ must be of class \code{"numeric"} (for continuous input variables),
 variables with 2 or more levels), or \code{"ordered" "factor"} (for 
 ordered input variables).}
 
+\item{count}{logical. Is the numeric outcome a count variable and 
+consequently, should a poisson regression model be fitted?}
+
 \item{weights}{an optional vector of observation weights to be used for 
 deriving the ensemble.}
 
@@ -38,12 +40,10 @@ Defaults to "both" (initial ensemble included both rules and linear functions).
 Other option may be "rules" (for prediction rules only) or "linear" (for 
 linear functions only).}
 
-\item{sampfrac}{numeric. Takes values \eqn{>0} and \eqn{\leq 1}, representing the 
+\item{sampfrac}{numeric. Takes values \eqn{>0} and \eqn{\le 1}, representing the 
 fraction of randomly selected training observations used to produce each 
 tree. Values \eqn{< 1} will result in subsamples being drawn without replacement 
-(i.e., subsampling), a value of 1 will result in bootstrap sampling. 
-Alteratively, users may supply their own sampling function like for example 
-\code{\link{gpe_sample}}.}
+(i.e., subsampling), a value of 1 will result in bootstrap sampling.}
 
 \item{maxdepth}{numeric. Maximum number of conditions in rule}
 
@@ -81,8 +81,8 @@ validation for determining penalty parameter.}
 be printed to the command line?}
 
 \item{par.init}{logical. Should parallel foreach be used to generate initial 
-ensemble? Only used when \verb{learnrate == 0}. Must register parallel 
-beforehand, such as doMC or others.}
+ensemble? Only used when \verb{learnrate == 0} and \code{count = FALSE}. Must 
+register parallel beforehand, such as doMC or others.}
 
 \item{par.final}{logical. Should parallel foreach be used to perform cross 
 validation for selecting the final ensemble? Must register parallel beforehand, 
@@ -102,8 +102,17 @@ an object of class \code{pre}
 prediction of a continuous or binary outcome.
 }
 \details{
+In rare cases, duplucated variable names may appear in the model.
+For example, when the first variable is named 'V1' and is a factor, and 
+there is a variable called 'V10' and/or 'V11' and/or 'V12' (etc), which 
+is/are numeric. For the binary factor V1, dummy contrast variables were 
+created to fit the model, called 'V10', 'V11', 'V12' (etc). As should be 
+clear from this example, this yields replicated variable names, which may
+yield errors or incorrect results. Users should avoid this situation by
+renaming the variables prior to the analysis.
+
 Inputs can be continuous, ordered or factor variables. Output can be
-continuous or binary categorical.
+a continuous, count or binary categorical variable.
 }
 \note{
 The code for deriving rules from the nodes of trees was taken from an 

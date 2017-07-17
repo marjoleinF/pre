@@ -8,7 +8,7 @@ variables}
 importance(object, standardize = FALSE, global = TRUE,
   quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se", round = NA,
   plot = TRUE, ylab = "Importance", main = "Variable importances",
-  col = "grey", ...)
+  diag.xlab = TRUE, ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -45,16 +45,17 @@ If NA (default), no rounding is performed.}
 \item{main}{character string. Main title of the plot. Only used when
 \code{plot = TRUE}.}
 
-\item{col}{character string. Plotting color to be used for bars in barplot.
-Only used when \code{plot = TRUE}.}
+\item{diag.xlab}{logical. Should variable names be printed diagonally (that
+is, in a 45 degree angle)? Alternatively, variable names may be printed 
+vertically by specifying \code{diag.xlab = FALSE, las = 2}.}
 
 \item{...}{further arguments to be passed to \code{barplot} (only used
 when \code{plot = TRUE}).}
 }
 \value{
-A list with two dataframes: \code{$baseimps}, giving the importances for
-baselearners in the ensemble, and \code{$varimps}, giving the importances for
-variables that appear and do not appear in the ensemble.
+A list with two dataframes: \code{$baseimps}, giving the importances 
+for baselearners in the ensemble, and \code{$varimps}, giving the importances 
+for all predictor variables.
 }
 \description{
 \code{importance} calculates importances for rules, linear terms and input
