@@ -431,7 +431,6 @@ test_that("get_cv.glmnet_args works", {
   expect_false(no_args$parallel == change_def$parallel)
 })
 
-
 test_that("gpe_cv.glmnet gives same results as cv.glmnet", {
   # Create dummy data
   set.seed(3782347)

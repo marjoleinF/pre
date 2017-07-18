@@ -222,6 +222,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
       rules <- c()
       if (!classify && !count) {
         y_learn <- data[, y_name]
+        data_sub <- data
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
@@ -231,14 +232,12 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                                 prob = weights)
           }
           # Grow tree on subsample:
-          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
-          data[subsample, y_name] <- y_learn[subsample]
+          data_sub[[y_name]] <- y_learn
           tree <- ctree(
-            formula = formula, data = data[subsample, ], control = tree.control)
+            formula = formula, data = data_sub[subsample, ], control = tree.control)
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Substract predictions from current y:
-          browser()
           y_learn <- y_learn - learnrate * predict(tree, newdata = data)
         }
       } else if (classify) { 
@@ -258,9 +257,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
           tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial", 
                           maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
-          if (length(tree) > 1) {
-            rules <- c(rules, list.rules(tree))
-          }
+          rules <- c(rules, list.rules(tree))
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")
@@ -313,7 +310,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
         duplicates <- duplicated(rulevars, MARGIN = 2)
         duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
                                          description = rules[duplicates])
-        rulevars <- rulevars[, !duplicates]
+        rulevars <- rulevars[, !duplicates, drop = FALSE]
         rules <- rules[!duplicates]
       }
         
@@ -341,7 +338,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
         complements.removed <- data.frame(name = colnames(rulevars)[complements],
                                           description = rules[complements])
         if(length(complements) > 0){
-          rulevars <- rulevars[, -complements]
+          rulevars <- rulevars[, -complements, drop = FALSE]
           rules <- rules[-complements]
         }
       }
@@ -786,7 +783,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     }
     
     # newdata <- model.frame(object$call$formula, newdata, na.action = NULL)
-    newdata <- model.frame(formula(terms(object$data)), newdata, na.action = NULL)
+    newdata <- model.frame(terms(object$data), newdata, na.action = NULL)
     # check if newdata has the same columns as object$orig_data:
     if (!all(names(object$data) %in% c(names(newdata), object$y_name))) {
       stop("newdata does not contain all predictor variables from the ensemble")
