@@ -22,7 +22,7 @@ running \code{x$glmnet.fit} and \code{plot(x$glmnet.fit)}.}
 \item{linear.terms}{logical. Should linear terms be included in the plot?}
 
 \item{nterms}{numeric. The total number of terms (or rules, if 
-\code{linear.terms = FALSE}) to be plotted. Default is \code{NULL}, 
+\code{linear.terms = FALSE}) being plotted. Default is \code{NULL}, 
 resulting in all terms of the final ensemble to be plotted.}
 
 \item{max.terms.plot}{numeric. The maximum number of terms per plot. Rules 

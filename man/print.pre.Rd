@@ -28,11 +28,16 @@ and \code{plot(x$glmnet.fit)}.}
 \item{...}{Additional arguments, currently not used}
 }
 \value{
-Prints information about the generated prediction rule ensembles,
+Prints information about the fitted prediction rule ensemble.
 }
 \description{
 \code{print.pre} prints information about the generated prediction rule 
 ensemble to the command line
+}
+\details{
+Note that the cv error is estimated with data that was also used 
+for learning rules and may be too optimistic. Use cvpre() to obtain an 
+accurate estimate of future prediction error.
 }
 \examples{
 \donttest{

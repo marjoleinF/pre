@@ -1,7 +1,6 @@
 context("Tests the gpe S3 functions")
 
 test_that("Print works for gpe", {
-  airquality <- airquality[complete.cases(airquality),]
   dig <- getOption("digits")
   on.exit(options(digits = dig))
   options(digits = 3)
@@ -45,7 +44,7 @@ test_that("Coef works for gpe", {
   set.seed(9116073)
   airq.ens <- gpe(
     Ozone ~ .,
-    data=airquality[complete.cases(airquality),],
+    data=airquality,
     base_learners = list(gpe_trees(ntrees = 10)))
   
   coefs <- coef(airq.ens)
@@ -60,7 +59,7 @@ test_that("Predict works for gpe and gives previous results", {
   set.seed(seed <- 9638602)
   airq.ens <- gpe(
     Ozone ~ .,
-    data=airquality[complete.cases(airquality),],
+    data=airquality,
     base_learners = list(gpe_trees(ntrees = 10)))
   
   preds <- predict(airq.ens)
@@ -73,7 +72,7 @@ test_that("Predict works for gpe and gives previous results", {
   set.seed(seed)
   airq.ens <- gpe(
     Ozone ~ .,
-    data=airquality[complete.cases(airquality),], 
+    data=airquality, 
     base_learners = list(gpe_trees(ntrees = 10)),
     model = FALSE) # don't save model
   
@@ -82,17 +81,11 @@ test_that("Predict works for gpe and gives previous results", {
                "Predict called with no new object and no saved data with gpe")
   
   preds_new <- predict(
-    airq.ens, newdata = airquality[complete.cases(airquality),])
+    airq.ens, newdata = airquality)
   expect_equal(preds, preds_new)
   
   #####
   # Binary
-  data(PimaIndiansDiabetes, package = "mlbench")
-  set.seed(34053856)
-  PimaIndiansDiabetes <- PimaIndiansDiabetes[
-    sample.int(nrow(PimaIndiansDiabetes), size = 200, 
-               replace = FALSE), ]
-  
   set.seed(seed)
   fit <- gpe(
     diabetes ~ ., data = PimaIndiansDiabetes,

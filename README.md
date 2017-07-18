@@ -1,18 +1,17 @@
 pre: an R package for deriving prediction rule ensembles
 ========================================================
 
-pre is an R package for deriving prediction rule ensembles for binary and continuous outcome variables. Input variables may be numeric, ordinal and nominal. The package implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
+pre is an R package for deriving prediction rule ensembles for binary, continuous and count outcome variables. Input variables may be numeric, ordinal and nominal. The package largely implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
 
 1.  The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2.  The unbiased tree induction algorithm of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, instead of the classification and regression tree (CART) algorithm, which suffers from biased variable selection.
 3.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
-4.  The initial ensemble of prediction rules can be generated as a bagged, boosted and/or random forest ensemble.
-5.  Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of Friedman (1991).
+4.  The initial ensembles may be generated as in bagging, boosting and/or random forests.
+5.  Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of Friedman (1991), using the gpe() function.
+6.  Ensembles for outcome variables representing counts can be derived. Note that pre is under development, and much work still needs to be done.
 
-Note that pre is under development, and much work still needs to be done.
-
-Example using airquality data
------------------------------
+Example: Prediction rule ensemble for predicting ozone levels
+-------------------------------------------------------------
 
 To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. We can fit a prediction rule ensemble using the pre() function:
 
@@ -22,7 +21,7 @@ set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
 ```
 
-We can print the resulting ensemble using the print() function:
+We can print the resulting ensemble (alternatively, we could use the `print` method):
 
 ``` r
 print(airq.ens)
@@ -30,7 +29,9 @@ print(airq.ens)
 #> Final ensemble with cv error within 1se of minimum: 
 #>   lambda =  1.607146
 #>   number of terms = 14
-#>   mean cv error (se) = 299.798 (74.28342) 
+#>   mean cv error (se) = 299.798 (74.28342)
+#> 
+#>   cv error type : Mean-Squared Error
 #> 
 #>          rule    coefficient                          description
 #>   (Intercept)   62.658099734                                 <NA>
@@ -50,7 +51,7 @@ print(airq.ens)
 #>       rule119   -0.009507402                Wind > 8 & Temp <= 76
 ```
 
-We can plot the baselarners in the ensemble using the plot() function:
+We can plot the baselarners in the ensemble using the `plot` method:
 
 ``` r
 plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
@@ -58,7 +59,7 @@ plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
 
 ![](inst/README-figures/README-unnamed-chunk-4-1.png)![](inst/README-figures/README-unnamed-chunk-4-2.png)
 
-We can obtain the estimated coefficients for each of the baselearners using the coef() function:
+We can obtain the estimated coefficients for each of the baselearners using the `coef` method:
 
 ``` r
 coefs <- coef(airq.ens)
@@ -76,7 +77,7 @@ coefs[1:10,]
 #> 116     rule149   -3.427068               Temp <= 87 & Wind > 8
 ```
 
-We can assess the importance of input variables as well as baselearners using the importance() function:
+We can assess the importance of input variables as well as baselearners using the `importance()` function:
 
 ``` r
 importance(airq.ens, round = 4)
@@ -108,7 +109,7 @@ importance(airq.ens, round = 4)
     #> 13 rule174                          Wind > 6.9 0.5439     -1.3154 0.4135
     #> 14 rule119               Wind > 8 & Temp <= 76 0.0046     -0.0095 0.4796
 
-We can generate predictions for new observations using the predict() function:
+We can generate predictions for new observations using the `predict` method:
 
 ``` r
 predict(airq.ens, newdata = airquality[1:4,])
@@ -116,7 +117,7 @@ predict(airq.ens, newdata = airquality[1:4,])
 #> 28.99997 20.83368 17.39711 20.71273
 ```
 
-We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the singleplot() function:
+We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the `singleplot()` function:
 
 ``` r
 singleplot(airq.ens, varname = "Temp")
@@ -124,18 +125,16 @@ singleplot(airq.ens, varname = "Temp")
 
 ![](inst/README-figures/README-unnamed-chunk-8-1.png)
 
-We can obtain a partial dependence plot to assess the effects of pairs of predictor variables on the outcome using the pairplot() function:
+We can obtain a partial dependence plot to assess the effects of pairs of predictor variables on the outcome using the `pairplot()` function:
 
 ``` r
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
+#> NOTE: function pairplot uses package 'akima', which has an ACM license. See also https://www.acm.org/publications/policies/software-copyright-notice.
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-9-1.png)
 
-    #> NOTE: function pairplot uses package 'akima', which has an ACM license.
-    #>     See also https://www.acm.org/publications/policies/software-copyright-notice.
-
-We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the cvpre() function:
+We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
 
 ``` r
 set.seed(43)
@@ -150,7 +149,7 @@ airq.cv$accuracy
 #> 13.775890  1.265625
 ```
 
-We can assess the presence of input variable interactions using the interact() and bsnullinteract() funtions:
+We can assess the presence of input variable interactions using the `interact()` and `bsnullinteract()` funtions:
 
 ``` r
 set.seed(44)
@@ -160,13 +159,17 @@ int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R"))
 
 ![](inst/README-figures/README-unnamed-chunk-11-1.png)
 
-Generalized prediction ensembles
---------------------------------
+Including hinge functions
+-------------------------
 
-More complex prediction ensembles can be obtained using the gpe() function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability).
+More complex prediction ensembles can be obtained using the `gpe()` function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability). More information about fitting generalized prediction ensembles can be obtained by typing:
+
+``` r
+?gpe
+```
 
 References
-==========
+----------
 
 Friedman, J. H. (1991). Multivariate adaptive regression splines. *The Annals of Statistics*, *19*(1), 1–67.
 

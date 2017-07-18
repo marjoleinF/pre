@@ -4,7 +4,7 @@
 \alias{rTerm}
 \alias{lTerm}
 \alias{eTerm}
-\title{Wrapper Functions for Terms in gpe}
+\title{Wrapper Functions for terms in gpe}
 \usage{
 rTerm(x)
 
@@ -13,13 +13,13 @@ lTerm(x, lb = -Inf, ub = Inf, scale = 1/0.4)
 eTerm(x, scale = 1/0.4)
 }
 \arguments{
-\item{x}{Input symbol}
+\item{x}{Input symbol.}
 
-\item{lb}{Lower quantile when winsorizing. \code{-Inf} yields no winsorizing in the lower tail}
+\item{lb}{Lower quantile when winsorizing. \code{-Inf} yields no winsorizing in the lower tail.}
 
-\item{ub}{Lower quantile when winsorizing. \code{Inf} yields no winsorizing in the upper tail}
+\item{ub}{Lower quantile when winsorizing. \code{Inf} yields no winsorizing in the upper tail.}
 
-\item{scale}{Inverse value to time \code{x} by. Usually the standard deviation is used. \eqn{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008)}
+\item{scale}{Inverse value to time \code{x} by. Usually the standard deviation is used. \eqn{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008) and gives each linear term the same a-priori influence as a typical rule.}
 }
 \value{
 \code{x} potentially transformed with additional information provided in the attributes.
@@ -28,7 +28,7 @@ eTerm(x, scale = 1/0.4)
 Wrapper functions for terms in gpe.
 }
 \details{
-The motivation to use wrappers is to ease getting the different terms as shown in the examples and simplify the formula passed to \code{\link{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescale and/or winsorize \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
+The motivation to use wrappers is to ease getting the different terms as shown in the examples and to simplify the formula passed to \code{\link{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescales and/or winsorizes \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
 }
 \examples{
 mt <- terms(
@@ -46,7 +46,7 @@ attr(mt, "specials")
 
 }
 \references{
-Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }
 \seealso{
 \code{\link{gpe}}, \code{\link{gpe_trees}} \code{\link{gpe_linear}} \code{\link{gpe_earth}}

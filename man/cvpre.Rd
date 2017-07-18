@@ -15,8 +15,9 @@ cvpre(object, k = 10, verbose = FALSE, pclass = 0.5,
 \item{verbose}{logical. Should progress of the cross validation be printed 
 to the command line?}
 
-\item{pclass}{numeric. Only used for classification. Cut-off value between 
-0 and 1 to be used for classifying to second class.}
+\item{pclass}{numeric. Only used for classification. Cut-off value for the 
+predicted probabilities that should be used to classify observations to the
+second class.}
 
 \item{penalty.par.val}{character. Calculate cross-validated error for ensembles 
 with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 

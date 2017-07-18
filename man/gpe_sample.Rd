@@ -7,7 +7,7 @@
 gpe_sample(sampfrac = 0.5)
 }
 \arguments{
-\item{sampfrac}{Fraction of \code{n} to use for sampling. It is the \eqn{\eta / N} in Friedman & Popescu (2008)}
+\item{sampfrac}{Fraction of \code{n} to use for sampling. It is the \eqn{\eta / N} in Friedman & Popescu (2008).}
 }
 \value{
 Returns a function that takes an \code{n} argument for the number of observations and a \code{weights} argument for the case weights. The function returns a vector of indices.
@@ -16,7 +16,7 @@ Returns a function that takes an \code{n} argument for the number of observation
 Provides a sample function for \code{\link{gpe}}.
 }
 \references{
-Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics}, 916-954.
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }
 \seealso{
 \code{\link{gpe}}

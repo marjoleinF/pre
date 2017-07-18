@@ -7,8 +7,8 @@
 interact(object, varnames = NULL, nullmods = NULL,
   penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95), plot = TRUE,
   col = c("yellow", "blue"), ylab = "Interaction strength",
-  main = "Interaction test statistics", parallel = FALSE, k = 10,
-  verbose = FALSE, ...)
+  main = "Interaction test statistics", se.linewidth = 0.05,
+  parallel = FALSE, k = 10, verbose = FALSE, ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
@@ -47,6 +47,9 @@ element of vector is used if \code{nullmods = NULL}.}
 
 \item{main}{character. Main title for the bar plot.}
 
+\item{se.linewidth}{numeric. Width of the whiskers of the plotted standard 
+error bars (in inches).}
+
 \item{parallel}{logical. Should parallel foreach be used? Must register
 parallel beforehand, such as doMC or others.}
 
@@ -60,21 +63,35 @@ command line?}
 \item{...}{Additional arguments to be passed to \code{barplot}.}
 }
 \value{
-If nullmods is not specified, the function returns the interaction
-test statistic. If nullmods is specified, the function returns a list,
-with elements \code{$H}, which is the test statistic of the interaction
-strength, and \code{$nullH}, which is a vector of test statistics of the
-interaction in each of the bootstrapped null interaction models. 
-If \code{plot = TRUE} (the default), a barplot is created, with the 
-interaction test statistic based on the selected ensemble and, if 
-\code{nullmods} is specified, the distribution of interaction test statistics 
-of the bootstrapped null interaction models, within the quantiles specified. 
-This allows for testing the null hypothesis of no interaction effect for 
-each of the input variables. If for an input variable the interaction test 
-statistic based on the selected ensemble exceeds the upper limit of the error 
-bar plotted for the bootstrapped null interaction models, the null hypothesis
-of no interaction with other input variables can be rejected at an alpha 
-level of quantprobs[2].
+Function \code{interact()} returns and plots interaction statistics
+for the specified predictor variables. If nullmods is not specified, it 
+returns and plots only the interaction test statistics for the specified 
+fitted prediction rule ensemble. If nullmods is specified, the function 
+returns a list, with elements \code{$fittedH2}, containing the interaction
+statistics of the fitted ensemble, and \code{$nullH2}, which contains the
+interaction test statistics for each of the bootstrapped null interaction 
+models.
+ 
+If \code{plot = TRUE} (the default), a barplot is created with the 
+interaction test statistic from the fitted prediction rule ensemble. If 
+\code{nullmods} is specified, bars representing the median of the 
+distribution of interaction test statistics of the bootstrapped null 
+interaction models are plotted. In addition, error bars representing the
+quantiles of the distribution (their value specified by the \code{quantprobs} 
+argument) are plotted. These allow for testing the null hypothesis of no 
+interaction effect for each of the input variables. 
+
+Note that the error rates of null hypothesis tests of interaction effects 
+have not yet been studied in detail, but likely depend on the number of 
+generated bootstrapped null interaction models as well as the complexity of 
+the fitted ensembles. Users are therefore advised to test for the presence 
+of interaction effects by setting the \code{nsamp} argument of the function 
+\code{bsnullinteract} \eqn{\geq 100} (even though this may take a lot of 
+computation time). Also, users are advised to test for the presence of 
+interactions only with fitted ensembles that are neither too sparse nor too 
+complex, that is, ensembles that are selected by setting the 
+\code{penalty.par.val} argument equal to \code{"lambda.min"} or 
+\code{"lambda.1se"}.
 }
 \description{
 \code{interact} calculates test statistics for assessing the strength of
@@ -82,8 +99,8 @@ interactions between the input variable(s) specified, and all other input
 variables.
 }
 \details{
-Can be computationally intensive, especially when nullmods is specified,
-in which case setting \verb{parallel = TRUE} may improve speed.
+Can be computationally intensive, especially when nullmods is 
+specified, in which case setting \verb{parallel = TRUE} may improve speed.
 }
 \examples{
 \donttest{
