@@ -4,4 +4,3 @@ README\.Rmd
 README\.bib
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^commit-msg\.txt$

@@ -6,12 +6,11 @@
 #' @param ... Currently not used.
 #' @param remove_duplicates_complements \code{TRUE}. Should rules with complementary or duplicate support be removed?
 #' @param mtry Number of input variables randomly sampled as candidates at each node for random forest like algorithms. The argument is passed to the tree methods in the \code{partykit} package.
-#' @param ntrees Number of trees to fit. Will not have an effect if \code{tree.control} is used.
-#' @param maxdepth Maximum depth of trees. Will not have an effect if \code{tree.control} is used. 
+#' @param ntrees Number of trees to fit.
+#' @param maxdepth Maximum depth of trees. 
 #' @param learnrate Learning rate for methods. Corresponds to the \eqn{\nu} parameter in Friedman & Popescu (2008).
 #' @param parallel \code{TRUE}. Should basis functions be found in parallel?
 #' @param use_grad \code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).
-#' @param tree.control \code{\link{ctree_control}} with options for the \code{\link{ctree}} function.
 #' @param winsfrac Quantile to winsorize linear terms. The value should be in \eqn{[0,0.5)}
 #' @param normalize \code{TRUE}. Should value be scaled by .4 times the inverse standard deviation? If \code{TRUE}, gives linear terms the same influence as a typical rule.
 #' @param degree Maximum degree of interactions in \code{\link{earth}} model.
@@ -52,9 +51,7 @@ gpe_trees <- function(
   remove_duplicates_complements = TRUE,
   mtry = Inf, ntrees = 500,
   maxdepth = 3L, learnrate = 0.01,
-  parallel = FALSE, use_grad = TRUE,
-  tree.control = ctree_control(
-    mtry = mtry, maxdepth = maxdepth, saveinfo= FALSE)){
+  parallel = FALSE, use_grad = FALSE){
   if(learnrate < 0 && learnrate > 1)
     stop("learnrate must be between 0 and 1")
   
@@ -66,23 +63,22 @@ gpe_trees <- function(
     ################
     ## Find rules ##
     ################
-    
-    if(!inherits(formula, "formula"))
-      formula <- stats::formula(formula)
-        
+  
     if(learnrate == 0) { # always use ctree()
       if(parallel)
         stop("Not implemented")
       
+      input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
       rules <- c()
       n <- nrow(data)
       for(i in 1:ntrees) {
         # Take subsample of dataset
         subsample <- sample_func(n = n, weights = weights)
-        
-        tree <- ctree(
-          formula = formula, data = data[subsample, ], control = tree.control)
-        
+        # Grow tree on subsample:
+        #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
+        #                mtry = mtry)
+        tree <- with(input, ctree_minimal(
+          dat[subsample, ], response, control, ytrafo, terms))
         # Collect rules from tree:
         rules <- c(rules, list.rules(tree))
       }
@@ -92,43 +88,37 @@ gpe_trees <- function(
         family == "binomial" && use_grad)){
         mf <- model.frame(update(formula, . ~ -1), data = data)
         y_learn <- model.response(mf)
-        rsp_name <- as.character(attr(terms(mf), "variables")[[2]])
         
         if(family == "binomial"){
           if(length(levels(y_learn)) != 2)
             stop("Factor for outcome must have two levels in gpe_trees with a learning rate")
           
-          y <- y_learn == levels(y_learn)[1]
-
-          # Find intercept and setup y_learn 
-          eta_0 <- get_intercept_logistic(y, weights)
-          eta <- rep(eta_0, length(y))
-          p_0 <- 1 / (1 + exp(-eta))
-          y_learn <- ifelse(y, log(p_0), log(1 - p_0)) 
+          y_learn <- y <- as.numeric(y_learn == levels(y_learn)[1])
+          eta <- rep(0, length(y_learn))
+          mt <- terms(mf)
+          data[, as.character(attr(mt,"variables")[[2]])] <- y_learn
         }
         
+        input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
         n <- nrow(data)
         
         for(i in 1:ntrees) {
-          # Update y
-          data[[rsp_name]] <- y_learn
-          
           # Take subsample of dataset
           subsample <- sample_func(n = n, weights = weights)
-          
           # Grow tree on subsample:
-          tree <- ctree(
-            formula = formula, data = data[subsample, ], control = tree.control)
-          
+          #tree <- ctree(formula, data = data[subsample,], maxdepth = maxdepth, 
+          #                mtry = mtry)
+          input$dat[subsample, input$response] <- y_learn[subsample]
+          tree <- with(input, ctree_minimal(
+            dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
-          
           # Substract predictions from current y:
           if(use_grad && family == "binomial"){
-            eta <- eta + learnrate * predict(tree, newdata = data)
+            eta <- eta + learnrate * predict_party_minimal(tree, newdata = data)
             y_learn <- get_y_learn_logistic(eta, y)
           } else {
-            y_learn <- y_learn - learnrate * predict(tree, newdata = data)
+            y_learn <- y_learn - learnrate * predict_party_minimal(tree, newdata = data)
           }
         }
       } else if (family == "binomial"){
@@ -281,102 +271,42 @@ gpe_linear <- function(
     if(any(attr(mf, "order") > 1))
       stop("Terms with higher order is not implemented in with gpe_linear")
     
-    dataClasses <- attr(mt, "dataClasses")[-1] # Remove lhs. Assumes that 
-                                               # attr(mt, "response") = int 1
-    is_numeric_term <- which(dataClasses == "numeric")
-    is_factor_term <- which(dataClasses %in% c("factor", "ordered"))
-    # TODO: A group-lasso would be prefered for factors?
-    
-    # Get name of terms of and factor levels
-    names(is_numeric_term) <- attr(mt, "term.labels")[is_numeric_term]
-    
-    if(has_factors <- length(is_factor_term) > 0){
-      # We dont want poly for ordered factors 
-      # See https://stat.ethz.ch/pipermail/r-help/2007-January/123268.html
-      old <- getOption("contrasts")
-      on.exit(options(contrasts = old))
-      options(contrasts = c("contr.treatment", "contr.treatment"))
-      X <- model.matrix(mt, mf)
-      
-      factor_labels <- lapply(
-        mf[, is_factor_term + 1L, # 1L for response
-           drop = FALSE], levels)
-      factor_labels <- lapply(factor_labels, "[", -1) # remove one from contrast
-      
-      lbls <- lapply(is_factor_term, function(x) which(x == attr(X, "assign")))
-      
-      fct_names <- mapply(
-        get_factor_predictor_term, 
-        factor_term = names(dataClasses)[is_factor_term],
-        factor_labels = factor_labels, 
-        regexp_escape = FALSE, 
-        SIMPLIFY = FALSE)
-      
-      # Remove the outer parenthesis
-      fct_names <- str_replace_all(unlist(fct_names), "(^\\()|(\\)$)", "")
-      is_factor_term <- unlist(lbls)
-      names(is_factor_term) <- fct_names
-    }
+    is_numeric_term <- attr(mt, "dataClasses")== "numeric"
+    if(attr(mt, "response") > 0)
+      is_numeric_term <- is_numeric_term & !seq_along(is_numeric_term) %in% attr(mt, "response")
+    is_numeric_term <- which(is_numeric_term)    
     
     ####################################
     ## Winsorize if needed and return ##
     ####################################
     
-    # Get data frame to find sds and quantiles
-    if(length(inter <- intersect(names(is_factor_term), names(is_numeric_term))) > 0)
-      stop("Some of the terms match some factor levels. The matches are: ", 
-           paste0(sapply(inter, sQuote), collapse = ", "), 
-           ". Either re-name the factor levels or the terms.")
-    
-    if(length(is_numeric_term) > 0){
-      dat <- mf[, is_numeric_term + 1L] # Plus for the reponse
-    } else
-      dat <- structure(list(), row.names = 1:nrow(mf), class = "data.frame")
-    
-    if(length(is_factor_term) > 0)
-      dat <- cbind(dat, X[, is_factor_term, drop = FALSE])
-    
-    v_names <- c(names(is_numeric_term), names(is_factor_term))
-    
     if(winsfrac == 0){
       if(!normalize)
-        return(paste0("lTerm(", v_names, ")"))
+        return(paste0("lTerm(", names(is_numeric_term), ")"))
       
-      sds <- apply(dat, 2, sd)
+      sds <- apply(mf[, names(is_numeric_term)], 2, sd)
       out <- mapply(function(x, s) paste0("lTerm(", x, ", scale = ", s, ")"), 
-                    x = v_names, s = signif(sds, 2))
+                    x = names(is_numeric_term), s = signif(sds, 2))
       return(out)
     }
     
-    out <- sapply(1:ncol(dat), function(i) {
-      x <- dat[[i]]
-      x_name <- v_names[i]
+    out <- sapply(is_numeric_term, function(i) {
+      x <- mf[, i]
+      x_name <- colnames(mf)[i]
+      qs <- quantile(x, c(winsfrac, 1 - winsfrac))
       
-      sig <- function(x) signif(x, 2)
+      if(!normalize)
+        return(
+          paste0("lTerm(", x_name, 
+                 ", lb = ", signif(qs[1], 2), 
+                 ", ub = ", signif(qs[2], 2), ")"))
       
-      # Find string for lb and ub
-      if(x_name %in% names(is_factor_term)){
-        qs <- range(x)
-        lb_str <- ub_str <- ""
-        
-      } else {
-        qs <- quantile(x, c(winsfrac, 1 - winsfrac))
-        lb_str <- paste0(", lb = ", sig(qs[1]))
-        ub_str <- paste0(", ub = ", sig(qs[2]))
-        
-      }
       
-      # Find string for scale
-      if(!normalize){
-        scale_str <- ""
-        
-      } else{
-        scale_str <- paste0(
-          ", scale = ", sig(sd(pmax(pmin(x, qs[2]), qs[1]))))
-          
-      }
-      
-      paste0("lTerm(", x_name, lb_str, ub_str, scale_str, ")")
+      sd <- sd(pmax(pmin(x, qs[2]), qs[1]))
+      paste0("lTerm(", x_name, 
+             ", lb = ", signif(qs[1], 2), 
+             ", ub = ", signif(qs[2], 2), 
+             ", scale = ", signif(sd, 2), ")")
     })
     
     out
@@ -386,8 +316,8 @@ gpe_linear <- function(
 #' @rdname rTerm
 #' @export
 lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1 / 0.4){
-  if(!(is.numeric(x) || is.logical(x)))
-    stop("lTerm must numeric or logical")
+  if(!is.numeric(x))
+    stop("lTerm must numeric")
   
   attr(x, "description") <- deparse(substitute(x))
   attr(x, "lb") <- lb
@@ -402,11 +332,10 @@ lTerm <- function(x, lb = -Inf, ub = Inf, scale = 1 / 0.4){
 }
 
 #' @rdname gpe_trees
-#' @importFrom stringr str_replace_all
 #' @export
 gpe_earth <- function(
-  ..., degree = 3, nk = 8, normalize = TRUE, 
-  ntrain = 100, learnrate = 0.1,
+  ..., degree = 3, nk = 11, normalize = TRUE, 
+  ntrain = 100, learnrate = 0.01,
   cor_thresh = 0.99){
   
   if(learnrate < 0 && learnrate > 1)
@@ -418,36 +347,33 @@ gpe_earth <- function(
     ###########
     
     n <- nrow(data)
-    # We dont want poly for ordered factors 
-    # See https://stat.ethz.ch/pipermail/r-help/2007-January/123268.html
-    old <- getOption("contrasts")
-    on.exit(options(contrasts = old))
-    options(contrasts = c("contr.treatment", "contr.treatment"))
     mf <- model.frame(formula, data = data)
     mt <- attr(mf, "terms")
     x <- model.matrix(mt, mf)
     y <- y_learn <- model.response(mf)
     
     # We later need to take care of the factor terms
-    dataClass <- attr(mt, "dataClasses")[
-      (1 + attr(mt, "response")):length(attr(mt, "dataClasses"))]
-    factor_terms <- which(dataClass %in% c("factor", "ordered"))
+    factor_terms <- which(
+      attr(mt, "dataClasses")[
+        (1 + attr(mt, "response")):length(attr(mt, "dataClasses"))] == 
+        "factor")
     n_factors <- length(factor_terms)
-    factor_terms <- names(dataClass)[factor_terms]
+    factor_terms <- names(factor_terms)
     
     if(n_factors > 0){
+      add_escapes <- function(regexp)
+        stringr::str_replace_all(regexp, "(\\W)", "\\\\\\1")
+      
       factor_terms_regexp <- add_escapes(factor_terms)
       factor_labels <- lapply(mf[, factor_terms, drop = FALSE], levels)
       
       regexp_find <- list()
       regexp_replace <- list()
       for(i in 1:n_factors){
-        # TODO: make more neat way to do this
-        regexp_find[[i]] <- paste0(
-          "(?<=(h\\()|[*]|^)", add_escapes(paste0(
-          factor_terms[i], factor_labels[[i]])), "(?=[\\(*]|$)")
-        regexp_replace[[i]] <- get_factor_predictor_term(
-          factor_terms[i], factor_labels[[i]])
+        regexp_find[[i]] <- add_escapes(paste0(
+          factor_terms[i], factor_labels[[i]]))
+        regexp_replace[[i]] <- add_escapes(paste0(
+          "(", factor_terms[i], " == '", factor_labels[[i]], "')"))
       }
     }
     
@@ -458,18 +384,13 @@ gpe_earth <- function(
         message("Beware that gpe_earth will use L2 loss to train")
       } else
         message("Beware that gpe_earth will use gradient boosting")
+      y <- y_learn <- as.numeric(y == levels(y)[1])
       
-      y <- y == levels(y)[1]
-      
-      if(learnrate > 0){
-        # Find intercept and setup y_learn 
-        eta_0 <- get_intercept_logistic(y, weights)
-        eta <- rep(eta_0, length(y))
-        p_0 <- 1 / (1 + exp(-eta))
-        y_learn <- ifelse(y, log(p_0), log(1 - p_0))
-        
-      }
+      if(learnrate > 0)
+        eta <- rep(0, n)
     }
+    
+
     
     for(i in 1:ntrain){
       ##########################
@@ -573,15 +494,6 @@ gpe_earth <- function(
   out
 }
 
-add_escapes <- function(regexp)
-  stringr::str_replace_all(regexp, "(\\W)", "\\\\\\1")
-
-get_factor_predictor_term <- function(
-  factor_term, factor_labels, regexp_escape = TRUE){
-  f <- if(regexp_escape) add_escapes else I
-  f(paste0("(", factor_term, " == '", factor_labels, "')"))
-}
-
 #' @rdname rTerm
 #' @export
 eTerm <- function(x, scale = 1 / 0.4){
@@ -601,38 +513,16 @@ eTerm <- function(x, scale = 1 / 0.4){
 #####
 # Functions for gradient boosting
 
-get_intercept_logistic <- function(y, ws = NULL){
-  # # page 484 of:
-  # # Bühlmann, Peter, and Torsten Hothorn. "Boosting algorithms: Regularization, 
-  # # prediction and model fitting." Statistical Science (2007): 477-505.
-  # # or check do the math an figure out that:
-  # n <- 1000
-  # y <- runif(n) > 1/(1 + exp(-1))
-  # w <- runif(n, 0, 2)
-  # 
-  # glm.fit(
-  #   matrix(rep(1, n), ncol = 1), 
-  #   y,
-  #   family = binomial(), 
-  #   weights = w)$coefficients
-  # 
-  # p <- weighted.mean(y, w)
-  # log(p / (1 - p))
-  
-  p_bar <- if(is.null(ws)) mean(y) else weighted.mean(y, ws)
-  log(p_bar / (1 - p_bar))
-}
-
 get_y_learn_logistic <- function(eta, y){
-  # See LogitBoost on page 351 of:
-  # Friedman, J., Hastie, T., & Tibshirani, R. (2000). Additive logistic 
-  # regression: a statistical view of boosting (with discussion and a rejoinder 
-  # by the authors). The annals of statistics, 28(2), 337-407.
+  if(eta <= -6 || eta >= 6){
+    term <- pmax(sign(eta), 0)
+  } else{
+    exp_e <- exp(eta)
+    
+    term <- exp_e * (2 + exp_e) / (1 + exp_e)^2
+  }
   
-  trunc_fac <- 12
-  eta <- pmin(pmax(eta, -trunc_fac), trunc_fac)
-  p <- 1 / (1 + exp(-eta))
-  (y - p) / sqrt(p * (1 - p))
+  term - y
 }
 
 #' @title Default penalized trainer for gpe

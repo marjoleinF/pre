@@ -183,7 +183,9 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
   #############################
   
   if (type != "linear") {
-    if (learnrate == 0) {
+    if (learnrate == 0) { # always use ctree()
+      #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
+      input <- ctree_setup(formula, data = data, control = tree.control)
       if(par.init) {
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
@@ -194,8 +196,9 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                                 prob = weights)
           }
           # Grow ctree on subsample:
-          tree <- ctree(
-            formula = formula, data = data[subsample, ], control = tree.control)
+          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
+          tree <- with(input, ctree_minimal(
+            dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
           list.rules(tree)
         }
@@ -210,11 +213,13 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                                 prob = weights)
           }
           # Grow tree on subsample:
-          tree <- ctree(
-            formula = formula, data = data[subsample, ], control = tree.control)
-          
+          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
+          tree <- with(input, ctree_minimal(
+            dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
+          if (length(tree) > 1) {
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
+          }
         }
       }
     }
@@ -222,7 +227,8 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
       rules <- c()
       if (!classify && !count) {
         y_learn <- data[, y_name]
-        data_sub <- data
+        #input <- ctree_setup(formula, data = data, maxdepth = maxdepth, mtry = mtry)
+        input <- ctree_setup(formula, data = data, control = tree.control)
         for(i in 1:ntrees) {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
@@ -232,13 +238,17 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                                 prob = weights)
           }
           # Grow tree on subsample:
-          data_sub[[y_name]] <- y_learn
-          tree <- ctree(
-            formula = formula, data = data_sub[subsample, ], control = tree.control)
+          #tree <- ctree(formula, data = data[subsample,], control = tree.control)
+          input$dat[subsample, y_name] <- y_learn[subsample]
+          tree <- with(input, ctree_minimal(
+            dat[subsample, ], response, control, ytrafo, terms))
           # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
+          if (length(tree) > 1) {
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
+          }
           # Substract predictions from current y:
-          y_learn <- y_learn - learnrate * predict(tree, newdata = data)
+          y_learn <- y_learn - learnrate * predict_party_minimal(
+            tree, newdata = data)
         }
       } else if (classify) { 
         data2 <- data.frame(data, offset = 0)
@@ -257,7 +267,9 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
           tree <- glmtree(glmtreeformula, data = subsampledata, family = "binomial", 
                           maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
+          if (length(tree) > 1) {
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
+          }
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")
@@ -281,12 +293,13 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
                           maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
           # Collect rules from tree:
           if (length(tree) > 1) {
-            rules <- c(rules, list.rules(tree))
+            rules <- c(rules, unique(get_rules_from_term_nodes(list.rules(tree))))
           }
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
             tree, newdata = data2, type = "link")
         }
+        
       }
     }
     # Keep unique, non-empty rules only:
@@ -300,7 +313,6 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
       rulevars <- matrix(
         NA, nrow = nrow(data), ncol = n_rules, 
         dimnames = list(NULL, paste0("rule", 1:n_rules)))
-      names(rules) <- colnames(rulevars)
       
       for(i in 1:n_rules) {
         rulevars[, i] <- with(data, eval(parse(text = rules[[i]])))
@@ -311,7 +323,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
         duplicates <- duplicated(rulevars, MARGIN = 2)
         duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
                                          description = rules[duplicates])
-        rulevars <- rulevars[, !duplicates, drop = FALSE]
+        rulevars <- rulevars[, !duplicates]
         rules <- rules[!duplicates]
       }
         
@@ -339,7 +351,7 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
         complements.removed <- data.frame(name = colnames(rulevars)[complements],
                                           description = rules[complements])
         if(length(complements) > 0){
-          rulevars <- rulevars[, -complements, drop = FALSE]
+          rulevars <- rulevars[, -complements]
           rules <- rules[-complements]
         }
       }
@@ -371,22 +383,50 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
   ## Prepare rules, linear terms and outcome variable ##
   ######################################################
 
-  if (type == "rules" && length(rules) == 0)
-    return(NULL)
+  if (type == "rules") {
+    if (length(rules) > 0) {
+      x <- rulevars
+    } else {
+      return(NULL)
+    }
+  } else { # if type is not rules, linear terms should be prepared:
+    x <- data[,x_names]
+    # convert ordered categorical predictor variables to linear terms:
+    x[,sapply(x, is.ordered)] <- as.numeric(as.character(x[,sapply(x, is.ordered)]))
+    # Winsorize numeric variables (section 5 of F&P(2008)):
+    if (winsfrac > 0) {
+      wins_points <- data.frame(varname = names(x), value = NA)
+      for(i in 1:ncol(x)) {
+        if (is.numeric(x[,i])) { 
+          lim <- quantile(x[,i], probs = c(winsfrac, 1 - winsfrac))
+          x[x[,i] < lim[1], i] <- lim[1]
+          x[x[,i] > lim[2], i] <- lim[2]
+          wins_points$value[i] <- paste(lim[1], "<=", names(x)[i], "<=", lim[2])
+        }
+      }
+    }
+    # normalize numeric variables:
+    if (normalize) { 
+      # Normalize linear terms (section 5 of F&P08), if there are any:
+      is_numeric <- sapply(x, is.numeric)
+      if (sum(is_numeric) > 0) {
+        x_scales <- sapply(x[, is_numeric], sd, na.rm = TRUE) / 0.4
+        x[, is_numeric] <- scale(
+          x[, is_numeric], center = FALSE, scale = x_scales)
+      }
+    }
+    # If both rules and linear terms are in ensemble, combine both:
+    if (type == "both" & length(rules) > 0) {
+      x <- data.frame(x, rulevars)
+    }
+  }
+  modmat_formula <- formula(
+    paste(" ~ -1 +", paste(colnames(x), collapse = "+")))
+  x <- model.matrix(modmat_formula, data = x)
+  y <- data[,y_name]
   
-  modmat_data <- get_modmat(
-    formula = formula, 
-    data = data, 
-    rules = rules, 
-    type = type, 
-    winsfrac = winsfrac, 
-    x_names = x_names, 
-    normalize = normalize)
-  y <- modmat_data$y
-  x <- modmat_data$x
-  x_scales <- modmat_data$x_scales
-  modmat_formula <- modmat_data$modmat_formula
-  wins_points <- modmat_data$wins_points
+  if (!exists("wins_points")) {wins_points <- NULL}
+  if (!exists("x_scales")) {x_scales <- NULL}
   
   # check whether there's duplicates in the variable names:
   # (can happen, for example, due to labeling of dummy indicators for factors)
@@ -443,104 +483,6 @@ pre <- function(formula, data, count = FALSE, weights, type = "both", sampfrac =
   return(result)
 }
 
-get_modmat <- function(
-  # Pass these if you already have an object
-  modmat_formula = NULL, wins_points = NULL, x_scales = NULL,
-  # These should be passed in all calls
-  formula, data, rules, type, winsfrac, x_names, normalize){
-  if(miss_modmat_formula <- is.null(modmat_formula)) {
-    #####
-    # Need to define modemat
-    str_terms <- if(type != "rules") x_names else character()
-    if(type != "linear"){
-      str_terms <- c(str_terms, paste0("I(", rules, ")"))
-    }
-    
-    modmat_formula <- paste0(
-      ". ~ ", paste0(
-        str_terms, collapse = " + "))
-    modmat_formula <- update(formula, modmat_formula)
-  }
-  
-  # convert ordered categorical predictor variables to linear terms:
-  data[,sapply(data, is.ordered)] <- # Needs to be called on the data.frame
-    as.numeric(as.character(data[,sapply(data, is.ordered)]))
-  
-  if(miss_modmat_formula){
-    data <- model.frame(modmat_formula, data = data)
-    modmat_formula <- terms(data) # save terms so model factor levels are keept
-  }
-  
-  data <- model.frame(modmat_formula, data)
-  x <- model.matrix(modmat_formula, data = data)
-  colnames(x)[
-    (ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
-  y <- model.response(data)
-  
-  #####
-  # Remove intercept
-  attr_x <- attributes(x)
-  attr_x$dimnames[[2]] <- attr_x$dimnames[[2]][-1]
-  attr_x$dim[2] <- attr_x$dim[2] - 1
-  attr_x$assign <- attr_x$assign[-1]
-  x <- x[, colnames(x) != "(Intercept)"]
-  
-  if(type != "rules"){
-    #####
-    # if type is not rules, linear terms should be prepared:
-    
-    # Winsorize numeric variables (section 5 of F&P(2008)):
-    if (winsfrac > 0) {
-      miss_wins_points <- is.null(wins_points)
-      if(miss_wins_points)
-        wins_points <- data.frame(varname = x_names, value = NA, lb = NA, ub = NA)
-      
-      j <- 0
-      for(i in x_names) {
-        j <- j + 1
-        if (is.numeric(x[, i])) {
-          if(miss_wins_points){
-            lim <- quantile(x[, i], probs = c(winsfrac, 1 - winsfrac))
-            wins_points$value[j] <- paste(lim[1], "<=", i, "<=", lim[2])
-            wins_points$lb[j] <- lim[1]
-            wins_points$ub[j] <- lim[2]
-          }
-          
-          lb <- wins_points$lb[j]
-          ub <- wins_points$ub[j]
-          
-          x[, i][x[, i] < lb] <- lb
-          x[, i][x[, i] > ub] <- ub
-        }
-      }
-    }
-    
-    # normalize numeric variables:
-    if (normalize) { 
-      # Normalize linear terms (section 5 of F&P08), if there are any:
-      needs_scalling <- x_names[sapply(data[x_names], # use data as it is un-transformed 
-                                       is.numeric)]
-      needs_scalling <- which(colnames(x) %in% x_names)
-      if (length(needs_scalling) > 0) {
-        if(is.null(x_scales))
-          x_scales <- apply(
-            x[, needs_scalling, drop = FALSE], 2, sd, na.rm = TRUE) / 0.4
-        
-        x[, needs_scalling] <- scale(
-          x[, needs_scalling, drop = FALSE], center = FALSE, scale = x_scales)
-      }
-    }
-  }
-  
-  if (!exists("wins_points", inherits = FALSE)) {wins_points <- NULL}
-  if (!exists("x_scales", inherits = FALSE)) {x_scales <- NULL}
-  
-  attributes(x) <- attr_x
-  
-  list(x = x, y = y, modmat_formula = modmat_formula, 
-       x_scales = x_scales, wins_points = wins_points)
-}
-
 
 #' Print method for objects of class pre
 #'
@@ -573,6 +515,7 @@ get_modmat <- function(
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 print.pre <- function(x, penalty.par.val = "lambda.1se", 
                       digits = getOption("digits"), ...) {
+  
   # function to round values:
   rf <- function(x)
     signif(x, digits)
@@ -599,10 +542,8 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
   coefs <- coef(x, penalty.par.val = penalty.par.val)
   coefs <- coefs[coefs$coefficient != 0, ]
   # always put intercept first:
-  is_intercept <- 
-    if(is.null(coefs$rule))
-      rownames(coefs) == "(Intercept)" else coefs$rule == "(Intercept)"
-  coefs <- rbind(coefs[is_intercept,], coefs[!is_intercept,])
+  coefs <- rbind(coefs[coefs$rule == "(Intercept)",], 
+                 coefs[coefs$rule != "(Intercept)",])
   
   print(coefs, print.gap = 2, quote = FALSE, row.names = FALSE, digits = digits)
   invisible(coefs)
@@ -730,7 +671,6 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
 
 
 
-
 #' Coefficients for the final prediction rule ensemble
 #'
 #' \code{coef.pre} returns coefficients for prediction rules and linear terms in 
@@ -805,6 +745,10 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   return(coefs[order(abs(coefs$coefficient), decreasing = TRUE),])
 }
 
+
+
+
+
 #' Predicted values based on final unbiased prediction rule ensemble
 #'
 #' \code{predict.pre} generates predictions based on the final prediction rule
@@ -850,29 +794,78 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       stop("newdata should be a data frame.")
     }
     
-    # Get coefficients
+    # newdata <- model.frame(object$call$formula, newdata, na.action = NULL)
+    newdata <- model.frame(formula(terms(object$data)), newdata, na.action = NULL)
+    # check if newdata has the same columns as object$orig_data:
+    if (!all(names(object$data) %in% c(names(newdata), object$y_name))) {
+      stop("newdata does not contain all predictor variables from the ensemble")
+    } else {
+      # take all input variables:
+      newdata <- newdata[,names(newdata) %in% object$x_names]
+      # add temporary y variable to create model.frame:
+      newdata[,object$y_name] <- object$data[,object$y_name][1]
+      newdata <- model.frame(object$formula, newdata)
+      # check if all variables have the same levels:
+      if (!all(unlist(sapply(object$data, levels)) ==
+              unlist(sapply(newdata[names(object$data)], levels)))) {
+        stop("At least one variable in newdata has different levels than the
+             variables used to create the ensemble")
+      }
+    }
     coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val),
                 Class = "matrix")
-    
-    # Get model matrix
-    winsfrac <- (object$call)$winsfrac
-    if(is.null(winsfrac))
-      winsfrac <- formals(pre)$winsfrac
-    tmp <- get_modmat(
-      modmat_formula = object$modmat_formula, 
-      wins_points = object$wins_points, 
-      x_scales = object$x_scales, 
-      formula = object$formula, 
-      data = newdata, 
-      rules = structure(
-        object$rules$description, 
-        names = object$rules$rule), 
-      type = object$type, 
-      winsfrac = winsfrac,
-      x_names = object$x_names, 
-      normalize = object$normalize)
-    
-    newdata <- tmp$x
+    # if there are rules in the ensemble, they should be evaluated:
+    if (object$type != "linear") {
+      # get names of rules with nonzero and zero coefficients:
+      nonzerorulenames <- names(coefs[coefs!=0,])[grep("rule", names(coefs[coefs!=0,]))]
+      zerorulenames <- names(coefs[coefs==0,])[grep("rule", names(coefs[coefs==0,]))]
+      if (length(nonzerorulenames) > 0) { #  assess rules with non-zero coefficients
+        nonzeroterms <- as.character(
+          object$rules$description[object$rules$rule %in% nonzerorulenames])
+        newrulevars <- data.frame(r1 = as.numeric(with(newdata, eval(parse(
+          text = nonzeroterms[1])))))
+        names(newrulevars) <- nonzerorulenames[1]
+        if (length(nonzerorulenames) > 1) {
+          for(i in 2:length(nonzeroterms)) {
+            newrulevars[,nonzerorulenames[i]] <- as.numeric(
+              with(newdata, eval(parse(text = nonzeroterms[i]))))
+          }
+        }
+        # set all rules with zero coefficients to 0:
+        if (length(zerorulenames) > 0) {
+          for(i in zerorulenames) {
+            newrulevars[,i] <- 0
+          }
+        }
+      } else { # set all rules with zero coefficients to 0:
+        if (length(zerorulenames) > 0) {
+          newrulevars <- data.frame(r1 = rep(0, times = nrow(newdata)))
+          names(newrulevars) <- zerorulenames[1]
+          for(i in zerorulenames[-1]) {
+            newrulevars[,i] <- 0
+          }
+        }
+      }
+    }
+    # convert ordered categorical variables to numeric variables:
+    newdata[,sapply(newdata, is.ordered)] <- as.numeric(as.character(
+      newdata[,sapply(newdata, is.ordered)]))
+
+    # linear terms normalized before application of glmnet should also be
+    # normalized before applying predict.glmnet:
+    if (object$type != "rules") {
+      if (object$normalize) {
+        if (!is.null(object$x_scales)) {
+        newdata[,names(object$x_scales)] <- scale(
+          newdata[,names(object$x_scales)], center = FALSE, scale = object$x_scales)
+        }
+      }
+    }
+    if (object$type != "linear" && (length(zerorulenames) > 0 || length(nonzerorulenames) > 0)) {
+      newdata <- data.frame(newdata, newrulevars)
+    }
+    newdata <- model.Matrix(object$modmat_formula, data = newdata,
+                            sparse = TRUE)
   }
 
   # Get predictions:
@@ -1375,7 +1368,7 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       # originally applied to (x,y):
       bsintmodcall$data <- object$orig_data
       bsintmodcall$data[,all.vars(object$call$formula[[2]])] <- ytilde
-      eval(bsintmodcall)
+      eval(match.call(pre, call = bsintmodcall))
     }
   } else {
     bs.ens <- list()
@@ -1386,8 +1379,8 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       bs_inds <- sample(1:nrow(object$orig_data), nrow(object$orig_data), replace = TRUE)
       bsdataset <- object$orig_data[bs_inds,]
       # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
-      bsnullmodcall$data <- as.symbol(quote(bsdataset))
-      bs.ens.null <- eval(bsnullmodcall, envir = environment())
+      bsnullmodcall$data <- bsdataset
+      bs.ens.null <- eval(bsnullmodcall)
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
       F_A_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
@@ -1400,10 +1393,9 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       ytilde <- F_A_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
       # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
-      tmp <- object$orig_data
-      tmp[,all.vars(object$call$formula[[2]])] <- ytilde
-      bsintmodcall$data <- as.symbol(quote(tmp))
-      bs.ens[[i]] <- eval(bsintmodcall, envir = environment())
+      bsintmodcall$data <- object$orig_data
+      bsintmodcall$data[,all.vars(object$call$formula[[2]])] <- ytilde
+      bs.ens[[i]] <- eval(match.call(pre, call = bsintmodcall))
     }
     if (verbose) cat("done!\n")
   }
