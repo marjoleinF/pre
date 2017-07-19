@@ -54,7 +54,7 @@ gpe_trees <- function(
   maxdepth = 3L, learnrate = 0.01,
   parallel = FALSE, use_grad = TRUE,
   tree.control = ctree_control(
-    mtry = mtry, maxdepth = maxdepth, saveinfo= FALSE)){
+    mtry = mtry, maxdepth = maxdepth)){
   if(learnrate < 0 && learnrate > 1)
     stop("learnrate must be between 0 and 1")
   

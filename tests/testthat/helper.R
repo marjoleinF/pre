@@ -77,6 +77,11 @@ PimaIndiansDiabetes <- PimaIndiansDiabetes[
 
 airquality <- airquality[complete.cases(airquality), ]
 
+data(BostonHousing, package = "mlbench", envir = environment())
+BostonHousing <- BostonHousing[
+  sample.int(nrow(BostonHousing), 200, replace = FALSE), ]
+
+
 
 
 
