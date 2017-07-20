@@ -8,12 +8,13 @@
 \usage{
 gpe_trees(..., remove_duplicates_complements = TRUE, mtry = Inf,
   ntrees = 500, maxdepth = 3L, learnrate = 0.01, parallel = FALSE,
-  use_grad = FALSE)
+  use_grad = TRUE, tree.control = ctree_control(mtry = mtry, maxdepth =
+  maxdepth, saveinfo = FALSE))
 
 gpe_linear(..., winsfrac = 0.025, normalize = TRUE)
 
-gpe_earth(..., degree = 3, nk = 11, normalize = TRUE, ntrain = 100,
-  learnrate = 0.01, cor_thresh = 0.99)
+gpe_earth(..., degree = 3, nk = 8, normalize = TRUE, ntrain = 100,
+  learnrate = 0.1, cor_thresh = 0.99)
 }
 \arguments{
 \item{...}{Currently not used.}
@@ -22,15 +23,17 @@ gpe_earth(..., degree = 3, nk = 11, normalize = TRUE, ntrain = 100,
 
 \item{mtry}{Number of input variables randomly sampled as candidates at each node for random forest like algorithms. The argument is passed to the tree methods in the \code{partykit} package.}
 
-\item{ntrees}{Number of trees to fit.}
+\item{ntrees}{Number of trees to fit. Will not have an effect if \code{tree.control} is used.}
 
-\item{maxdepth}{Maximum depth of trees.}
+\item{maxdepth}{Maximum depth of trees. Will not have an effect if \code{tree.control} is used.}
 
 \item{learnrate}{Learning rate for methods. Corresponds to the \eqn{\nu} parameter in Friedman & Popescu (2008).}
 
 \item{parallel}{\code{TRUE}. Should basis functions be found in parallel?}
 
 \item{use_grad}{\code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).}
+
+\item{tree.control}{\code{\link{ctree_control}} with options for the \code{\link{ctree}} function.}
 
 \item{winsfrac}{Quantile to winsorize linear terms. The value should be in \eqn{[0,0.5)}}
 
