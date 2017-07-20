@@ -9,7 +9,7 @@
 gpe_trees(..., remove_duplicates_complements = TRUE, mtry = Inf,
   ntrees = 500, maxdepth = 3L, learnrate = 0.01, parallel = FALSE,
   use_grad = TRUE, tree.control = ctree_control(mtry = mtry, maxdepth =
-  maxdepth, saveinfo = FALSE))
+  maxdepth))
 
 gpe_linear(..., winsfrac = 0.025, normalize = TRUE)
 

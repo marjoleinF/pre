@@ -466,12 +466,9 @@ get_modmat <- function(
   data[,sapply(data, is.ordered)] <- # Needs to be called on the data.frame
     as.numeric(as.character(data[,sapply(data, is.ordered)]))
   
-  if(miss_modmat_formula){
-    data <- model.frame(modmat_formula, data = data)
-    modmat_formula <- terms(data) # save terms so model factor levels are keept
-  }
-  
   data <- model.frame(modmat_formula, data)
+  if(miss_modmat_formula)
+    modmat_formula <- terms(data) # save terms so model factor levels are keept
   x <- model.matrix(modmat_formula, data = data)
   colnames(x)[
     (ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
@@ -498,9 +495,15 @@ get_modmat <- function(
       j <- 0
       for(i in x_names) {
         j <- j + 1
-        if (is.numeric(x[, i])) {
+        if (is.numeric(data[[i]])) {
+          x_idx <- which(
+            which(attr(terms(data), "term.labels") == i) == 
+              attr_x$assign)
+          if(length(x_idx) > 1) # User have made a one to many transformation
+            next                # We do not winsorize in this case
+          
           if(miss_wins_points){
-            lim <- quantile(x[, i], probs = c(winsfrac, 1 - winsfrac))
+            lim <- quantile(x[, x_idx], probs = c(winsfrac, 1 - winsfrac))
             wins_points$value[j] <- paste(lim[1], "<=", i, "<=", lim[2])
             wins_points$lb[j] <- lim[1]
             wins_points$ub[j] <- lim[2]
@@ -509,8 +512,8 @@ get_modmat <- function(
           lb <- wins_points$lb[j]
           ub <- wins_points$ub[j]
           
-          x[, i][x[, i] < lb] <- lb
-          x[, i][x[, i] > ub] <- ub
+          x[, x_idx][x[, x_idx] < lb] <- lb
+          x[, x_idx][x[, x_idx] > ub] <- ub
         }
       }
     }
