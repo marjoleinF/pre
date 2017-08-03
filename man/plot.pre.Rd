@@ -5,8 +5,8 @@
 \title{Plot method for class pre}
 \usage{
 \method{plot}{pre}(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
-  nterms = NULL, max.terms.plot = 16, ask = FALSE, exit.label = "0",
-  standardize = FALSE, ...)
+  nterms = NULL, ask = FALSE, exit.label = "0", standardize = FALSE,
+  plot.dim = c(3, 3), ...)
 }
 \arguments{
 \item{x}{an object of class \code{\link{pre}}.}
@@ -25,21 +25,20 @@ running \code{x$glmnet.fit} and \code{plot(x$glmnet.fit)}.}
 \code{linear.terms = FALSE}) being plotted. Default is \code{NULL}, 
 resulting in all terms of the final ensemble to be plotted.}
 
-\item{max.terms.plot}{numeric. The maximum number of terms per plot. Rules 
-are plotted in a square pattern, so \code{is.integer(sqrt(max.terms.plot))} 
-should return \code{TRUE}, otherwise max.terms.plot will be set to the next 
-higher value which returns true. The default \code{max.terms.plot = 16} 
-results in max. 4x4 rules per plot. If the number of terms exceeds the value 
-specified for max.rules.plot, multiple pages of plots will be created.}
-
 \item{ask}{logical. Should user be prompted before starting a new page of
 plots?}
 
-\item{exit.label}{character string. What label should be printed in nodes to 
-which the rule does not apply (``exit nodes'')?}
+\item{exit.label}{character string. Label to be printed in nodes to which 
+the rule does not apply (``exit nodes'')?}
 
 \item{standardize}{logical. Should printed importances be standardized? See
 \code{\link{importance}}.}
+
+\item{plot.dim}{integer vector of length two. Specifies the number of rows
+and columns in the plot. The default yields a plot with three rows and three 
+columns, depicting nine baselearners per plot. If 
+\code{nterms > plot.dim[1] * plot.dim[2]}, multiple plotting pages will be 
+created.}
 
 \item{...}{Arguments to be passed to \code{\link[grid]{gpar}}.}
 }
@@ -50,7 +49,7 @@ ensemble as simple decision trees.
 \examples{
 \donttest{
  set.seed(42)
- airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
  plot(airq.ens)}
 }
 \seealso{

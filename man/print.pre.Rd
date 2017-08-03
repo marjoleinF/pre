@@ -42,7 +42,7 @@ accurate estimate of future prediction error.
 \examples{
 \donttest{
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 print(airq.ens)}
 }
 \seealso{

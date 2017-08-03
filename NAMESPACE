@@ -24,6 +24,7 @@ export(eTerm)
 export(gpe_sample)
 export(gpe_cv.glmnet)
 export(singleplot)
+export(corplot)
 
 
 
@@ -40,3 +41,4 @@ importFrom("methods", "as")
 importFrom("utils", "installed.packages", "head", "tail", "object.size", "packageVersion")
 importFrom("earth", "earth")
 importFrom("stringr", "str_match", "str_replace_all")
+importFrom("grDevices", "cm.colors")

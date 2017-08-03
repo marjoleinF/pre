@@ -8,31 +8,31 @@ variables}
 importance(object, standardize = FALSE, global = TRUE,
   quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se", round = NA,
   plot = TRUE, ylab = "Importance", main = "Variable importances",
-  diag.xlab = TRUE, ...)
+  diag.xlab = TRUE, diag.xlab.hor = 0, diag.xlab.vert = 2, cex.axis = 1,
+  ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
 
-\item{standardize}{logical. Should importances be standardized with respect 
-to the outcome variable? If \code{TRUE}, importances have a minimum of 0 and
-a maximum of 1. Only used for ensembles with continuous outcome variables.}
+\item{standardize}{logical. Should baselearner importances be standardized 
+with respect to the outcome variable? If \code{TRUE}, baselearner importances 
+have a minimum of 0 and a maximum of 1. Only used for ensembles with 
+numeric (non-count) response variables.}
 
-\item{global}{logical. Should global importances be calculated? If FALSE,
-local importances are calculated, given the quantiles of the predictions F(x)
-in \code{quantprobs}.}
+\item{global}{logical. Should global importances be calculated? If 
+\code{FALSE}, local importances will be calculated, given the quantiles 
+of the predictions F(x) in \code{quantprobs}.}
 
 \item{quantprobs}{optional numeric vector of length two. Only used when
-\code{global = FALSE} (in which case specification of this argument is still
-optional). Probabilities for calculating sample quantiles of the range of F(X),
-over which local importances are calculated. The default provides variable
-importances calculated over the 25\% highest values of F(X).}
+\code{global = FALSE}. Probabilities for calculating sample quantiles of the 
+range of F(X), over which local importances are calculated. The default 
+provides variable importances calculated over the 25\% highest values of F(X).}
 
-\item{penalty.par.val}{character. Should model be selected with lambda giving
+\item{penalty.par.val}{character. Should model be selected with lambda yielding
 minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
 standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
 value may be specified, corresponding to one of the values of lambda in the 
-sequence used by glmnet, for which estimated cv error can be inspected by 
-running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
+sequence used by glmnet.}
 
 \item{round}{integer. Number of decimal places to round numeric results to.
 If NA (default), no rounding is performed.}
@@ -49,6 +49,16 @@ If NA (default), no rounding is performed.}
 is, in a 45 degree angle)? Alternatively, variable names may be printed 
 vertically by specifying \code{diag.xlab = FALSE, las = 2}.}
 
+\item{diag.xlab.hor}{numeric. Horizontal adjustment for lining up variable
+names with bars in the plot if variable names are printed diagonally.}
+
+\item{diag.xlab.vert}{positive integer. Vertical adjustment for position
+of variable names, if printed diagonally. Corresponds to the number of 
+character spaces added after variable names.}
+
+\item{cex.axis}{numeric. The magnification to be used for axis annotation
+relative to the current setting of \code{cex}.}
+
 \item{...}{further arguments to be passed to \code{barplot} (only used
 when \code{plot = TRUE}).}
 }
@@ -64,7 +74,7 @@ variables in the ensemble, and provides a bar plot of variable importances.
 \examples{
 \donttest{
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 # calculate global importances:
 importance(airq.ens)
 # calculate local importances (default: over 25\% highest predicted values):

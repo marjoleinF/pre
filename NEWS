@@ -1,20 +1,74 @@
+Changes in Version 0.3 (2017-08-03):
+
+  - Numerous bugs fixed, yielding faster computation times and clearer plots 
+      with more customization options. 
+      
+  - Added support for count responses. Function pre() now has a 'family' 
+      argument, which should be set to 'poisson' for count outcomes (the
+      'family' argument is set automatically to 'gaussian' for numeric response
+      variables and to 'binomial' for binary response variables (factors)).
+
+  - A gradient boosting approach for binary outcomes is applied, by default,
+      substantially reducing computation times. This can be turned off through 
+      the 'use.grad' argument in function pre().
+
+  - The default of the 'learnrate' argument of function pre() has been changed 
+      to .01, by default. Before, it was .01 for continuous outcomes, but 0 for
+      binary outcomes, to reduce computation time. With gradient boosting
+      implemented, computation time is much reduced.
+  
+  - Argument 'tree.control' in function pre() allows for passing arguments to
+      partykit tree fitting functions. 
+        
+  - Arguments for the cv.glmnet() function are directly passed through better 
+      use of ... . Most importantly, this means that argument 'mod.sel.crit' 
+      cannot be used anymore and should be referred to as 'type.measure' 
+      (which will be directly passed to cv.glmnet). Similarly, 'thres' and 
+      'standardize' are not explicit arguments of function pre() anymore and 
+      can now be directly passed to cv.glmnet() using ... .
+      
+  - Better use of sample weights: weights specified with the 'weights' argument 
+      in pre() are now used as weights in the subsampling procedure, instead of
+      as observation weights in the tree-fitting procedure.
+      
+  - Added corplot() function, which shows the correlation between the 
+      baselearners in the ensemble.
+
+  - Function pairplot() returns a heatmap by default, a 3D or contour plot can
+      also be requested.
+  
+  - Appearance of plot resulting from interaction() improved.
+  
+
+
 Changes in Version 0.2 (2017-04-25):
 
   - Added print() and plot() method for objects of class pre.
+  
   - Added support for using functions like factor() and log() in formula 
       statement of function pre(). (thanks to Bill Venables for suggesting this)
+  
   - Added support for parallel computating in functions pre(), cvpre(), 
       bsnullinteract() and interact(). 
+  
   - Winsorizing points used for the linear terms are reported in the description 
       of the base learners returned by coef() and importance(). (Thanks to
        Rishi Sadhir for suggesting this)
+  
   - Added README file.
+  
   - Legend included in plot for interaction test statistics.
+  
   - Fixed importance() function to allow for selecting final ensemble with 
 	different value than 'lambda.1se'.
+  
   - Cleaned up all occurrences of set.seed()
+  
   - Fixed cvpre() function: penalty.par.val argument now included
-  - Minor bug fixes.
+  
+  - Many minor bug fixes.
+
+
 
 Changes in Version 0.1 (2016-12-23):
 

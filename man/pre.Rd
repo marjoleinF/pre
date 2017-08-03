@@ -4,48 +4,63 @@
 \alias{pre}
 \title{Derive a prediction rule ensemble}
 \usage{
-pre(formula, data, count = FALSE, weights, type = "both", sampfrac = 0.5,
-  maxdepth = 3L, learnrate = NULL, mtry = Inf, ntrees = 500,
+pre(formula, data, family = c("gaussian", "binomial", "poisson"),
+  use.grad = TRUE, weights, type = "both", sampfrac = 0.5,
+  maxdepth = 3L, learnrate = 0.01, mtry = Inf, ntrees = 500,
   removecomplements = TRUE, removeduplicates = TRUE, winsfrac = 0.025,
   normalize = TRUE, standardize = FALSE, nfolds = 10L, verbose = FALSE,
   par.init = FALSE, par.final = FALSE, tree.control, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
-\code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the 
-formula) is a factor, an ensemble for binary classification is created.
-Otherwise, an ensemble for prediction of a continuous variable is created. 
-Note that input variables may not have 'rule' as (part of) their name, and 
-the formula may not exclude the intercept (that is \code{+ 0} or \code{- 1} 
-may not be used in the right-hand side of the formula).}
+\code{y ~ x1 + x2 + ...+ xn}. Response (left-hand side of the formula) 
+should be of class numeric or of class factor (with two levels). If the 
+response is a factor, an ensemble for binary classification is created.
+Otherwise, an ensemble for prediction of a numeric response is created. If
+the outcome is a non-negative count, this should additionally be specified 
+by setting\code{family = "poisson"}. Note that input variables may not have 
+'rule' as (part of) their name, and the formula may not exclude the intercept 
+(that is, \code{+ 0} or \code{- 1} may not be used in the right-hand side of 
+the formula).}
 
-\item{data}{matrix or data.frame containing the variables in the model. When a
-matrix is specified, it must be of class \code{"numeric"} (the input and output 
-variable must be continuous; the input variables may be 0-1 coded variables). 
-When a data.frame is specified, the output variable must be of 
-class \code{"numeric"} and must be a continuous variable; the input variables 
-must be of class \code{"numeric"} (for continuous input variables), 
-\code{"logical"} (for binary variables), \code{"factor"} (for nominal input 
-variables with 2 or more levels), or \code{"ordered" "factor"} (for 
-ordered input variables).}
+\item{data}{data.frame containing the variables in the model. Response must
+be a factor for binary classification, numeric for (count) regression. Input
+variables must be of class numeric, factor or ordered factor.}
 
-\item{count}{logical. Is the numeric outcome a count variable and 
-consequently, should a poisson regression model be fitted?}
+\item{family}{character. Specification is required only for non-negative 
+count responses, by specifying \code{family = "poisson"}. Otherwise, 
+\code{family = "gaussian"} is employed if response specified in formula
+is numeric and \code{family = "binomial"} is employed if response is a 
+binary factor. Note that if \code{family = "poisson"} is specified, 
+\code{\link[partykit]{glmtree}} with an intercept only models in the nodes 
+will be employed for inducing trees, instead of \code{\link[partykit]{ctree}}. 
+Although this yields longer computation times, it also yields better 
+accuracy for count outcomes.}
+
+\item{use.grad}{logical. Should binary outcomes use gradient boosting with 
+regression trees when \code{learnrate > 0}? That is, use 
+\code{\link[partykit]{ctree}} as in Friedman (2001) with a second order 
+Taylor expansion? By default set to \code{TRUE}, as this yields shorter
+computation time. If set to \code{FALSE}, \code{\link[partykit]{glmtree}}
+with intercept only models in the nodes will be employed. This will yield
+longer computation times (but may increase the likelihood of detecting
+interactions).}
 
 \item{weights}{an optional vector of observation weights to be used for 
 deriving the ensemble.}
 
-\item{type}{character. Type of base learners to be included in ensemble. 
-Defaults to "both" (initial ensemble included both rules and linear functions). 
-Other option may be "rules" (for prediction rules only) or "linear" (for 
-linear functions only).}
+\item{type}{character. Specifies type of base learners to be included in the 
+ensemble. Defaults to \code{"both"} (initial ensemble will include both rules 
+and linear functions). Other option are \code{"rules"} (prediction 
+rules only) or \code{"linear"} (linear functions only).}
 
-\item{sampfrac}{numeric. Takes values \eqn{>0} and \eqn{\le 1}, representing the 
-fraction of randomly selected training observations used to produce each 
-tree. Values \eqn{< 1} will result in subsamples being drawn without replacement 
-(i.e., subsampling), a value of 1 will result in bootstrap sampling.}
+\item{sampfrac}{numeric. Takes values \eqn{> 0} and \eqn{\leq 1}, representing 
+the fraction of randomly selected training observations used to produce each 
+tree. Values \eqn{< 1} will result in sampling without replacement (i.e., 
+subsampling), a value of 1 will result in sampling with replacement 
+(i.e., bootstrapping).}
 
-\item{maxdepth}{numeric. Maximum number of conditions in rule}
+\item{maxdepth}{numeric. Maximum number of conditions that can define a rule.}
 
 \item{learnrate}{numeric. Learning rate or boosting parameter.}
 
@@ -63,56 +78,70 @@ the exact same support in training data?}
 \item{winsfrac}{numeric. Quantiles of data distribution to be used for 
 winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
 that ordinal variables are included as linear terms in estimating the
-regression model, and will also be winsorized.}
+regression model and will also be winsorized.}
 
 \item{normalize}{logical. Normalize linear variables before estimating the 
 regression model? Normalizing gives linear terms the same a priori influence 
 as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
 SD.}
 
-\item{standardize}{logical. Standardize rules and linear terms before 
-estimating the regression model? As this will also standardize dummy coded
-factors, users are advised to use the default: \code{standardize = FALSE}.}
+\item{standardize}{logical. Should rules and linear terms be standardized to
+have SD equal to 1 before estimating the regression model? This will also 
+standardize the dummified factors, users are advised to use the default 
+\code{standardize = FALSE}.}
 
-\item{nfolds}{numeric. Number of folds to be used in performing cross 
-validation for determining penalty parameter.}
+\item{nfolds}{numeric. Number of cross-validation folds to be used for 
+selecting the optimal value of the penalty parameter \eqn{\lambda} in selecting
+the final ensemble.}
 
 \item{verbose}{logical. Should information on the initial and final ensemble 
 be printed to the command line?}
 
 \item{par.init}{logical. Should parallel foreach be used to generate initial 
-ensemble? Only used when \verb{learnrate == 0} and \code{count = FALSE}. Must 
-register parallel beforehand, such as doMC or others.}
+ensemble? Only used when \verb{learnrate == 0} and \code{family != "poisson"}. 
+Must register parallel beforehand, such as doMC or others.}
 
 \item{par.final}{logical. Should parallel foreach be used to perform cross 
 validation for selecting the final ensemble? Must register parallel beforehand, 
 such as doMC or others.}
 
 \item{tree.control}{list with control parameters to be passed to the tree 
-fitting function, see \code{\link[partykit]{ctree_control}]}.}
+fitting function, see \code{\link[partykit]{ctree_control}}.}
 
 \item{...}{Additional arguments to be passed to 
 \code{\link[glmnet]{cv.glmnet}}.}
 }
 \value{
-an object of class \code{pre}
+an object of class \code{pre}, which contains the initial ensemble of 
+rules and/or linear terms and the final ensembles for a wide range of penalty
+parameter values. By default, the final ensemble employed by all of the other
+methods and functions in package \code{pre} is selected using the 'minimum
+cross validated error plus 1 standard error' criterion. All functions and 
+methods also take a \code{penalty.parameter.value} argument, which can be
+used to select a more or less sparse final ensembles. The 
+\code{penalty.parameter.value} argument takes values \code{"lambda.1se"} 
+(the default), \code{"lambda.min"}, or a numeric value. Users can assess 
+the trade of between sparsity and accuracy provided by every possible value 
+of the penalty parameter (\eqn{\lambda}) by running \code{object$glmnet.fit} 
+and \code{plot(object$glmnet.fit)}.
 }
 \description{
 \code{pre} derives a sparse ensemble of rules and/or linear functions for 
 prediction of a continuous or binary outcome.
 }
 \details{
-In rare cases, duplucated variable names may appear in the model.
-For example, when the first variable is named 'V1' and is a factor, and 
-there is a variable called 'V10' and/or 'V11' and/or 'V12' (etc), which 
-is/are numeric. For the binary factor V1, dummy contrast variables were 
-created to fit the model, called 'V10', 'V11', 'V12' (etc). As should be 
-clear from this example, this yields replicated variable names, which may
-yield errors or incorrect results. Users should avoid this situation by
-renaming the variables prior to the analysis.
+Obervations with missing values will be removed prior to analysis.
 
-Inputs can be continuous, ordered or factor variables. Output can be
-a continuous, count or binary categorical variable.
+In rare cases, duplicated variable names may appear in the model.
+For example, the first variable is a factor named 'V1' and there are also
+non-factor variables called 'V10' and/or 'V11' and/or 'V12' (etc). Then for 
+the binary factor V1, dummy contrast variables will be created, called 
+'V10', 'V11', 'V12' (etc). As should be clear from this example, this yields 
+duplicated variable names, which will yield warnings, errors and incorrect 
+results. Users should prevent this by renaming variables prior to analysis.
+
+Inputs can be numeric, ordered or factor variables. Reponse can be
+a numeric, count or binary categorical variable.
 }
 \note{
 The code for deriving rules from the nodes of trees was taken from an 
@@ -123,6 +152,9 @@ Hothorn.
 \donttest{
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
+}
+\references{
+Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
 }
 \seealso{
 \code{\link{print.pre}}, \code{\link{plot.pre}}, 

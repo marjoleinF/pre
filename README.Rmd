@@ -17,14 +17,15 @@ knitr::opts_chunk$set(
 )
 ```
 
-pre is an R package for deriving prediction rule ensembles for binary, continuous and count outcome variables. Input variables may be numeric, ordinal and nominal. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
+pre is an R package for deriving prediction rule ensembles for binary, continuous and count outcome variables. Input variables may be numeric, ordinal and nominal. An extensive description of the implementation and functionality is provided in [@Fokkema17]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
 
 1) The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2) The unbiased tree induction algorithm of [@Hothorn06] is used for deriving prediction rules, instead of the classification and regression tree (CART) algorithm, which suffers from biased variable selection.
-3) The package allows for plotting the final rule ensemble as a collection of simple decision trees.
-4) The initial ensembles may be generated as in bagging, boosting and/or random forests.
-5) Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of [@Friedman91], using the gpe() function.
-6) Ensembles for outcome variables representing counts can be derived.
+3) The packake supports continuous, binary and count response variables 
+4) The package allows for plotting the final rule ensemble as a collection of simple decision trees.
+5) The initial ensembles may be generated as in bagging, boosting and/or random forests.
+6) Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of [@Friedman91], using the gpe() function.
+
 Note that pre is under development, and much work still needs to be done.
 
 
@@ -41,13 +42,13 @@ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
 We can print the resulting ensemble (alternatively, we could use the ```print``` method): 
 
 ```{r}
-print(airq.ens)
+airq.ens
 ```
 
 We can plot the baselarners in the ensemble using the ```plot``` method:
 
 ```{r, fig.height=6, fig.width=6}
-plot(airq.ens, penalty.par.val = "lambda.1se", max.terms.plot = 9, cex = .6)
+plot(airq.ens, penalty.par.val = "lambda.1se", plot.dim = c(3,3), cex = .5)
 ```
 
 We can obtain the estimated coefficients for each of the baselearners using the ```coef``` method:
@@ -95,6 +96,12 @@ We can assess the presence of input variable interactions using the ```interact(
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R"))
+```
+
+We can check assess correlations between the baselearners using the ```corplot()``` function:
+
+```{r, fig.width=6, fig.heigth=5}
+corplot(airq.ens)
 ```
 
 

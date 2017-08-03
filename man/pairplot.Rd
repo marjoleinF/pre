@@ -5,7 +5,7 @@
 \title{Create partial dependence plot for a pair of predictor variables}
 \usage{
 pairplot(object, varnames, type = "both", penalty.par.val = "lambda.1se",
-  legend = TRUE, nvals = c(20, 20), pred.type = "response", ...)
+  nvals = c(20, 20), pred.type = "response", ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -26,9 +26,6 @@ value may be specified, corresponding to one of the values of lambda in the
 sequence used by glmnet, for which estimated cv error can be inspected by 
 running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
-\item{legend}{logical. Should legend be plotted? Only used when 
-\code{type = "heatmap"} or \code{type = "both"}.}
-
 \item{nvals}{optional numeric vector of length 2. For how many values of
 x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed
 values for the two predictor variables specified will be used (see details).}
@@ -39,9 +36,9 @@ fitted probabilities for nominal outputs. \code{pred.type = "link"} gives fitted
 values for continuous outputs and linear predictor values for nominal outputs.}
 
 \item{...}{Additional arguments to be passed to \code{\link[graphics]{image}}, 
-\code{\link[graphics]{contour}} or \code{\link[graphics]{persp}}, (depending on
-whether \code{type = "heatmap"}, \code{type = "contour"}, \code{type = "both"} 
-or \code{type = "perspective"} is specified).}
+\code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on
+whether \code{type} is specified to be \code{"heatmap"}, \code{"contour"}, \code{"both"} 
+or \code{"perspective"}).}
 }
 \description{
 \code{pairplot} creates a partial dependence plot to assess the effects of a

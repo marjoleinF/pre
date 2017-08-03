@@ -31,7 +31,7 @@ gpe_earth(..., degree = 3, nk = 8, normalize = TRUE, ntrain = 100,
 
 \item{parallel}{\code{TRUE}. Should basis functions be found in parallel?}
 
-\item{use_grad}{\code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).}
+\item{use_grad}{\code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2001) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).}
 
 \item{tree.control}{\code{\link{ctree_control}} with options for the \code{\link{ctree}} function.}
 

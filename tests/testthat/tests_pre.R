@@ -63,14 +63,3 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   # save_to_test(fit, "PimaIndiansDiabetes_w_pre_LR")
   expect_equal(fit, read_to_test("PimaIndiansDiabetes_w_pre_LR"), tolerance = 1.490116e-08)
 })
-
-test_that("Pre gives previous results on BostonHousing", {
-  set.seed(10681519)
-  fit <- pre(medv ~ ., BostonHousing, ntree = 10)
-  
-  fit <- fit[!names(fit) %in%  c(
-    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data", "rulevars")]
-  fit$glmnet.fit <- fit$glmnet.fit["glmnet.fit"]
-  # save_to_test(fit, "BostonHousing_n_pre")
-  expect_equal(fit, read_to_test("BostonHousing_n_pre"), tolerance = 1.49e-08)
-})

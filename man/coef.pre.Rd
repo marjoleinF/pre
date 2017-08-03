@@ -44,7 +44,7 @@ renaming the variables prior to the analysis.
 \examples{
 \donttest{
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
+airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 coefs <- coef(airq.ens)}
 }
 \seealso{

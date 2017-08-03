@@ -56,7 +56,7 @@ test_that("bsnullinteract and interact gives previous results with airquality da
   expect_equal(inter, read_to_test("airquality_w_inter"), tolerance = 1.490116e-08)
 })
 
-test_that("Print gives previous resutls with airquality",{
+test_that("Print gives previous results with airquality",{
   old <- getOption("digits")
   on.exit(options(digits = old))
   options(digits = 4)

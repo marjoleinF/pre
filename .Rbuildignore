@@ -1,7 +1,8 @@
-WISHLIST
-LICENCE
+\.gitignore
+\.Rhistory
 README\.Rmd
 README\.bib
+README\.bib\.bak
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^commit-msg\.txt$

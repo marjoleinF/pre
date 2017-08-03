@@ -10,7 +10,7 @@
 #' @param maxdepth Maximum depth of trees. Will not have an effect if \code{tree.control} is used. 
 #' @param learnrate Learning rate for methods. Corresponds to the \eqn{\nu} parameter in Friedman & Popescu (2008).
 #' @param parallel \code{TRUE}. Should basis functions be found in parallel?
-#' @param use_grad \code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2000) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).
+#' @param use_grad \code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2001) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).
 #' @param tree.control \code{\link{ctree_control}} with options for the \code{\link{ctree}} function.
 #' @param winsfrac Quantile to winsorize linear terms. The value should be in \eqn{[0,0.5)}
 #' @param normalize \code{TRUE}. Should value be scaled by .4 times the inverse standard deviation? If \code{TRUE}, gives linear terms the same influence as a typical rule.
@@ -158,7 +158,7 @@ gpe_trees <- function(
           rules <- c(rules, list.rules(tree))
           # Update offset:
           data2$offset <- data2$offset + learnrate * predict(
-            tree, newdata = data2, type = "link")
+            tree, newdata = data, type = "link")
         }
       } else 
         stop("family '", family, "' is not implemented for gpe_trees")
