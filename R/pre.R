@@ -29,8 +29,8 @@ utils::globalVariables("%dopar%")
 #' accuracy for count outcomes. 
 #' @param use.grad logical. Should binary outcomes use gradient boosting with 
 #' regression trees when \code{learnrate > 0}? That is, use 
-#' \code{\link[partykit]{ctree}} as in Friedman (2001) with a second order 
-#' Taylor expansion? By default set to \code{TRUE}, as this yields shorter
+#' \code{\link[partykit]{ctree}} as in Friedman (2001), without the line search. 
+#' By default set to \code{TRUE}, as this yields shorter
 #' computation time. If set to \code{FALSE}, \code{\link[partykit]{glmtree}}
 #' with intercept only models in the nodes will be employed. This will yield
 #' longer computation times (but may increase the likelihood of detecting

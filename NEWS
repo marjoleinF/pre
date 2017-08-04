@@ -1,3 +1,9 @@
+Changes in Version 0.3.1 (2017-08-04)
+
+  - Added dataset 'carrillo.Rdata'
+
+
+
 Changes in Version 0.3 (2017-08-03):
 
   - Numerous bugs fixed, yielding faster computation times and clearer plots 
