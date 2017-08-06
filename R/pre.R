@@ -1713,12 +1713,25 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
                      nterms = NULL, ask = FALSE, exit.label = "0", 
                      standardize = FALSE, plot.dim = c(3, 3), ...) {
-  # Preliminaries:
+  ## Preliminaries:
   if (!("grid" %in% installed.packages()[,1])) {
     stop("Function plot.pre requires package grid. Download and install package
          grid from CRAN, and run again.")
   }
-  # Get nonzero terms from final ensemble:
+  
+  
+  
+  x <- airq.ens
+  penalty.par.val = "lambda.1se"
+  linear.terms = FALSE 
+  nterms = 6
+  ask = FALSE
+  exit.label = "0" 
+  standardize = FALSE
+  plot.dim = c(3, 3)
+  
+  
+  ## Get nonzero terms:
   nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
                              penalty.par.val = penalty.par.val, 
                              standardize = standardize)$baseimps
@@ -1729,14 +1742,15 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
     nonzeroterms <- nonzeroterms[1:nterms,]
   }
 
+  ## Grab baselearner components:
   conditions <- list()
   for(i in 1:nrow(nonzeroterms)) { # i is a counter for terms
     if (length(grep("&", nonzeroterms$description[i], )) > 0) { # get rules with multiple conditions:
       conditions[[i]] <- unlist(strsplit(nonzeroterms$description[i], split = " & "))
     } else if (!grepl("rule", nonzeroterms$rule[i])) {
-      conditions[[i]] <- "linear" # flag linear terms:
+      conditions[[i]] <- "linear" # flags linear terms
     } else {
-      conditions[[i]] <- nonzeroterms$description[i] # get rules with only one condition:
+      conditions[[i]] <- nonzeroterms$description[i] # gets rules with only one condition
     }
   }
   
@@ -1747,9 +1761,12 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
   nonzeroterms$rowno <- rep(rep(1:plot.dim[1], each = plot.dim[2]), length.out = nrow(nonzeroterms))
   nonzeroterms$colno <- rep(rep(1:plot.dim[2], times = plot.dim[1]), length.out = nrow(nonzeroterms))
   
-  # Generate a plot for every term:
+  ## Generate a plot for every baselearner:
   for(i in 1:nrow(nonzeroterms)) {
-    if (conditions[[i]][1] == "linear") { # create plot for linear terms:
+    if (conditions[[i]][1] == "linear") { 
+      
+      ## Plot linear term:
+      
       ## Open new plotting page if needed:
       if (nonzeroterms$rowno[i] == 1 && nonzeroterms$rowno[i] == 1) {
         grid::grid.newpage()
@@ -1764,114 +1781,139 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                              "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3)),
                       gp = grid::gpar(...))
       grid::popViewport()
-    } else { # create plot for rules:
+      
+    } else { 
+      
+      ## Otherwise, plot rule:
+      
       # Create lists of arguments and operators for every condition:
-      tmp <- list()
-      # check whether ?plot.the operator is " < ", " <= " or "%in%  "
-      # split the string using the operator, into the variable name and splitting value, which is used to define split = partysplit(id, value)
+      cond <- list()
+      # check whether the operator is " < ", " <= " or "%in%  "
+      # split the string using the operator, into the variable name and splitting value, 
+      # which is used to define split = partysplit(id, value)
       # make it a list:
       for (j in 1:length(conditions[[i]])) {
         condition_j <- conditions[[i]][[j]]
-        tmp[[j]] <- character()
+        cond[[j]] <- character()
         if (length(grep(" > ", condition_j)) > 0) {
-          tmp[[j]][1] <- unlist(strsplit(condition_j, " > "))[1]
-          tmp[[j]][2] <- " > "
-          tmp[[j]][3] <- unlist(strsplit(condition_j, " > "))[2]
+          cond[[j]][1] <- unlist(strsplit(condition_j, " > "))[1]
+          cond[[j]][2] <- " > "
+          cond[[j]][3] <- unlist(strsplit(condition_j, " > "))[2]
         }
         if (length(grep(" <= ", condition_j)) > 0) {
-          tmp[[j]][1] <- unlist(strsplit(condition_j, " <= "))[1]
-          tmp[[j]][2] <- " <= "
-          tmp[[j]][3] <- unlist(strsplit(condition_j, " <= "))[2]
+          cond[[j]][1] <- unlist(strsplit(condition_j, " <= "))[1]
+          cond[[j]][2] <- " <= "
+          cond[[j]][3] <- unlist(strsplit(condition_j, " <= "))[2]
         }
         if (length(grep(" %in% ", condition_j)) > 0) {
-          tmp[[j]][1] <- unlist(strsplit(condition_j, " %in% "))[1]
-          tmp[[j]][2] <- " %in% "
-          tmp[[j]][3] <- unlist(strsplit(condition_j, " %in% "))[2]
+          cond[[j]][1] <- unlist(strsplit(condition_j, " %in% "))[1]
+          cond[[j]][2] <- " %in% "
+          cond[[j]][3] <- unlist(strsplit(condition_j, " %in% "))[2]
         }
       }
-      ncond <- length(tmp)
-      # generate empty datasets for all the variables appearing in the rules: 
+      ncond <- length(cond)
+      cond <- rev(cond)
+      
+      ## generate empty dataset for all the variables appearing in the rules: 
       treeplotdata <- data.frame(matrix(ncol = ncond))
       for (j in 1:ncond) {
-        names(treeplotdata)[j] <- tmp[[j]][1]
-        if (tmp[[j]][2] == " %in% ") {
+        names(treeplotdata)[j] <- cond[[j]][1]
+        if (cond[[j]][2] == " %in% ") {
           treeplotdata[,j] <- factor(treeplotdata[,j])
-          faclevels <- substring(tmp[[j]][3], first = 2)
+          faclevels <- substring(cond[[j]][3], first = 2)
           faclevels <- gsub(pattern = "\"", replacement = "", x = faclevels, fixed = TRUE)
           faclevels <- gsub(pattern = "(", replacement = "", x = faclevels, fixed = TRUE)
           faclevels <- gsub(pattern = ")", replacement = "", x = faclevels, fixed = TRUE)
           faclevels <- unlist(strsplit(faclevels, ", ",))
           levels(treeplotdata[,j]) <- c(
-            levels(x$data[,tmp[[j]][1]])[levels(x$data[,tmp[[j]][1]]) %in% faclevels],
-            levels(x$data[,tmp[[j]][1]])[!(levels(x$data[,tmp[[j]][1]]) %in% faclevels)])
-          tmp[[j]][3] <- length(faclevels)
+            levels(x$data[,cond[[j]][1]])[levels(x$data[,cond[[j]][1]]) %in% faclevels],
+            levels(x$data[,cond[[j]][1]])[!(levels(x$data[,cond[[j]][1]]) %in% faclevels)])
+          cond[[j]][3] <- length(faclevels)
         }
       }
+
       
-      # generate partynode objects for plotting:
+      ## Generate partynode objects for plotting:
+      
       nodes <- list()
-      # Construct level 0 of tree (the two terminal nodes), conditional on operator of last condition:
-      if (tmp[[ncond]][2] == " > ") { # If condition involves " > ", the tree continues right:
-        nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
+      
+      ## Create level 0 (bottom level, last two nodes):
+      ## If last condition has " > " : exit node on left, coefficient on right:
+      if (cond[[1]][2] == " > ") { # If condition involves " > ", the tree has nonzero coef on right:
+        nodes[[1]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL, 
                            info = exit.label)
-        nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
+        nodes[[2]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
                            info = round(nonzeroterms$coefficient[i], digits = 3))
-      } else { # If condition involves " <= " or " %in% " the tree continues left:
-        nodes[[2]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
+      } else { 
+      ## If last condition has " <= " or " %in% " : coefficient on left, exit node on right:
+        nodes[[1]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
                            info = round(nonzeroterms$coefficient[i], digits = 3))
-        nodes[[1]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
+        nodes[[2]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
                            info = exit.label)
       }
       class(nodes[[1]]) <- class(nodes[[2]]) <- "partynode"
       
-      # if there are > 1 conditions in rule, loop for (nconditions - 1) times:
-      if (ncond > 1) {
-        for (lev in 1L:(ncond - 1)) { # lev is a counter for the level in the tree
-          if (tmp[[lev + 1]][2] == " > ") { # If condition involves " > ", the tree continues right:
-            nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1),
-                                         split = partysplit(
-                                           as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
-                                         kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
-                                         surrogates = NULL, info = NULL)
-            nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2), split = NULL,
-                                         kids = NULL, surrogates = NULL, info = exit.label)
-          } else { # If condition involves " <= " or " %in% " the tree continues left:
-            nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 1), split = NULL,
-                                         kids = NULL, surrogates = NULL, info = exit.label)
-            nodes[[lev * 2 + 2]] <- list(id = as.integer(lev * 2 + 2),
-                                         split = partysplit(
-                                           as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
-                                         kids = list(nodes[[lev * 2 - 1]], nodes[[lev * 2]]),
-                                         surrogates = NULL, info = NULL)
-          }
-          class(nodes[[lev * 2 + 1]]) <- class(nodes[[lev * 2 + 2]]) <- "partynode"
-        }
-      }
-      # Construct root node:
-      lev <- ncond
-      nodes[[lev * 2 + 1]] <- list(id = as.integer(lev * 2 + 2),
-                                   split = partysplit(as.integer(lev), breaks = as.numeric(tmp[[lev]][3])),
-                                   kids = list(nodes[[lev * 2]], nodes[[lev * 2 - 1]]),
-                                   surrogates = NULL, info = NULL)
-      class(nodes[[lev * 2 + 1]]) <- "partynode"
       
-      ## Open  new plotting page if needed:
-      if (nonzeroterms$rowno[i] == 1 && nonzeroterms$colno[i] == 1) {
-        grid::grid.newpage()
-        grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
+      ## Create inner levels (if necessary):
+      if (ncond > 1) {
+        for (level in 1:(ncond - 1)) {
+          if (cond[[level + 1]][2] == " > ") { 
+            ## If condition in level above has " > " : exit node on left, right node has kids:
+            nodes[[level * 2 + 1]] <- list(id = as.integer(level * 2 + 1), 
+                                          split = NULL, 
+                                          kids = NULL, 
+                                          surrogates = NULL, 
+                                          info = exit.label)
+            nodes[[level * 2 + 2]] <- list(id = as.integer(level * 2 + 2), 
+                                          split = partysplit(as.integer(level), breaks = as.numeric(cond[[level]][3])),
+                                          kids = list(nodes[[level * 2 - 1]], nodes[[level * 2]]),
+                                          surrogates = NULL, 
+                                          info = NULL)
+            } else { 
+            ## If condition in level above has " <= " or " %in% " : left node has kids, exit node right:
+            nodes[[level * 2 + 1]] <- list(id = as.integer(level * 2 + 1),
+                                          split = partysplit(as.integer(level), breaks = as.numeric(cond[[level]][3])),
+                                          kids = list(nodes[[level * 2 - 1]], nodes[[level * 2]]),
+                                          surrogates = NULL, 
+                                          info = NULL)
+            nodes[[level * 2 + 2]] <- list(id = as.integer(level * 2 + 2), 
+                                          split = NULL,
+                                          kids = NULL, 
+                                          surrogates = NULL, 
+                                          info = exit.label)
+         }  
+         class(nodes[[level * 2 + 1]]) <- class(nodes[[level * 2 + 2]]) <- "partynode"
       }
-      ## open correct viewport:
-      grid::pushViewport(grid::viewport(layout.pos.col = nonzeroterms$colno[i],
-                                        layout.pos.row = nonzeroterms$rowno[i]))
-      ## plot the rule:
-      fftree <- party(nodes[[lev * 2 + 1]], data = treeplotdata)
-      plot(fftree, newpage = FALSE, 
-           main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
-           inner_panel = node_inner(fftree, id = FALSE),
-           terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))
-      grid::popViewport()
     }
+      
+    ## Create root node:
+    nodes[[ncond * 2 + 1]] <- list(id = as.integer(ncond * 2 + 1),
+                                   split = partysplit(as.integer(ncond), breaks = as.numeric(cond[[ncond]][3])),
+                                   kids = list(nodes[[ncond * 2 - 1]], nodes[[ncond * 2]]),
+                                   surrogates = NULL, 
+                                   info = NULL)
+    class(nodes[[ncond * 2 + 1]]) <- "partynode"
+      
+    ## Open new plotting page if needed:
+    if (nonzeroterms$rowno[i] == 1 && nonzeroterms$colno[i] == 1) {
+      grid::grid.newpage()
+      grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
+    }
+    
+    ## Open viewport:
+    grid::pushViewport(grid::viewport(layout.pos.col = nonzeroterms$colno[i],
+                                      layout.pos.row = nonzeroterms$rowno[i]))
+    
+    ## pPlot the rule:
+    fftree <- party(nodes[[ncond * 2 + 1]], data = treeplotdata)
+    plot(fftree, newpage = FALSE, 
+         main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
+         inner_panel = node_inner(fftree, id = FALSE),
+         terminal_panel = node_terminal(fftree, id = FALSE))#, gp = grid::gpar(...))
+    grid::popViewport()
   }
+  }
+  
   if (ask) {
     grDevices::devAskNewPage(ask = FALSE)
   }
