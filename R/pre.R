@@ -1781,6 +1781,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       # which is used to define split = partysplit(id, value)
       # make it a list:
       for (j in 1:length(conditions[[i]])) {
+        ## TODO: see get_conditions() function below for improving this code:
         condition_j <- conditions[[i]][[j]]
         cond[[j]] <- character()
         if (length(grep(" > ", condition_j)) > 0) {
@@ -1937,6 +1938,59 @@ image.scale <- function(z, col, breaks, axis.pos = 4, add.axis = TRUE) {
 
 
 
+#' Get rule conditions
+#' 
+#' \code{get_conditions} returns rule conditions in a matrix form
+#'  
+#' @param object object of class pre
+#' @param penalty.par.val character. Value of the penalty parameter value 
+#' \eqn{\lambda} to be used for selecting the final ensemble. The ensemble 
+#' with penalty parameter criterion yielding minimum cv error 
+#' (\code{"lambda.min"}) is taken, by default. Alternatively, the penalty 
+#' parameter yielding error within 1 standard error of minimum cv error 
+#' ("\code{lambda.1se}"), or a numeric value may be specified, corresponding 
+#' to one of the values of lambda in the sequence used by glmnet,
+#' for which estimated cv error can be inspected by running \code{x$glmnet.fit}
+#' and \code{plot(x$glmnet.fit)}.
+#' @examples \donttest{set.seed(42)
+#' airq.ens <- pre(Ozone ~ ., data = airquality)
+#' get_conditions(airq.ens)}
+#' @export
+get_conditions <- function(object, penalty.par.val = "lambda.1se") {
+  ## get maximum rule depth used for generating ensemble:
+  if (is.null(object$call$maxdepth)) {
+    maxdepth <- 3
+  } else {
+    maxdepth <- object$call$maxdepth
+  }
+  ## get the rules from the ensemble:
+  rules <- object$rules  
+  ## cut rules into parts:
+  parts <- strsplit(rules[,"description"], split = " ")
+  ## turn parts into matrix: 
+  parts <- matrix(unlist(lapply(parts, `length<-`, max(lengths(parts)))), 
+                  ncol = max(lengths(parts)), byrow = TRUE)
+  ## eliminate every fourth column (has "&" only):
+  parts <- data.frame(parts[,!(1:ncol(parts) %% 4 == 0)])
+  ## set every third column to type numeric:
+  parts[,(1:ncol(parts) %% 3 == 0)] <- apply(parts[,(1:ncol(parts) %% 3 == 0)], 2, as.numeric)
+  parts <- data.frame(rule = rules$rule, parts)
+  names(parts) <- c("rule", paste0(rep(c("splitvar", "splitop", "splitval"), 
+                                       times = maxdepth), 
+                                   rep(1:maxdepth, each = 3)))
+  ## only get rules that are in final ensemble:
+  coefs <- coef(object, penalty.par.val = penalty.par.val)
+  nonzero_rules <- coefs[coefs$coefficient != 0,]$rule
+  parts <- parts[parts$rule %in% nonzero_rules,]
+  ## return result:
+  return(parts)
+}
+
+
+
+
+
+
 #' Plotting baselearner correlations
 #' 
 #' \code{corplot} plots correlations between baselearners
@@ -1964,8 +2018,7 @@ image.scale <- function(z, col, breaks, axis.pos = 4, add.axis = TRUE) {
 #' under \code{\link{par}}.
 #' @param legend.breaks numeric vector of breakspoints and colors to be 
 #' depicted in the plot's legend.
-#' @examples \donttest{
-#' set.seed(42)
+#' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' corplot(airq.ens)
 #' }

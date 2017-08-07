@@ -42,8 +42,7 @@ depicted in the plot's legend.}
 \code{corplot} plots correlations between baselearners
 }
 \examples{
-\donttest{
-set.seed(42)
+\donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 corplot(airq.ens)
 }
