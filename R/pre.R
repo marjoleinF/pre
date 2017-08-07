@@ -1718,19 +1718,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
     stop("Function plot.pre requires package grid. Download and install package
          grid from CRAN, and run again.")
   }
-  
-  
-  
-  x <- airq.ens
-  penalty.par.val = "lambda.1se"
-  linear.terms = FALSE 
-  nterms = 6
-  ask = FALSE
-  exit.label = "0" 
-  standardize = FALSE
-  plot.dim = c(3, 3)
-  
-  
+
   ## Get nonzero terms:
   nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
                              penalty.par.val = penalty.par.val, 
@@ -1909,7 +1897,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
     plot(fftree, newpage = FALSE, 
          main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
          inner_panel = node_inner(fftree, id = FALSE),
-         terminal_panel = node_terminal(fftree, id = FALSE))#, gp = grid::gpar(...))
+         terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))
     grid::popViewport()
   }
   }
