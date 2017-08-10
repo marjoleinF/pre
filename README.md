@@ -102,7 +102,7 @@ singleplot(airq.ens, varname = "Temp")
 
 ![](inst/README-figures/README-unnamed-chunk-8-1.png)
 
-We can obtain a partial dependence plot to assess the effects of pairs of predictor variables on the outcome using the `pairplot()` function:
+We can obtain partial dependence plots to assess the effects of pairs of predictor variables on the outcome using the `pairplot()` function:
 
 ``` r
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
@@ -147,7 +147,7 @@ corplot(airq.ens)
 Including hinge functions
 -------------------------
 
-More complex prediction ensembles can be obtained using the `gpe()` function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy (but may also reduce interpretability). More information about fitting generalized prediction ensembles can be obtained by typing:
+More complex prediction ensembles can be obtained using the `gpe()` function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy. More information about fitting generalized prediction ensembles can be obtained by typing:
 
 ``` r
 ?gpe
