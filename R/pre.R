@@ -1955,7 +1955,6 @@ image.scale <- function(z, col, breaks, axis.pos = 4, add.axis = TRUE) {
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality)
 #' get_conditions(airq.ens)}
-#' @export
 get_conditions <- function(object, penalty.par.val = "lambda.1se") {
   ## get maximum rule depth used for generating ensemble:
   if (is.null(object$call$maxdepth)) {

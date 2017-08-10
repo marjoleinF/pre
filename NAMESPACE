@@ -25,7 +25,6 @@ export(gpe_sample)
 export(gpe_cv.glmnet)
 export(singleplot)
 export(corplot)
-export(get_conditions)
 
 
 
