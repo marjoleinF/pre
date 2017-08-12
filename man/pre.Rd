@@ -106,7 +106,8 @@ validation for selecting the final ensemble? Must register parallel beforehand,
 such as doMC or others.}
 
 \item{tree.control}{list with control parameters to be passed to the tree 
-fitting function, see \code{\link[partykit]{ctree_control}}.}
+fitting function, see \code{\link[partykit]{ctree_control}}, or 
+\code{\link[partykit]{mob_control}} if \code{use.grad = FALSE}.}
 
 \item{...}{Additional arguments to be passed to 
 \code{\link[glmnet]{cv.glmnet}}.}

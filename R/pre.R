@@ -79,7 +79,8 @@ utils::globalVariables("%dopar%")
 #' validation for selecting the final ensemble? Must register parallel beforehand, 
 #' such as doMC or others.
 #' @param tree.control list with control parameters to be passed to the tree 
-#' fitting function, see \code{\link[partykit]{ctree_control}}.
+#' fitting function, see \code{\link[partykit]{ctree_control}}, or 
+#' \code{\link[partykit]{mob_control}} if \code{use.grad = FALSE}.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' @details Obervations with missing values will be removed prior to analysis.
@@ -131,7 +132,40 @@ pre <- function(formula, data, family = c("gaussian", "binomial", "poisson"),
   ## Preliminaries ##
   ###################
   
-  if (missing(weights)) {weights <- rep(1, times = nrow(data))}
+  if (!(class(formula) == "formula" || class(formula)[2] == "Formula")) {
+    stop("Argument 'formula' should specify and object of class 'formula'.")
+  }
+  
+  if (!is.data.frame(data)) {stop("Argument 'data' should specify a data frame.")}
+  
+  if (!(family == "gaussian" || family == "binomial" || family == "poisson" || 
+         family == c("gaussian", "binomial", "poisson"))) {
+    stop("Argument 'family' should be equal to 'gaussian', 'binomial' or 'poisson'")
+  }
+  
+  if (!(is.logical(use.grad) && length(use.grad) == 1)) {
+    stop("Argument 'use.grad' should be TRUE or FALSE")
+  } 
+
+  if (missing(weights)) {
+    weights <- rep(1, times = nrow(data))
+  } else if (length(weights != nrow(data))) {
+      warning("Argument 'weights' has length different than nrow(data)", 
+            immediate. = TRUE)
+  }
+
+  if (!(length(type) == 1 && (type == "rules" || type == "both" || type == "linear"))) {
+    stop("Argument 'type' should be equal to 'both', 'rules' or 'linear'.")
+  }
+  
+  
+  ## Implement further checks for input of: sampfrac = .5, 
+  ## maxdepth = 3L, learnrate = .01, mtry = Inf, ntrees = 500, 
+  ## removecomplements = TRUE, removeduplicates = TRUE, 
+  ## winsfrac = .025, normalize = TRUE, standardize = FALSE, 
+  ## nfolds = 10L, verbose = FALSE, par.init = FALSE, 
+  ## par.final = FALSE, tree.control
+  
   
   if (missing(tree.control)) {
     tree.control <- ctree_control(maxdepth = maxdepth, mtry = mtry)
@@ -148,16 +182,10 @@ pre <- function(formula, data, family = c("gaussian", "binomial", "poisson"),
     }
   }
   
-  if (!is.data.frame(data)) {stop("Data should be a data frame.")}
-  
   if (!(is.function(sampfrac))) {
     if (length(sampfrac) != 1 || sampfrac < 0.01 || sampfrac > 1) {
       stop("Bad value for 'sampfrac'")
     }
-  }
-  
-  if (length(type) != 1 || (type != "rules" & type != "both" & type != "linear")) {
-    stop("Argument type should equal 'both', 'rules' or 'linear'")
   }
   
   if (length(winsfrac) != 1 || winsfrac < 0 || winsfrac > 0.5) {
@@ -202,20 +230,21 @@ pre <- function(formula, data, family = c("gaussian", "binomial", "poisson"),
     warning("Some observations have missing values and have been removed. New sample size is ", n, ".\n", immediate. = TRUE)
   }
   
+  ## Prepare glmtree arguments if necessary:
+  if (type != "linear" && !use.grad) {
+    glmtree_args <- mob_control(maxdepth = maxdepth + 1, mtry = mtry)
+    glmtree_args$formula <- formula(paste(paste(y_name, " ~ 1 |"), 
+                                         paste(x_names, collapse = "+")))
+    glmtree_args$family <- family
+  }
+    
   #############################
   ## Derive prediction rules ##
   #############################
   
   if (type != "linear") {
-    if (family == "poisson" || 
-        (family == "binomial" && !use.grad && learnrate > 0)) {
-      glmtreeformula <- formula(paste(paste(y_name, " ~ 1 |"), 
-                                      paste(x_names, collapse = "+")))
-    }
-    
     if (learnrate == 0) {
-    ## if learnrate == 0, parallel computation with ctree can be used:
-      if (par.init) {
+      if (par.init) { # compute in parallel:
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
           if (sampfrac == 1) { # then bootstrap
@@ -225,22 +254,23 @@ pre <- function(formula, data, family = c("gaussian", "binomial", "poisson"),
                                 prob = weights)
           }
           # Grow tree on subsample:
-          if (family != "poisson") {
+          if (use.grad) {
             tree <- ctree(formula = formula, data = data[subsample, ], 
                           control = tree.control)
           } else {
-            tree <- glmtree(glmtreeformula, data = data[subsample, ], 
-                            family = family, maxdepth = maxdepth + 1, 
-                            mtry = mtry)
+            #tree <- glmtree(glmtreeformula, data = data[subsample, ], 
+            #                family = family, maxdepth = maxdepth + 1, 
+            #                mtry = mtry)
+            glmtree_args$data <- data[subsample, ]
+            tree <- do.call(glmtree, args = glmtree_args)
           }
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
         }
-      ## if (learnrate == 0 && !par.init), use ctree in a standard for loop:
       } else { # do not compute in parallel:
         rules <- c()
         for(i in 1:ntrees) {
-          # Take subsample of dataset
+          # Take subsample of dataset:
           if (sampfrac == 1) { # then bootstrap
             subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
           } else if (sampfrac < 1) { # else subsample
@@ -248,9 +278,11 @@ pre <- function(formula, data, family = c("gaussian", "binomial", "poisson"),
                                 prob = weights)
           }
           # Grow tree on subsample:
-          if (family == "poisson") {
-            tree <- glmtree(glmtreeformula, data = data[subsample, ], family = family, 
-                            maxdepth = maxdepth + 1, mtry = mtry)
+          if (use.grad && family == "poisson") {
+            #tree <- glmtree(glmtreeformula, data = data[subsample, ], family = family, 
+            #                maxdepth = maxdepth + 1, mtry = mtry)
+            glmtree_args$data <- data[subsample, ]
+            tree <- do.call(glmtree, args = glmtree_args)
           } else {
             tree <- ctree(formula = formula, data = data[subsample, ], 
                           control = tree.control)
@@ -259,21 +291,34 @@ pre <- function(formula, data, family = c("gaussian", "binomial", "poisson"),
           rules <- c(rules, list.rules(tree))
         }
       }
-    }
-    
-    ## If learnrate > 0, induce trees sequentially (no parallel computation):
-    if (learnrate > 0) {
-      rules <- c()
+    } else { # learnrate > 0, no parallel computation possible:
       
-      if (family == "gaussian" || (family == "binomial" && use.grad)) { ## use ctrees with y_learn:
+      rules <- c() # initialize with empty rule vector
+      
+      if (use.grad) { ## use ctrees with y_learn and eta:
+        
         data_with_y_learn <- data
-        if (family == "binomial") {
+        
+        ## set initial eta value:
+        if (family == "gaussian") {
+          y <- data[[y_name]]
+          eta_0 <- weighted.mean(y, weights)
+          eta <- rep(eta_0, length(y))
+          data_with_y_learn[[y_name]] <- y - eta
+        } else if (family == "binomial") {
           y <- data[[y_name]] == levels(data[[y_name]])[1]
           eta_0 <- get_intercept_logistic(y, weights)
           eta <- rep(eta_0, length(y))
           p_0 <- 1 / (1 + exp(-eta))
           data_with_y_learn[[y_name]] <- ifelse(y, log(p_0), log(1 - p_0))
+        } else if (family == "poisson") {
+          y <- data[[y_name]] 
+          eta_0 <- get_intercept_count(y, weights)
+          eta <- rep(eta_0, length(y))
+          data_with_y_learn[[y_name]] <- y - exp(eta)
         }
+        
+        ## grow trees:
         for(i in 1:ntrees) {
           # Take subsample of dataset:
           if (sampfrac == 1) { # then bootstrap
@@ -287,18 +332,26 @@ pre <- function(formula, data, family = c("gaussian", "binomial", "poisson"),
                         data = data_with_y_learn[subsample, ])
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
-          # Substract predictions from current y:
+          
+          ## Update eta and y_learn:
           if (family == "gaussian") {
-            data_with_y_learn[[y_name]] <- data_with_y_learn[[y_name]] - 
-              learnrate * predict(tree, newdata = data)
-          } else { ## family is binomial
+            eta <- eta + learnrate * predict(tree, newdata = data)
+            data_with_y_learn[[y_name]] <- y - eta
+          } else if ( family == "binomial") {
             eta <- eta + learnrate * predict(tree, newdata = data)
             data_with_y_learn[[y_name]] <- get_y_learn_logistic(eta, y)
+          } else if (family == "poisson") {
+            eta <- eta + learnrate * predict(tree, newdata = data)
+            data_with_y_learn[[y_name]] <- get_y_learn_count(eta, y)
           }
         }
         
-      } else { ## use glmtrees with offset: 
-        data_with_offset <- data.frame(data, offset = 0)
+      } else { ## use.grad = FALSE, so use glmtrees with offset:
+        
+        ## initialize with 0 offset:
+        glmtree_args$data <- data.frame(data)
+        glmtree_args$offset <- rep(0, times = nrow(data))
+
         for(i in 1:ntrees) {
           # Take subsample of dataset:
           if (sampfrac == 1) { # then bootstrap
@@ -307,15 +360,17 @@ pre <- function(formula, data, family = c("gaussian", "binomial", "poisson"),
             subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
                                 prob = weights)
           }
-          subsampledata <- data_with_offset[subsample,]
+          glmtree_args$data <- data[subsample,]
+          glmtree_args$offset <- offset[subsample] 
           # Grow tree on subsample:
-          tree <- glmtree(glmtreeformula, data = subsampledata, family = family, 
-                          maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
+          #tree <- glmtree(glmtreeformula, data = subsampledata, family = family, 
+          #                maxdepth = maxdepth + 1, mtry = mtry, offset = offset)
+          tree <- do.call(glmtree, args = glmtree_args)
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
-          # Update offset (note that dataset without offset is, and should be, employed for prediction):
+          # Update offset (note: do not use a dataset which includes the offset for prediction!):
           if (learnrate > 0) {
-            data_with_offset$offset <- data_with_offset$offset + 
+            offset <- offset + 
               learnrate * predict(tree, newdata = data, type = "link")
           }
         }

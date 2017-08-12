@@ -601,7 +601,7 @@ eTerm <- function(x, scale = 1 / 0.4){
 #####
 # Functions for gradient boosting
 
-get_intercept_logistic <- function(y, ws = NULL){
+get_intercept_logistic <- function(y, ws = NULL) {
   # # page 484 of:
   # # Bühlmann, Peter, and Torsten Hothorn. "Boosting algorithms: Regularization, 
   # # prediction and model fitting." Statistical Science (2007): 477-505.
@@ -623,7 +623,7 @@ get_intercept_logistic <- function(y, ws = NULL){
   log(p_bar / (1 - p_bar))
 }
 
-get_y_learn_logistic <- function(eta, y){
+get_y_learn_logistic <- function(eta, y) {
   # See LogitBoost on page 351 of:
   # Friedman, J., Hastie, T., & Tibshirani, R. (2000). Additive logistic 
   # regression: a statistical view of boosting (with discussion and a rejoinder 
@@ -634,6 +634,19 @@ get_y_learn_logistic <- function(eta, y){
   p <- 1 / (1 + exp(-eta))
   (y - p) / sqrt(p * (1 - p))
 }
+
+get_intercept_count <- function(y, ws = NULL) {
+  lambda_bar <- if(is.null(ws)) mean(y) else weighted.mean(y, ws)
+  log(lambda_bar)
+}
+
+get_y_learn_count <- function(eta, y) {
+  lambda <- exp(eta)
+  y - lambda
+}
+
+
+
 
 #' @title Default penalized trainer for gpe
 #' 
