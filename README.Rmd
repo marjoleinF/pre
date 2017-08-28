@@ -45,10 +45,10 @@ We can print the resulting ensemble (alternatively, we could use the ```print```
 airq.ens
 ```
 
-We can plot the baselarners in the ensemble using the ```plot``` method:
+We can plot the baselarners in the ensemble using the ```plot``` method (note that only the nine most important baselearners are requested here):
 
 ```{r, fig.height=6, fig.width=6}
-plot(airq.ens, penalty.par.val = "lambda.1se", plot.dim = c(3,3), cex = .5)
+plot(airq.ens, nterms = 9, cex = .5)
 ```
 
 We can obtain the estimated coefficients for each of the baselearners using the ```coef``` method:

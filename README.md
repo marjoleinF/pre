@@ -52,13 +52,13 @@ airq.ens
 #>       rule166   -0.1202175              Wind > 6.9 & Temp <= 82
 ```
 
-We can plot the baselarners in the ensemble using the `plot` method:
+We can plot the baselarners in the ensemble using the `plot` method (note that only the nine most important baselearners are requested here):
 
 ``` r
-plot(airq.ens, penalty.par.val = "lambda.1se", plot.dim = c(3,3), cex = .5)
+plot(airq.ens, nterms = 9, cex = .5)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-4-1.png)![](inst/README-figures/README-unnamed-chunk-4-2.png)
+![](inst/README-figures/README-unnamed-chunk-4-1.png)
 
 We can obtain the estimated coefficients for each of the baselearners using the `coef` method:
 
@@ -106,6 +106,9 @@ We can obtain partial dependence plots to assess the effects of pairs of predict
 
 ``` r
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
+#> Warning in if (!(varnames %in% object$x_names == c(TRUE, TRUE))) {: the
+#> condition has length > 1 and only the first element will be used
+#> Loading required namespace: akima
 #> NOTE: function pairplot uses package 'akima', which has an ACM license. See also https://www.acm.org/publications/policies/software-copyright-notice.
 ```
 

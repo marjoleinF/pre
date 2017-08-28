@@ -4,12 +4,12 @@
 \alias{pre}
 \title{Derive a prediction rule ensemble}
 \usage{
-pre(formula, data, family = c("gaussian", "binomial", "poisson"),
-  use.grad = TRUE, weights, type = "both", sampfrac = 0.5,
-  maxdepth = 3L, learnrate = 0.01, mtry = Inf, ntrees = 500,
-  removecomplements = TRUE, removeduplicates = TRUE, winsfrac = 0.025,
-  normalize = TRUE, standardize = FALSE, nfolds = 10L, verbose = FALSE,
-  par.init = FALSE, par.final = FALSE, tree.control, ...)
+pre(formula, data, family = gaussian, use.grad = TRUE, weights,
+  type = "both", sampfrac = 0.5, maxdepth = 3L, learnrate = 0.01,
+  mtry = Inf, ntrees = 500, removecomplements = TRUE,
+  removeduplicates = TRUE, winsfrac = 0.025, normalize = TRUE,
+  standardize = FALSE, nfolds = 10L, verbose = FALSE, par.init = FALSE,
+  par.final = FALSE, tree.control, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -27,15 +27,12 @@ the formula).}
 be a factor for binary classification, numeric for (count) regression. Input
 variables must be of class numeric, factor or ordered factor.}
 
-\item{family}{character. Specification is required only for non-negative 
-count responses, by specifying \code{family = "poisson"}. Otherwise, 
-\code{family = "gaussian"} is employed if response specified in formula
-is numeric and \code{family = "binomial"} is employed if response is a 
-binary factor. Note that if \code{family = "poisson"} is specified, 
-\code{\link[partykit]{glmtree}} with an intercept only models in the nodes 
-will be employed for inducing trees, instead of \code{\link[partykit]{ctree}}. 
-Although this yields longer computation times, it also yields better 
-accuracy for count outcomes.}
+\item{family}{specification of a glm family. Can be a character string (i.e., 
+\code{"gaussian"}, \code{"binomial"} or \code{"poisson"}) or a corresponding
+family object (see \code{\link[stats]{family}}. Specification is required only 
+for non-negative count responses, e.g., \code{family = "poisson"}. Otherwise, 
+\code{family = "gaussian"} is employed if response is numeric and 
+\code{family = "binomial"} is employed if response is a binary factor.}
 
 \item{use.grad}{logical. Should binary outcomes use gradient boosting with 
 regression trees when \code{learnrate > 0}? That is, use 
@@ -60,7 +57,7 @@ tree. Values \eqn{< 1} will result in sampling without replacement (i.e.,
 subsampling), a value of 1 will result in sampling with replacement 
 (i.e., bootstrapping).}
 
-\item{maxdepth}{numeric. Maximum number of conditions that can define a rule.}
+\item{maxdepth}{positive integer. Maximum number of conditions in a rule.}
 
 \item{learnrate}{numeric. Learning rate or boosting parameter.}
 
@@ -106,7 +103,7 @@ validation for selecting the final ensemble? Must register parallel beforehand,
 such as doMC or others.}
 
 \item{tree.control}{list with control parameters to be passed to the tree 
-fitting function, see \code{\link[partykit]{ctree_control}}, or 
+fitting function, generated using \code{\link[partykit]{ctree_control}}, or 
 \code{\link[partykit]{mob_control}} if \code{use.grad = FALSE}.}
 
 \item{...}{Additional arguments to be passed to 
@@ -155,7 +152,8 @@ set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
 }
 \references{
-Friedman, J. H. (2001). Greedy function approximation: a gradient boosting machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
+Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
+machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
 }
 \seealso{
 \code{\link{print.pre}}, \code{\link{plot.pre}}, 

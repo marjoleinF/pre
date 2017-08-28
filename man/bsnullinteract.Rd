@@ -39,10 +39,10 @@ calculated with \code{\link{interact}}.
 Computationally intensive. Progress info is printed to command line.
 }
 \examples{
-\donttest{
-set.seed(42)
+\donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
-nullmods <- bsnullinteract(airq.ens)}
+nullmods <- bsnullinteract(airq.ens)
+interact(airq.ens, nullmods = nullmods, col = c("#7FBFF5", "#8CC876"))}
 }
 \seealso{
 \code{\link{pre}}, \code{\link{interact}}

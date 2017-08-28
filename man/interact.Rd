@@ -6,7 +6,7 @@
 \usage{
 interact(object, varnames = NULL, nullmods = NULL,
   penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95), plot = TRUE,
-  col = c("yellow", "blue"), ylab = "Interaction strength",
+  col = c("#8CC876", "#7FBFF5"), ylab = "Interaction strength",
   main = "Interaction test statistics", se.linewidth = 0.05,
   parallel = FALSE, k = 10, verbose = FALSE, ...)
 }
@@ -36,12 +36,11 @@ The default yields sample quantiles corresponding to .05 and .95 probabilities.}
 
 \item{plot}{logical. Should interaction statistics be plotted?}
 
-\item{col}{character vector of length one or two. Color for plotting 
-interaction statistics. The first color specified is used to plot the 
-interaction statistic from the training data, the second color specifed
-is used to plot the interaction statistic distribution from the bootstrapped
-null interaction models. Only used when \code{plot = TRUE}. Only the first 
-element of vector is used if \code{nullmods = NULL}.}
+\item{col}{character vector of length one or two. The first value specifies 
+the color to be used for plotting the interaction statistic from the training
+data, the second color is used for plotting the interaction statistic from 
+the bootstrapped null interaction models. Only used when \code{plot = TRUE} 
+and Only the first element is used if \code{nullmods = NULL}.}
 
 \item{ylab}{character string. Label to be used for plotting y-axis.}
 
@@ -86,12 +85,7 @@ have not yet been studied in detail, but likely depend on the number of
 generated bootstrapped null interaction models as well as the complexity of 
 the fitted ensembles. Users are therefore advised to test for the presence 
 of interaction effects by setting the \code{nsamp} argument of the function 
-\code{bsnullinteract} \eqn{\geq 100} (even though this may take a lot of 
-computation time). Also, users are advised to test for the presence of 
-interactions only with fitted ensembles that are neither too sparse nor too 
-complex, that is, ensembles that are selected by setting the 
-\code{penalty.par.val} argument equal to \code{"lambda.min"} or 
-\code{"lambda.1se"}.
+\code{bsnullinteract} \eqn{\geq 100}.
 }
 \description{
 \code{interact} calculates test statistics for assessing the strength of
