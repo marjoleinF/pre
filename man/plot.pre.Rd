@@ -36,9 +36,7 @@ the rule does not apply (``exit nodes'')?}
 
 \item{plot.dim}{integer vector of length two. Specifies the number of rows
 and columns in the plot. The default yields a plot with three rows and three 
-columns, depicting nine baselearners per plot. If 
-\code{nterms > plot.dim[1] * plot.dim[2]}, multiple plotting pages will be 
-created.}
+columns, depicting nine baselearners per plotting page.}
 
 \item{...}{Arguments to be passed to \code{\link[grid]{gpar}}.}
 }

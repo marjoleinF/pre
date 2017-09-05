@@ -1,17 +1,23 @@
-Changes in Version 0.4 (2017-29-08)
+Changes in Version 0.4 (2017-08-31)
 
   - Added dataset 'carrillo.Rdata'
   
-  - By default, a gradient boosting approach is now taken for all types of 
-      responses. That is, partykit::ctree() and a learning rate of .01 is 
-      employed, by default. Alternatively, glmtree() can be employed for 
-      for tree induction by setting use.grad = FALSE.
+  - By default, a gradient boosting approach is now taken for all response 
+      types. That is, partykit::ctree() and a learning rate of .01 is 
+      employed by default. Alternatively, glmtree() can be employed for 
+      for tree induction by sprecifying use.grad = FALSE.
+      
+  - The 'family' argument now takes character strings as well as glm family 
+      objects. 
       
   - Functions pairplot() and interact() now use HCL instead of highly saturated
       HSV colors as default plotting colors.
       
-  - Major error fixed in plot.pre: node directions are now in accordance with 
+  - Bug fixed in plot.pre: Node directions are now in accordance with 
       rule definition.
+
+  - Bug fixed in predict.pre: No error printed when response variable is not 
+      supplied.
 
 
 

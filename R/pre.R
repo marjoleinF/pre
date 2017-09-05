@@ -131,6 +131,9 @@ pre <- function(formula, data, family = gaussian,
   ## Check arguments ##
   #####################
   
+  ## TODO: allow for specification of additional cv.glmnet arguments through a list argument, instead of the dots
+  ## Then use do.call to evaluate cv.glmnet() call
+  
   ## Check if proper formula argument is specified:
   if (!(class(formula) == "formula" || class(formula)[2] == "Formula")) {
     stop("Argument 'formula' should specify and object of class 'formula'.")
@@ -181,11 +184,12 @@ pre <- function(formula, data, family = gaussian,
   }
   
   ## Check if proper sampfrac argument is specified:
-  ## TODO: Allow sampfrac to be a function.  
-  if (!(length(sampfrac) == 1 && 
-        (is.function(sampfrac) || (is.numeric(sampfrac) && 
-                                   (sampfrac > .01 || sampfrac <= 1))))) {
-    stop("Argument 'sampfrac' should be a function, or a single numeric value > 0 and <= 1.")
+  if (is.function(sampfrac)) {use_samp_func <- TRUE} else {
+    use_samp_func <- FALSE
+    if (!(length(sampfrac) == 1 && is.numeric(sampfrac) && sampfrac > .01 && 
+          sampfrac <= 1)) {
+      stop("Argument 'sampfrac' should be a single numeric value > 0 and <= 1, or a sampling function.")
+    }
   }
 
   ## Check if proper maxdepth argument is specified:
@@ -349,11 +353,15 @@ pre <- function(formula, data, family = gaussian,
       if (par.init) { # compute in parallel:
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
-          if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else if (sampfrac < 1) { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                prob = weights)
+          if(use_samp_func) {
+            subsample <- sampfrac() 
+          } else {
+            if (sampfrac == 1) { # then bootstrap
+              subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
+            } else if (sampfrac < 1) { # else subsample
+              subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                  prob = weights)
+            }
           }
           # Grow tree on subsample:
           if (use.grad) {
@@ -374,11 +382,15 @@ pre <- function(formula, data, family = gaussian,
         rules <- c()
         for(i in 1:ntrees) {
           # Take subsample of dataset:
-          if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else if (sampfrac < 1) { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                prob = weights)
+          if(use_samp_func) {
+            subsample <- sampfrac() 
+          } else {
+            if (sampfrac == 1) { # then bootstrap
+              subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
+            } else if (sampfrac < 1) { # else subsample
+              subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                  prob = weights)
+            }
           }
           # Grow tree on subsample:
           if (use.grad) {
@@ -426,11 +438,15 @@ pre <- function(formula, data, family = gaussian,
         ## grow trees:
         for(i in 1:ntrees) {
           # Take subsample of dataset:
-          if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else if (sampfrac < 1) { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                prob = weights)
+          if(use_samp_func) {
+            subsample <- sampfrac() 
+          } else {
+            if (sampfrac == 1) { # then bootstrap
+              subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
+            } else if (sampfrac < 1) { # else subsample
+              subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                  prob = weights)
+            }
           }
           # Grow tree on subsample:
           tree <- ctree(formula = formula, control = tree.control,
@@ -454,17 +470,19 @@ pre <- function(formula, data, family = gaussian,
       } else { ## use.grad = FALSE, so use glmtrees with offset:
         
         ## initialize with 0 offset:
-        #glmtree_args$data <- data.frame(data)
-        #glmtree_args$
         offset <- rep(0, times = nrow(data))
 
         for(i in 1:ntrees) {
           # Take subsample of dataset:
-          if (sampfrac == 1) { # then bootstrap
-            subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-          } else if (sampfrac < 1) { # else subsample
-            subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                prob = weights)
+          if(use_samp_func) {
+            subsample <- sampfrac() 
+          } else {
+            if (sampfrac == 1) { # then bootstrap
+              subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
+            } else if (sampfrac < 1) { # else subsample
+              subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
+                                  prob = weights)
+            }
           }
           glmtree_args$data <- data[subsample,]
           glmtree_args$offset <- offset[subsample] 
@@ -536,9 +554,9 @@ pre <- function(formula, data, family = gaussian,
         }
       }
       
-      if(!exists("complements.removed"))
+      if(!exists("complements.removed", inherits = FALSE))
         complements.removed <- NULL
-      if(!exists("duplicates.removed"))
+      if(!exists("duplicates.removed", inherits = FALSE))
         duplicates.removed <- NULL
       
       if (verbose && (removeduplicates|| removecomplements)) {
@@ -563,9 +581,9 @@ pre <- function(formula, data, family = gaussian,
   
   
   
-  ########################################################################
-  ## Prepare rules, linear terms, outcome variable and perform election ##
-  ########################################################################
+  #########################################################################
+  ## Prepare rules, linear terms, outcome variable and perform selection ##
+  #########################################################################
   
   if (type == "rules" && length(rules) == 0) {
     warning("No prediction rules could be derived from dataset.")
@@ -591,17 +609,23 @@ pre <- function(formula, data, family = gaussian,
   if (!(length(unique(colnames(x))) == length(colnames(x)))) { 
     warning("There are variables in the model with overlapping variable names. Rename variables and rerun the analysis. See 'Details' under ?pre.") 
   } 
-
-  glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
-                          family = family, parallel = par.final, 
-                          standardize = standardize, ...)
+  
+  if (!exists("est_final", inherits = FALSE)) {
+    glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
+                            family = family, parallel = par.final, 
+                            standardize = standardize, ...)
+    lmin_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.min)
+    l1se_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.1se)
+  } else {
+    warning("You have used a secret argument while calling pre(). You are now entering uncharted territory where all kinds of things may happen.")
+    glmnet.fit <- NULL
+  }
+  
   
   ####################
   ## Return results ##
   ####################
   
-  lmin_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.min)
-  l1se_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.1se)
   if (verbose) {
     cat("\n\nFinal ensemble with minimum cv error: \n  lambda = ", 
         glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
@@ -708,16 +732,16 @@ get_modmat <- function(
     # normalize numeric variables:
     if (normalize) { 
       # Normalize linear terms (section 5 of F&P08), if there are any:
-      needs_scalling <- x_names[sapply(data[x_names], # use data as it is un-transformed 
+      needs_scaling <- x_names[sapply(data[x_names], # use data as it is un-transformed 
                                        is.numeric)]
-      needs_scalling <- which(colnames(x) %in% x_names)
-      if (length(needs_scalling) > 0) {
-        if(is.null(x_scales))
+      needs_scaling <- which(colnames(x) %in% x_names)
+      if (length(needs_scaling) > 0) {
+        if (is.null(x_scales)) {
           x_scales <- apply(
-            x[, needs_scalling, drop = FALSE], 2, sd, na.rm = TRUE) / 0.4
-        
-        x[, needs_scalling] <- scale(
-          x[, needs_scalling, drop = FALSE], center = FALSE, scale = x_scales)
+            x[, needs_scaling, drop = FALSE], 2, sd, na.rm = TRUE) / 0.4
+        }
+        x[, needs_scaling] <- scale(
+          x[, needs_scaling, drop = FALSE], center = FALSE, scale = x_scales)
       }
     }
   }
@@ -1130,6 +1154,12 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     winsfrac <- (object$call)$winsfrac
     if(is.null(winsfrac))
       winsfrac <- formals(pre)$winsfrac
+    
+    ## Add temporary response variable to prevent errors using get_modmat():
+    if (!(object$y_name %in% names(newdata))) {
+      newdata[, object$y_name] <- 0
+    }
+    
     tmp <- get_modmat(
       modmat_formula = object$modmat_formula, 
       wins_points = object$wins_points, 
@@ -1998,9 +2028,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' resulting in all terms of the final ensemble to be plotted.
 #' @param plot.dim integer vector of length two. Specifies the number of rows
 #' and columns in the plot. The default yields a plot with three rows and three 
-#' columns, depicting nine baselearners per plot. If 
-#' \code{nterms > plot.dim[1] * plot.dim[2]}, multiple plotting pages will be 
-#' created.
+#' columns, depicting nine baselearners per plotting page.
 #' @param ask logical. Should user be prompted before starting a new page of
 #' plots?
 #' @param exit.label character string. Label to be printed in nodes to which 
