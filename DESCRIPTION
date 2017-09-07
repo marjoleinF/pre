@@ -1,6 +1,6 @@
 Package: pre
 Title: Prediction Rule Ensembles
-Version: 0.4
+Version: 0.4.1
 Authors@R: c(person("Marjolein", "Fokkema", role = c("aut", "cre"), email = 
   "m.fokkema@fsw.leidenuniv.nl"), person(given = "Benjamin", 
   family = "Christoffersen", role = "aut", email = "boennecd@gmail.com"))
@@ -32,7 +32,8 @@ Suggests:
     foreach,
     testthat,
     mlbench,
-    datasets
+    datasets,
+    glmertree
 License: GPL-2 | GPL-3
 Encoding: UTF-8
 LazyData: true

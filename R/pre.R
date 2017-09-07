@@ -135,8 +135,30 @@ pre <- function(formula, data, family = gaussian,
   ## Then use do.call to evaluate cv.glmnet() call
   
   ## Check if proper formula argument is specified:
-  if (!(class(formula) == "formula" || class(formula)[2] == "Formula")) {
+  if (!(class(formula) == "formula" || class(formula)[2] == "formula")) {
     stop("Argument 'formula' should specify and object of class 'formula'.")
+  } else {
+    if (length(as.Formula(formula))[2] > 1) { # then a cluster may be specified
+      ## TODO: check if dot is used when supplying random-effects formula, should not be allowed
+      if (length(as.Formula(formula))[2] == 2) {
+        stop("You specified a glmertree formula while calling pre() with a two-part right-hand side, but you should specify a three-part right-hand side, e.g., y ~ 1 | cluster | x1 + x2 + x3.")
+      } else if (length(as.Formula(formula))[2] == 3) {
+        if (formula[[3]][[2]][[2]] == 1) {
+          warning("You specified a formula with 3-part right-hand side while calling pre(), which is a hidden and experimental option to include estimation of random intercepts while inducing trees. Use at your own risk and note that computation times may be very long.", immediate. = TRUE)
+          formula <- as.Formula(formula)
+          use_glmertree <- TRUE
+          if (use.grad) {
+            warning("You specified a formula with 3-part right-hand side, so gradient boosting is not possible. Argument 'use.grad' is therefore set to FALSE and argument 'learnrate' to 0.", immediate. = TRUE)
+            use.grad <- FALSE
+            learnrate <- 0
+          }
+        } else {
+          stop("You specified a formula with 3-part right-hand side while calling pre(), but the first part of the right-hand side should consist of an intercept only, e.g., y ~ 1 | cluster | x1 + x2 + x3.")
+        }
+      }
+    } else {
+      use_glmertree <- FALSE
+    }
   }
   
   ## Check if proper data argument is specified:
@@ -157,6 +179,7 @@ pre <- function(formula, data, family = gaussian,
       warning("The link function specified is currently not supported; log link will be employed.", immediate. = TRUE)
     }
   }
+  
   if (is.character(family)) {
     if (!(family == "gaussian" || family == "binomial" || family == "poisson" )) {
       stop("Argument 'family' should be equal to 'gaussian', 'binomial' or 'poisson' or a corresponding family object.")
@@ -265,7 +288,7 @@ pre <- function(formula, data, family = gaussian,
 
   ## Check if proper tree.control argument is specified:
   if (missing(tree.control)) {
-    if (use.grad) {
+    if (use.grad || !use_glmertree) {
       tree.control <- ctree_control(maxdepth = maxdepth, mtry = mtry)
     } else {
       tree.control <- mob_control(maxdepth = maxdepth + 1, mtry = mtry)
@@ -301,9 +324,15 @@ pre <- function(formula, data, family = gaussian,
   ## prepare model frame:
   orig_data <- data
   data <- model.frame(formula, data, na.action = NULL)
-  x_names <- attr(attr(data, "terms"), "term.labels")
+  if (use_glmertree) {
+   x_names <-   all.vars(formula[[3]][[3]])
+  } else {
+    x_names <- attr(attr(data, "terms"), "term.labels")
+  }
   y_name <- names(data)[attr(attr(data, "terms"), "response")]
-  formula <- formula(data)
+  if (!use_glmertree) {
+    formula <- formula(data)
+  }
   n <- nrow(data)
 
   ## check and set correct family:
@@ -335,12 +364,22 @@ pre <- function(formula, data, family = gaussian,
     warning("Some observations have missing values and have been removed. New sample size is ", n, ".\n", immediate. = TRUE)
   }
   
-  ## Prepare glmtree arguments if necessary:
-  if (type != "linear" && !use.grad) {
-    glmtree_args <- mob_control(maxdepth = maxdepth + 1, mtry = mtry)
-    glmtree_args$formula <- formula(paste(paste(y_name, " ~ 1 |"), 
-                                         paste(x_names, collapse = "+")))
-    glmtree_args$family <- family
+  ## Prepare glm(er)tree arguments if necessary:
+  if (type != "linear") {
+    if (use_glmertree) {
+      glmertree_args <- mob_control(maxdepth = maxdepth + 1, mtry = mtry)
+      glmertree_args$formula <- formula
+      if (!family == "gaussian") {
+        glmertree_args$family <- family      
+      }
+    } else if (!use.grad) {
+      glmtree_args <- mob_control(maxdepth = maxdepth + 1, mtry = mtry)
+      glmtree_args$formula <- formula(paste(paste(y_name, " ~ 1 |"), 
+                                            paste(x_names, collapse = "+")))
+      if (!family == "gaussian") {
+        glmtree_args$family <- family      
+      }
+    }
   }
     
 
@@ -351,6 +390,7 @@ pre <- function(formula, data, family = gaussian,
   if (type != "linear") {
     if (learnrate == 0) {
       if (par.init) { # compute in parallel:
+        ## TODO: ALlow for passing ids so results are replicable
         rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
           # Take subsample of dataset
           if(use_samp_func) {
@@ -364,7 +404,16 @@ pre <- function(formula, data, family = gaussian,
             }
           }
           # Grow tree on subsample:
-          if (use.grad) {
+          if (use_glmertree) {
+            ## Add subsample to call:
+            glmertree_args$data <- data[subsample, ]
+            ## Fit tree:
+            if (family == "gaussian") {
+              tree <- do.call(glmertree::lmertree, args = glmertree_args)$tree
+            } else {
+              tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
+            }
+          } else if (use.grad) {
             if (family == "poisson") {
               stop("Gradient boosting with a learning rate of zero cannot be used for a poisson response distribution. Either set argument 'use.grad' to FALSE to employ function glmtree() for tree induction, or set argument 'learnrate' to a value >0 to employ function ctree() for tree induction.")
             } else {
@@ -393,7 +442,16 @@ pre <- function(formula, data, family = gaussian,
             }
           }
           # Grow tree on subsample:
-          if (use.grad) {
+          if (use_glmertree) {
+            ## Add subsample to call:
+            glmertree_args$data <- data[subsample, ]
+            ## Fit tree:
+            if (family == "gaussian") {
+              tree <- do.call(glmertree::lmertree, args = glmertree_args)$tree
+            } else {
+              tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
+            }
+          } else if (use.grad) {
             if (family == "poisson") {
               stop("Gradient boosting with a learning rate of zero cannot be used for a poisson response distribution. Either set argument 'use.grad' to FALSE to employ function glmtree() for tree induction, or set argument 'learnrate' to a value >0 to employ function ctree() for tree induction.")
             } else {
@@ -402,7 +460,11 @@ pre <- function(formula, data, family = gaussian,
             }
           } else {
             glmtree_args$data <- data[subsample, ]
-            tree <- do.call(glmtree, args = glmtree_args)
+            if (!family == "gaussian") {
+              tree <- do.call(lmtree, args = glmtree_args)      
+            } else {
+              tree <- do.call(glmtree, args = glmtree_args) 
+            }
           }
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
@@ -487,7 +549,12 @@ pre <- function(formula, data, family = gaussian,
           glmtree_args$data <- data[subsample,]
           glmtree_args$offset <- offset[subsample] 
           # Grow tree on subsample:
-          tree <- do.call(glmtree, args = glmtree_args)
+          glmtree_args$data <- data[subsample, ]
+          if (!family == "gaussian") {
+            tree <- do.call(lmtree, args = glmtree_args)      
+          } else {
+            tree <- do.call(glmtree, args = glmtree_args) 
+          }
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Update offset (note: do not use a dataset which includes the offset for prediction!):
@@ -590,8 +657,14 @@ pre <- function(formula, data, family = gaussian,
     return(NULL)
   }
   
+  ## Prepare right formula if glmertree was used for tree induction
+  if (use_glmertree) {
+    glmnet_f <- as.formula(paste(formula[[2]], formula[[1]], paste(x_names, collapse = "+")))
+  } else {
+    glmnet_f <- formula
+  }
   modmat_data <- get_modmat(
-    formula = formula, 
+    formula = glmnet_f, 
     data = data, 
     rules = rules, 
     type = type, 
