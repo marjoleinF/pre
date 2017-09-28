@@ -26,7 +26,8 @@ corresponding to one of the values of lambda in the sequence used by glmnet,
 for which estimated cv error can be inspected by running 
 \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
-\item{...}{currently not used.}
+\item{...}{further arguments to be passed to 
+\code{\link[glmnet]{predict.cv.glmnet}}.}
 }
 \description{
 \code{predict.pre} generates predictions based on the final prediction rule

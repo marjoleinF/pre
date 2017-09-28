@@ -139,21 +139,15 @@ pre <- function(formula, data, family = gaussian,
     stop("Argument 'formula' should specify and object of class 'formula'.")
   } else {
     if (length(as.Formula(formula))[2] > 1) { # then a cluster may be specified
-      ## TODO: check if dot is used when supplying random-effects formula, should not be allowed
-      if (length(as.Formula(formula))[2] == 2) {
-        stop("You specified a glmertree formula while calling pre() with a two-part right-hand side, but you should specify a three-part right-hand side, e.g., y ~ 1 | cluster | x1 + x2 + x3.")
-      } else if (length(as.Formula(formula))[2] == 3) {
+      if (length(as.Formula(formula))[2] == 3) {
         if (formula[[3]][[2]][[2]] == 1) {
-          warning("You specified a formula with 3-part right-hand side while calling pre(), which is a hidden and experimental option to include estimation of random intercepts while inducing trees. Use at your own risk and note that computation times may be very long.", immediate. = TRUE)
           formula <- as.Formula(formula)
           use_glmertree <- TRUE
-          if (use.grad) {
-            warning("You specified a formula with 3-part right-hand side, so gradient boosting is not possible. Argument 'use.grad' is therefore set to FALSE and argument 'learnrate' to 0.", immediate. = TRUE)
-            use.grad <- FALSE
-            learnrate <- 0
+          if (use.grad || learnrate > 0) {
+            stop("When specifying a formula with three-part right-hand side, argument 'use.grad' should be set to FALSE and 'learnrate' to 0", immediate. = TRUE)
           }
         } else {
-          stop("You specified a formula with 3-part right-hand side while calling pre(), but the first part of the right-hand side should consist of an intercept only, e.g., y ~ 1 | cluster | x1 + x2 + x3.")
+          stop("When specifying a three-part right-hand side, the first part of the right-hand side should consist of an intercept only, e.g., y ~ 1 | cluster | x1 + x2 + x3.")
         }
       }
     } else {
@@ -460,7 +454,7 @@ pre <- function(formula, data, family = gaussian,
             }
           } else {
             glmtree_args$data <- data[subsample, ]
-            if (!family == "gaussian") {
+            if (family == "gaussian") {
               tree <- do.call(lmtree, args = glmtree_args)      
             } else {
               tree <- do.call(glmtree, args = glmtree_args) 
@@ -550,7 +544,7 @@ pre <- function(formula, data, family = gaussian,
           glmtree_args$offset <- offset[subsample] 
           # Grow tree on subsample:
           glmtree_args$data <- data[subsample, ]
-          if (!family == "gaussian") {
+          if (family == "gaussian") {
             tree <- do.call(lmtree, args = glmtree_args)      
           } else {
             tree <- do.call(glmtree, args = glmtree_args) 
@@ -683,16 +677,12 @@ pre <- function(formula, data, family = gaussian,
     warning("There are variables in the model with overlapping variable names. Rename variables and rerun the analysis. See 'Details' under ?pre.") 
   } 
   
-  if (!exists("est_final", inherits = FALSE)) {
-    glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
-                            family = family, parallel = par.final, 
-                            standardize = standardize, ...)
-    lmin_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.min)
-    l1se_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.1se)
-  } else {
-    warning("You have used a secret argument while calling pre(). You are now entering uncharted territory where all kinds of things may happen.")
-    glmnet.fit <- NULL
-  }
+  glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
+                          family = family, parallel = par.final, 
+                          standardize = standardize, ...)
+  lmin_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.min)
+  l1se_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.1se)
+
   
   
   ####################
@@ -732,11 +722,11 @@ get_modmat <- function(
   modmat_formula = NULL, wins_points = NULL, x_scales = NULL,
   # These should be passed in all calls
   formula, data, rules, type, winsfrac, x_names, normalize){
-  if(miss_modmat_formula <- is.null(modmat_formula)) {
+  if (miss_modmat_formula <- is.null(modmat_formula)) {
     #####
     # Need to define modemat
-    str_terms <- if(type != "rules") x_names else character()
-    if(type != "linear"){
+    str_terms <- if(type != "rules" || is.null(rules)) x_names else character()
+    if (type != "linear" && !is.null(rules)) {
       str_terms <- c(str_terms, paste0("I(", rules, ")"))
     }
     
@@ -754,8 +744,10 @@ get_modmat <- function(
   if(miss_modmat_formula)
     modmat_formula <- terms(data) # save terms so model factor levels are keept
   x <- model.matrix(modmat_formula, data = data)
-  colnames(x)[
-    (ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
+  if (!is.null(rules)) {
+    colnames(x)[
+      (ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
+  }
   y <- model.response(data)
   
   #####
@@ -1171,7 +1163,8 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' \code{type = "link"} is on the scale of the linear predictors. Alternatively,
 #' for nominal outputs, \code{type = "response"} gives the fitted probabilities
 #' and \code{type = "class"} gives the predicted class membership.
-#' @param ... currently not used.
+#' @param ... further arguments to be passed to 
+#' \code{\link[glmnet]{predict.cv.glmnet}}.
 #' @details When newdata is not provided, training data included in the specified
 #' object is used.
 #' @examples \donttest{
@@ -1252,7 +1245,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   
   # Get predictions:
   preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, 
-                             s = penalty.par.val, type = type)[,1]
+                             s = penalty.par.val, type = type, ...)[,1]
   return(preds)
 }
 
@@ -2451,19 +2444,16 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
   image(x = 1:nrow(cormat), y = 1:ncol(cormat), z = unlist(cormat), 
         axes = FALSE, zlim = c(-1, 1),  
         xlab = "", ylab = "", srt = 45, 
-        #col = grDevices::cm.colors(21),
         col = colors)
   axis(1, at = 1:nrow(cormat), labels = colnames(cormat), las = 2)
   axis(2, at = 1:ncol(cormat), labels = colnames(cormat), las = 2)
   ## plot legend:
   par(fig = fig.legend, new = TRUE)
   col_inds <- round(seq(1, length(colors), length.out = length(legend.breaks)-1))
-  image.scale(z = legend.breaks, 
-              #col = grDevices::cm.colors(11), 
+  image.scale(z = legend.breaks,
               col = colors[col_inds],
               axis.pos = 4,
               breaks = legend.breaks)
   axis(4, at = legend.breaks, las = 2)
   return(invisible(cormat))
 }
-
