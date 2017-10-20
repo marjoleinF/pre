@@ -135,7 +135,7 @@ pre <- function(formula, data, family = gaussian,
   ## Then use do.call to evaluate cv.glmnet() call
   
   ## Check if proper formula argument is specified:
-  if (!(class(formula) == "formula" || class(formula)[2] == "formula")) {
+  if (!(inherits(formula, "formula"))) {
     stop("Argument 'formula' should specify and object of class 'formula'.")
   } else {
     if (length(as.Formula(formula))[2] > 1) { # then a cluster may be specified
@@ -175,11 +175,9 @@ pre <- function(formula, data, family = gaussian,
   }
   
   if (is.character(family)) {
-    if (!(family == "gaussian" || family == "binomial" || family == "poisson" )) {
+    if (!all(family %in% c("gaussian", "binomial", "poisson"))) {
       stop("Argument 'family' should be equal to 'gaussian', 'binomial' or 'poisson' or a corresponding family object.")
     }
-  } else {
-    stop("Argument 'family' should be equal to 'gaussian', 'binomial' or 'poisson' or a corresponding family object.")
   }
   
   ## Check if proper use.grad argument is specified:
@@ -196,14 +194,14 @@ pre <- function(formula, data, family = gaussian,
   }
   
   ## Check if proper type argument is specified:
-  if (!(length(type) == 1 && (type == "rules" || type == "both" || type == "linear"))) {
+  if (!(length(type) == 1 && type %in% c("rules", "both", "linear"))) {
     stop("Argument 'type' should be 'both', 'rules' or 'linear'.")
   }
   
   ## Check if proper sampfrac argument is specified:
   if (is.function(sampfrac)) {use_samp_func <- TRUE} else {
     use_samp_func <- FALSE
-    if (!(length(sampfrac) == 1 && is.numeric(sampfrac) && sampfrac > .01 && 
+    if (!(length(sampfrac) == 1 && is.numeric(sampfrac) && sampfrac > 0 && 
           sampfrac <= 1)) {
       stop("Argument 'sampfrac' should be a single numeric value > 0 and <= 1, or a sampling function.")
     }
@@ -511,14 +509,12 @@ pre <- function(formula, data, family = gaussian,
           rules <- c(rules, list.rules(tree))
           
           ## Update eta and y_learn:
+          eta <- eta + learnrate * predict(tree, newdata = data)
           if (family == "gaussian") {
-            eta <- eta + learnrate * predict(tree, newdata = data)
             data_with_y_learn[[y_name]] <- y - eta
           } else if ( family == "binomial") {
-            eta <- eta + learnrate * predict(tree, newdata = data)
             data_with_y_learn[[y_name]] <- get_y_learn_logistic(eta, y)
           } else if (family == "poisson") {
-            eta <- eta + learnrate * predict(tree, newdata = data)
             data_with_y_learn[[y_name]] <- get_y_learn_count(eta, y)
           }
         }
@@ -553,8 +549,13 @@ pre <- function(formula, data, family = gaussian,
           rules <- c(rules, list.rules(tree))
           # Update offset (note: do not use a dataset which includes the offset for prediction!):
           if (learnrate > 0) {
-            offset <- offset + 
-              learnrate * suppressWarnings(predict(tree, newdata = data, type = "link"))
+            if (family == "gaussian") {
+              offset <- offset + learnrate * 
+                suppressWarnings(predict(tree, newdata = data))
+            } else {
+              offset <- offset + learnrate * 
+                suppressWarnings(predict(tree, newdata = data, type = "link"))
+            }
           }
         }
       }
@@ -717,11 +718,12 @@ pre <- function(formula, data, family = gaussian,
 }
 
 
+
 get_modmat <- function(
   # Pass these if you already have an object
   modmat_formula = NULL, wins_points = NULL, x_scales = NULL,
   # These should be passed in all calls
-  formula, data, rules, type, winsfrac, x_names, normalize){
+  formula, data, rules, type, winsfrac, x_names, normalize) {
   if (miss_modmat_formula <- is.null(modmat_formula)) {
     #####
     # Need to define modemat
@@ -739,14 +741,19 @@ get_modmat <- function(
   # convert ordered categorical predictor variables to linear terms:
   data[,sapply(data, is.ordered)] <- # Needs to be called on the data.frame
     as.numeric(as.character(data[,sapply(data, is.ordered)]))
+  ## FIXME: problem with ordered variable may be due because data is used below 
+  ## to create a model frame in x <- model.matrix(modmat_formula, data = data)
+  ## To evaluate rules, should use variable as ordered factors
+  ## To create model frame, should use variable as numerical
+  ## Cannot be separated now, because whole model.matrix is created in single step x <- ...
   
   data <- model.frame(modmat_formula, data)
-  if(miss_modmat_formula)
-    modmat_formula <- terms(data) # save terms so model factor levels are keept
+  if (miss_modmat_formula) {
+    modmat_formula <- terms(data) # save terms so model factor levels are kept
+  }
   x <- model.matrix(modmat_formula, data = data)
   if (!is.null(rules)) {
-    colnames(x)[
-      (ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
+    colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
   }
   y <- model.response(data)
   
@@ -775,10 +782,10 @@ get_modmat <- function(
           x_idx <- which(
             which(attr(terms(data), "term.labels") == i) == 
               attr_x$assign)
-          if(length(x_idx) > 1) # User have made a one to many transformation
+          if (length(x_idx) > 1) { # User have made a one to many transformation
             next                # We do not winsorize in this case
-          
-          if(miss_wins_points){
+          }
+          if (miss_wins_points) {
             lim <- quantile(x[, x_idx], probs = c(winsfrac, 1 - winsfrac))
             wins_points$value[j] <- paste(lim[1], "<=", i, "<=", lim[2])
             wins_points$lb[j] <- lim[1]
@@ -951,7 +958,7 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
                   penalty.par.val = "lambda.1se", parallel = FALSE) {
   
   ## check if proper object argument is specified:
-  if(class(object) != "pre") {
+  if (class(object) != "pre") {
     stop("Argument 'object' should supply an object of class 'pre'")
   }
   
