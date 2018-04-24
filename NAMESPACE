@@ -33,10 +33,10 @@ import("glmnet")
 import("stats")
 import("graphics")
 import("partykit")
+import("rpart")
 
 
 
-importFrom("MatrixModels", "model.Matrix")
 importFrom("methods", "as")
 importFrom("utils", "head", "tail", "object.size")
 importFrom("earth", "earth")

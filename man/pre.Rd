@@ -8,8 +8,8 @@ pre(formula, data, family = gaussian, use.grad = TRUE, weights,
   type = "both", sampfrac = 0.5, maxdepth = 3L, learnrate = 0.01,
   mtry = Inf, ntrees = 500, removecomplements = TRUE,
   removeduplicates = TRUE, winsfrac = 0.025, normalize = TRUE,
-  standardize = FALSE, nfolds = 10L, verbose = FALSE, par.init = FALSE,
-  par.final = FALSE, tree.control, ...)
+  nfolds = 10L, tree.control, tree.unbiased = TRUE, verbose = FALSE,
+  par.init = FALSE, par.final = FALSE, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -28,11 +28,15 @@ be a factor for binary classification, numeric for (count) regression. Input
 variables must be of class numeric, factor or ordered factor.}
 
 \item{family}{specification of a glm family. Can be a character string (i.e., 
-\code{"gaussian"}, \code{"binomial"} or \code{"poisson"}) or a corresponding
-family object (see \code{\link[stats]{family}}. Specification is required only 
+\code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"multinomial"}, 
+or \code{"mgaussian"}) or a corresponding family object 
+(see \code{\link[stats]{family}}. Specification is required only 
 for non-negative count responses, e.g., \code{family = "poisson"}. Otherwise, 
-\code{family = "gaussian"} is employed if response is numeric and 
-\code{family = "binomial"} is employed if response is a binary factor.}
+\code{family = "gaussian"} is employed if response is numeric,  
+\code{family = "binomial"} is employed if response is a binary factor.
+\code{family ="multinomial"} is employed if a factor with > 2 levels, and
+\code{family = "mgaussian"} will be employed if multiple continuous response
+variables were specified.}
 
 \item{use.grad}{logical. Should binary outcomes use gradient boosting with 
 regression trees when \code{learnrate > 0}? That is, use 
@@ -55,7 +59,8 @@ rules only) or \code{"linear"} (linear functions only).}
 the fraction of randomly selected training observations used to produce each 
 tree. Values \eqn{< 1} will result in sampling without replacement (i.e., 
 subsampling), a value of 1 will result in sampling with replacement 
-(i.e., bootstrapping).}
+(i.e., bootstrapping). ALternatively, a sampling function may be supplied, 
+which should have argument \code{n} (sample size) and \code{weights}.}
 
 \item{maxdepth}{positive integer. Maximum number of conditions in a rule.}
 
@@ -67,7 +72,7 @@ creating each split in each tree.}
 \item{ntrees}{numeric. Number of trees to generate for the initial ensemble.}
 
 \item{removecomplements}{logical. Remove rules from the ensemble which have
-the same support in the training data as the inverse of other rules?}
+the same support in the training data as (1 - earlier rules)?}
 
 \item{removeduplicates}{logical. Remove rules from the ensemble which have 
 the exact same support in training data?}
@@ -82,29 +87,33 @@ regression model? Normalizing gives linear terms the same a priori influence
 as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
 SD.}
 
-\item{standardize}{logical. Should rules and linear terms be standardized to
-have SD equal to 1 before estimating the regression model? This will also 
-standardize the dummified factors, users are advised to use the default 
-\code{standardize = FALSE}.}
-
 \item{nfolds}{numeric. Number of cross-validation folds to be used for 
 selecting the optimal value of the penalty parameter \eqn{\lambda} in selecting
 the final ensemble.}
+
+\item{tree.control}{list with control parameters to be passed to the tree 
+fitting function, generated using \code{\link[partykit]{ctree_control}},
+\code{\link[partykit]{mob_control}} (if \code{use.grad = FALSE}), or 
+\code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}).}
+
+\item{tree.unbiased}{logical. Should an unbiased tree generation algorithm 
+be employed for rule generation? Defaults to \code{TRUE}, if set to 
+\code{FALSE}, rules will be generated employing the CART algorithm
+(which suffers from biased variable selection) as implemented in 
+\code{\link[rpart]{rpart}}.}
 
 \item{verbose}{logical. Should information on the initial and final ensemble 
 be printed to the command line?}
 
 \item{par.init}{logical. Should parallel foreach be used to generate initial 
-ensemble? Only used when \verb{learnrate == 0} and \code{family != "poisson"}. 
-Must register parallel beforehand, such as doMC or others.}
+ensemble? Only used when \verb{learnrate == 0}. Note: Must register parallel 
+beforehand, such as doMC or others. Furthermore, setting 
+\code{par.init = TRUE} will likely only increase computation time for smaller 
+datasets.}
 
 \item{par.final}{logical. Should parallel foreach be used to perform cross 
 validation for selecting the final ensemble? Must register parallel beforehand, 
 such as doMC or others.}
-
-\item{tree.control}{list with control parameters to be passed to the tree 
-fitting function, generated using \code{\link[partykit]{ctree_control}}, or 
-\code{\link[partykit]{mob_control}} if \code{use.grad = FALSE}.}
 
 \item{...}{Additional arguments to be passed to 
 \code{\link[glmnet]{cv.glmnet}}.}

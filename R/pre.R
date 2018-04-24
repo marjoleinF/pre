@@ -19,11 +19,15 @@ utils::globalVariables("%dopar%")
 #' be a factor for binary classification, numeric for (count) regression. Input
 #' variables must be of class numeric, factor or ordered factor.
 #' @param family specification of a glm family. Can be a character string (i.e., 
-#' \code{"gaussian"}, \code{"binomial"} or \code{"poisson"}) or a corresponding
-#' family object (see \code{\link[stats]{family}}. Specification is required only 
+#' \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"multinomial"}, 
+#' or \code{"mgaussian"}) or a corresponding family object 
+#' (see \code{\link[stats]{family}}. Specification is required only 
 #' for non-negative count responses, e.g., \code{family = "poisson"}. Otherwise, 
-#' \code{family = "gaussian"} is employed if response is numeric and 
-#' \code{family = "binomial"} is employed if response is a binary factor. 
+#' \code{family = "gaussian"} is employed if response is numeric,  
+#' \code{family = "binomial"} is employed if response is a binary factor.
+#' \code{family ="multinomial"} is employed if a factor with > 2 levels, and
+#' \code{family = "mgaussian"} will be employed if multiple continuous response
+#' variables were specified. 
 #' @param use.grad logical. Should binary outcomes use gradient boosting with 
 #' regression trees when \code{learnrate > 0}? That is, use 
 #' \code{\link[partykit]{ctree}} as in Friedman (2001), without the line search. 
@@ -42,7 +46,8 @@ utils::globalVariables("%dopar%")
 #' the fraction of randomly selected training observations used to produce each 
 #' tree. Values \eqn{< 1} will result in sampling without replacement (i.e., 
 #' subsampling), a value of 1 will result in sampling with replacement 
-#' (i.e., bootstrapping). 
+#' (i.e., bootstrapping). ALternatively, a sampling function may be supplied, 
+#' which should have argument \code{n} (sample size) and \code{weights}. 
 #' @param maxdepth positive integer. Maximum number of conditions in a rule.
 #' @param learnrate numeric. Learning rate or boosting parameter.
 #' @param mtry numeric. Number of randomly selected predictor variables for 
@@ -51,7 +56,7 @@ utils::globalVariables("%dopar%")
 #' @param removeduplicates logical. Remove rules from the ensemble which have 
 #' the exact same support in training data?
 #' @param removecomplements logical. Remove rules from the ensemble which have
-#' the same support in the training data as the inverse of other rules? 
+#' the same support in the training data as (1 - earlier rules)? 
 #' @param winsfrac numeric. Quantiles of data distribution to be used for 
 #' winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
 #' that ordinal variables are included as linear terms in estimating the
@@ -60,24 +65,28 @@ utils::globalVariables("%dopar%")
 #' regression model? Normalizing gives linear terms the same a priori influence 
 #' as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
 #' SD.
-#' @param standardize logical. Should rules and linear terms be standardized to
-#' have SD equal to 1 before estimating the regression model? This will also 
-#' standardize the dummified factors, users are advised to use the default 
-#' \code{standardize = FALSE}.
 #' @param nfolds numeric. Number of cross-validation folds to be used for 
 #' selecting the optimal value of the penalty parameter \eqn{\lambda} in selecting
 #' the final ensemble.
 #' @param verbose logical. Should information on the initial and final ensemble 
 #' be printed to the command line?
 #' @param par.init logical. Should parallel foreach be used to generate initial 
-#' ensemble? Only used when \verb{learnrate == 0} and \code{family != "poisson"}. 
-#' Must register parallel beforehand, such as doMC or others.
+#' ensemble? Only used when \verb{learnrate == 0}. Note: Must register parallel 
+#' beforehand, such as doMC or others. Furthermore, setting 
+#' \code{par.init = TRUE} will likely only increase computation time for smaller 
+#' datasets.
 #' @param par.final logical. Should parallel foreach be used to perform cross 
 #' validation for selecting the final ensemble? Must register parallel beforehand, 
 #' such as doMC or others.
 #' @param tree.control list with control parameters to be passed to the tree 
-#' fitting function, generated using \code{\link[partykit]{ctree_control}}, or 
-#' \code{\link[partykit]{mob_control}} if \code{use.grad = FALSE}.
+#' fitting function, generated using \code{\link[partykit]{ctree_control}},
+#' \code{\link[partykit]{mob_control}} (if \code{use.grad = FALSE}), or 
+#' \code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}).
+#' @param tree.unbiased logical. Should an unbiased tree generation algorithm 
+#' be employed for rule generation? Defaults to \code{TRUE}, if set to 
+#' \code{FALSE}, rules will be generated employing the CART algorithm
+#' (which suffers from biased variable selection) as implemented in 
+#' \code{\link[rpart]{rpart}}.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' @details Obervations with missing values will be removed prior to analysis.
@@ -122,17 +131,17 @@ pre <- function(formula, data, family = gaussian,
                 use.grad = TRUE, weights, type = "both", sampfrac = .5, 
                 maxdepth = 3L, learnrate = .01, mtry = Inf, ntrees = 500, 
                 removecomplements = TRUE, removeduplicates = TRUE, 
-                winsfrac = .025, normalize = TRUE, standardize = FALSE, 
-                nfolds = 10L, verbose = FALSE, par.init = FALSE, 
-                par.final = FALSE, tree.control, ...) { 
+                winsfrac = .025, normalize = TRUE, nfolds = 10L, 
+                tree.control, tree.unbiased = TRUE, verbose = FALSE, 
+                par.init = FALSE, par.final = FALSE, ...) { 
   
   
   #####################
   ## Check arguments ##
   #####################
   
-  ## TODO: allow for specification of additional cv.glmnet arguments through a list argument, instead of the dots
-  ## Then use do.call to evaluate cv.glmnet() call
+  ## Save call:
+  cl <- match.call()
   
   ## Check if proper formula argument is specified:
   if (!(inherits(formula, "formula"))) {
@@ -160,7 +169,7 @@ pre <- function(formula, data, family = gaussian,
     stop("Argument 'data' should specify a data frame.")
   }
 
-  ## Check if proper family argument is specified: 
+  ## Check and set up family argument: 
   if (is.function(family)) {family <- family()}
   if (inherits(family, "family")) {
     link <- family$link
@@ -173,11 +182,13 @@ pre <- function(formula, data, family = gaussian,
       warning("The link function specified is currently not supported; log link will be employed.", immediate. = TRUE)
     }
   }
-  
   if (is.character(family)) {
-    if (!all(family %in% c("gaussian", "binomial", "poisson"))) {
-      stop("Argument 'family' should be equal to 'gaussian', 'binomial' or 'poisson' or a corresponding family object.")
+    if (!any(family %in% c("gaussian", "binomial", "poisson", "mgaussian", "multinomial"))) {
+      stop("Argument 'family' should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian' or a corresponding family object.")
     }
+  }
+  if (family == "poisson" && use.grad && learnrate == 0) {
+    stop("Gradient boosting with a learning rate of zero cannot be employed with a poisson response distribution. Either set argument 'use.grad' to FALSE to employ function glmtree() for tree induction, or set argument 'learnrate' to a value >0 to employ function ctree() for tree induction.")
   }
   
   ## Check if proper use.grad argument is specified:
@@ -195,12 +206,11 @@ pre <- function(formula, data, family = gaussian,
   
   ## Check if proper type argument is specified:
   if (!(length(type) == 1 && type %in% c("rules", "both", "linear"))) {
-    stop("Argument 'type' should be 'both', 'rules' or 'linear'.")
+    stop("Argument 'type' should be 'rules', 'linear' or 'both'.")
   }
   
   ## Check if proper sampfrac argument is specified:
-  if (is.function(sampfrac)) {use_samp_func <- TRUE} else {
-    use_samp_func <- FALSE
+  if (!is.function(sampfrac)) {
     if (!(length(sampfrac) == 1 && is.numeric(sampfrac) && sampfrac > 0 && 
           sampfrac <= 1)) {
       stop("Argument 'sampfrac' should be a single numeric value > 0 and <= 1, or a sampling function.")
@@ -208,11 +218,19 @@ pre <- function(formula, data, family = gaussian,
   }
 
   ## Check if proper maxdepth argument is specified:
-  ## TODO: Allow maxdepth to be a random variable.
-  if (!(length(maxdepth) == 1 && maxdepth > 0 && 
-        (maxdepth == suppressWarnings(as.integer(maxdepth)) || 
-         is.infinite(maxdepth)))) {
-    stop("Argument 'maxdepth' should be a single integer value, or Inf.")
+  if (is.function(maxdepth)) {
+    maxdepth <- maxdepth(ntrees)
+  } else if (!is.numeric(maxdepth)) {
+    stop("Argument 'maxdepth' should be either a numeric vector of length 1 or ntrees, or a random number generating function.")
+  } else if (!(length(maxdepth) %in% c(1, ntrees))) {
+    warning("Argument 'maxdepth' should be either a numeric vector of length 1 or ntrees, only first value of maxdepth will be used")
+    maxdepth <- maxdepth[1]
+  } 
+  if (!all(maxdepth > 0)) {
+    stop("All values of maxdepth should be > 0")
+  } 
+  if (!all(maxdepth == suppressWarnings(as.integer(maxdepth)) | is.infinite(maxdepth))) {
+    stop("Argument 'maxdepth' should consist of  of integer values or Inf), or a random number generating function.")
   }
   
   ## Check if proper learnrate argument is specified:
@@ -253,10 +271,10 @@ pre <- function(formula, data, family = gaussian,
     stop("Argument 'normalize' should be TRUE or FALSE.")
   }  
   
-  ## Check if proper standardize argument is specified:
-  if (!(is.logical(standardize) && length(standardize) == 1)) {
-    stop("Argument 'standardize' should be TRUE or FALSE.")
-  }  
+  ## Check if 'standardize' argument (of glmnet) was called
+  if (is.null(cl$standardize)) {
+    standardize <- FALSE
+  }
   
   ## Check if proper nfolds argument is specified:
   if (!(length(nfolds) == 1 && is.numeric(nfolds) && nfolds > 0 &&
@@ -280,33 +298,57 @@ pre <- function(formula, data, family = gaussian,
 
   ## Check if proper tree.control argument is specified:
   if (missing(tree.control)) {
-    if (use.grad || !use_glmertree) {
-      tree.control <- ctree_control(maxdepth = maxdepth, mtry = mtry)
-    } else {
-      tree.control <- mob_control(maxdepth = maxdepth + 1, mtry = mtry)
+    if (tree.unbiased && (use.grad || !use_glmertree)) {
+      tree.control <- ctree_control(maxdepth = maxdepth[1], mtry = mtry)
+    } else if (tree.unbiased && !use.grad) {
+      tree.control <- mob_control(maxdepth = maxdepth[1] + 1, mtry = mtry)
+    } else if (!tree.unbiased){
+      tree.control <- rpart.control(maxdepth = maxdepth)
     }
   } else {
     if (!is.list(tree.control)) {
       stop("Argument 'tree.control' should be a list of control parameters.")
     }
-    if (use.grad) {
+    if (use.grad && tree.unbiased && !use_glmertree) {
       if (!all(sort(names(ctree_control())) == sort(names(tree.control)))) {
         stop("Argument 'tree.control' should be a list containing named elements", 
              names(ctree_control()))
       }
-    } else if (!all(sort(names(mob_control())) == sort(names(tree.control)))) {
-      stop("Argument 'tree.control' should be a list containing names elements", 
-           names(mob_control()))
+    } else if (!use.grad && tree.unbiased) { 
+      if (!all(sort(names(mob_control())) == sort(names(tree.control)))) {
+        stop("Argument 'tree.control' should be a list containing named elements", 
+             names(mob_control()))
+      }
+    } else if (!tree.unbiased) {
+      if(!all(sort(names(rpart.control())) == sort(names(tree.control)))) {
+        stop("Argument 'tree.control' should be a list containing names elements",
+             names(rpart.control()))
+      }
     }
-    tree.control$maxdepth <- maxdepth
-    tree.control$mtry <- mtry
+    if (use.grad) { ## if ctree or rpart are employed:
+      tree.control$maxdepth <- maxdepth[1]      
+    } else if (tree.unbiased) { ## if glmtree is employed:
+      tree.control$maxdepth <- maxdepth[1] + 1
+    }
+    if (tree.unbiased) {
+      tree.control$mtry <- mtry
+    } else if (mtry != Inf) {
+      warning("Argument 'tree.unbiased' was set to FALSE, so rpart is employed for tree induction, and value specified for 'mtry' will be ignored.")
+      mtry <- Inf
+    }
   }
   
   ## Check if proper verbose argument is specified:  
   if (!(is.logical(verbose) && length(verbose) == 1)) {
     stop("Argument 'verbose' should be TRUE or FALSE.")
   }  
+
+  ## check if proper tree.unbiased argument is specified:
+  if (!(is.logical(tree.unbiased) && length(tree.unbiased) == 1)) {
+    stop("Argument 'tree.unbiased' should be TRUE or FALSE.")
+  }
   
+
   
   
   ######################################
@@ -314,40 +356,89 @@ pre <- function(formula, data, family = gaussian,
   ######################################
   
   ## prepare model frame:
-  orig_data <- data
-  data <- model.frame(formula, data, na.action = NULL)
+  data <- model.frame(Formula::as.Formula(formula), data = data, na.action = NULL)
+  
+  ## prepare x_names and y_name:
   if (use_glmertree) {
-   x_names <-   all.vars(formula[[3]][[3]])
+    x_names <- all.vars(formula[[3]][[3]])
   } else {
     x_names <- attr(attr(data, "terms"), "term.labels")
   }
-  y_name <- names(data)[attr(attr(data, "terms"), "response")]
-  if (!use_glmertree) {
+  
+  if (family == "mgaussian" && length(all.vars(formula[[2]])) < 2) {
+    warning("Argument 'family' was set to 'mgaussian', but less than two response variables were specified.")
+  }
+  
+  if (family == "mgaussian" || length(all.vars(formula[[2]])) == 2) {
+    family <- "mgaussian"
+    y_name <- all.vars(formula[[2]])
+    if (any(grepl(".", y_name, fixed = TRUE))) {
+      warning("If a multivariate response is specified, the left-hand side of the formula should not include '.' .")
+    }
+    ## With MV response, responses are included as terms, should be omitted from x_names:
+    x_names <- x_names[!x_names %in% y_name]
+  } else { # a single response was specified
+    y_name <- names(data)[attr(attr(data, "terms"), "response")]
+  }
+
+  ## expand dot in formula, if present:
+  if (!(use_glmertree || family == "mgaussian")) {
     formula <- formula(data)
   }
   n <- nrow(data)
 
   ## check and set correct family:
-  if (!(is.numeric(data[,y_name]) | is.factor(data[,y_name]))) {
-    stop("Response variable should be of class numeric or factor.")
-  } else if (family[1] != "poisson") { # if family is gaussian or binomial:
-    family <- ifelse(is.numeric(data[,y_name]), "gaussian", "binomial")
-    if (verbose) {
-      cat(ifelse(family == "gaussian", 
-                 "A rule ensemble for prediction of a numeric response will be created.\n",
-                 "A rule ensemble for prediction of a binary categorical response will be created.\n"))
-    } 
-  } else if (verbose) { # if family is poisson:
-    cat("A rule ensemble for prediction of a count response will be created.\n")
+  if (length(y_name) == 1) {
+    if (is.factor(data[,y_name])) { # then family should be binomial or multinomial
+      if (nlevels(data[,y_name]) == 2) {
+        if (family[1] != "binomial") {
+          if (!is.null(cl$family)) {
+            warning("A binary factor was specified as the response variable, but argument 'family' was not set to 'binomial', but to ", family)
+          }
+          family <- "binomial"
+        }
+      } else if (nlevels(data[,y_name]) > 2) {
+        if(family[1] != "multinomial") {
+          if (!is.null(cl$family)) {
+            warning("A factor with > 2 levels was specified as the response variable, but argument 'family' was not set to 'multinomial' but to ", family)
+          }
+          family <- "multinomial"
+        }
+      }
+    } else if (is.numeric(data[,y_name])) { # then response should be numeric
+      if (family[1] %in% c("binomial", "multinomial")) {
+        warning("Argument 'formula' specified a numeric variable as the response, while 'family' was set to'", family, "; 'family' will be set to 'gaussian'.")
+        family <- "gaussian"
+      }
+    } else { # response is not a factor and not numeric
+      warning("The response variable specified through argument 'formula' should be numeric or factor.")
+    }
+  } else if (!all(apply(data[,y_name], 2, is.numeric))) { # response is multivariate and should be numeric
+    stop("Multiple response variables were specified, but not all were (but should be) numeric.")
   }
   
-  if (family == "binomial" && (nlevels(data[,y_name]) > 2)) {
-    stop("Factor response variables with > 2 levels are not (yet) supported.")
-  }
+  ## TODO: check specification of tree growing algorithms employed:
+  ##
+  ## if (use.grad && tree.unbiased), ctree is employed and 
+  ##  if learnrate == 0, family may be %in% c("guassian", "binomial", "mgaussian", "multinomial")
+  ##  if learnrate > 0, family may be %in% c("guassian", "binomial", "poisson", "mgaussian", "multinomial")
+  ##
+  ## if (!use.grad && tree.unbiased), (g)lmtree is employed and 
+  ## family may be %in% c("guassian", "binomial", "poisson"), irrespective of learnrate
+  ##
+  ## if (!use.grad && !tree.unbiased), rpart is employed and
+  ##  if learnrate == 0, family may be %in% c("gaussian", "binomial", "multinomial")
+  ##  if learnrate > 0, family may be %in% c("gaussian", "binomial", "poisson")
+  ##
+  
   
   if (any(sapply(data[,x_names], is.character))) {
-    stop("Variables specified in 'formula' and 'data' argument are of class character. Coerce to class 'numeric', 'factor' or 'ordered' 'factor':", paste(x_names[sapply(data[,x_names], is.character)], sep = ", "))
+    stop("Variables specified in 'formula' and 'data' argument are of class 'character'. Coerce to class 'numeric', 'factor' or 'ordered' 'factor':", paste(x_names[sapply(data[,x_names], is.character)], sep = ", "))
   }
+  
+  if (any(sapply(data[,x_names], is.logical))) {
+    stop("Variables specified in 'formula' and 'data' argument are of class 'logical'. Coerce to class 'numeric', 'factor' or 'ordered' 'factor':", paste(x_names[sapply(data[,x_names], is.character)], sep = ", "))
+  }  
   
   if (any(is.na(data))) {
     weights <- weights[complete.cases(data)]
@@ -355,316 +446,95 @@ pre <- function(formula, data, family = gaussian,
     n <- nrow(data)
     warning("Some observations have missing values and have been removed. New sample size is ", n, ".\n", immediate. = TRUE)
   }
-  
-  ## Prepare glm(er)tree arguments if necessary:
-  if (type != "linear") {
-    if (use_glmertree) {
-      glmertree_args <- mob_control(maxdepth = maxdepth + 1, mtry = mtry)
-      glmertree_args$formula <- formula
-      if (!family == "gaussian") {
-        glmertree_args$family <- family      
-      }
-    } else if (!use.grad) {
-      glmtree_args <- mob_control(maxdepth = maxdepth + 1, mtry = mtry)
-      glmtree_args$formula <- formula(paste(paste(y_name, " ~ 1 |"), 
-                                            paste(x_names, collapse = "+")))
-      if (!family == "gaussian") {
-        glmtree_args$family <- family      
-      }
+
+  if (verbose) {
+    if (family == "gaussian") {
+      cat("A rule ensemble for prediction of a continuous response will be created.\n")
+    } else if (family == "poisson") {     
+      cat("A rule ensemble for prediction of a count response will be created.\n")
+    } else if (family == "binomial") {
+      cat("A rule ensemble for prediction of a binary categorical response will be created.\n")
+    } else if (family == "multinomial") {
+      cat("A rule ensemble for prediction of a categorical response with > 2 levels will be created.\n")
+    } else if (family == "mgaussian") {
+      cat("A rule ensemble for prediction of multivariate continyous response will be created.\n")
     }
   }
+  
     
-
   #############################
   ## Derive prediction rules ##
   #############################
   
-  if (type != "linear") {
-    if (learnrate == 0) {
-      if (par.init) { # compute in parallel:
-        ## TODO: ALlow for passing ids so results are replicable
-        rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
-          # Take subsample of dataset
-          if(use_samp_func) {
-            subsample <- sampfrac() 
-          } else {
-            if (sampfrac == 1) { # then bootstrap
-              subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-            } else if (sampfrac < 1) { # else subsample
-              subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                  prob = weights)
-            }
-          }
-          # Grow tree on subsample:
-          if (use_glmertree) {
-            ## Add subsample to call:
-            glmertree_args$data <- data[subsample, ]
-            ## Fit tree:
-            if (family == "gaussian") {
-              tree <- do.call(glmertree::lmertree, args = glmertree_args)$tree
-            } else {
-              tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
-            }
-          } else if (use.grad) {
-            if (family == "poisson") {
-              stop("Gradient boosting with a learning rate of zero cannot be used for a poisson response distribution. Either set argument 'use.grad' to FALSE to employ function glmtree() for tree induction, or set argument 'learnrate' to a value >0 to employ function ctree() for tree induction.")
-            } else {
-              tree <- ctree(formula = formula, data = data[subsample, ], 
-                            control = tree.control)
-            }
-          } else {
-            glmtree_args$data <- data[subsample, ]
-            tree <- do.call(glmtree, args = glmtree_args)
-          }
-          # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
-        }
-      } else { # do not compute in parallel:
-        rules <- c()
-        for(i in 1:ntrees) {
-          # Take subsample of dataset:
-          if(use_samp_func) {
-            subsample <- sampfrac() 
-          } else {
-            if (sampfrac == 1) { # then bootstrap
-              subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-            } else if (sampfrac < 1) { # else subsample
-              subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                  prob = weights)
-            }
-          }
-          # Grow tree on subsample:
-          if (use_glmertree) {
-            ## Add subsample to call:
-            glmertree_args$data <- data[subsample, ]
-            ## Fit tree:
-            if (family == "gaussian") {
-              tree <- do.call(glmertree::lmertree, args = glmertree_args)$tree
-            } else {
-              tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
-            }
-          } else if (use.grad) {
-            if (family == "poisson") {
-              stop("Gradient boosting with a learning rate of zero cannot be used for a poisson response distribution. Either set argument 'use.grad' to FALSE to employ function glmtree() for tree induction, or set argument 'learnrate' to a value >0 to employ function ctree() for tree induction.")
-            } else {
-              tree <- ctree(formula = formula, data = data[subsample, ], 
-                            control = tree.control)
-            }
-          } else {
-            glmtree_args$data <- data[subsample, ]
-            if (family == "gaussian") {
-              tree <- do.call(lmtree, args = glmtree_args)      
-            } else {
-              tree <- do.call(glmtree, args = glmtree_args) 
-            }
-          }
-          # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
-        }
-      }
-    } else { # learnrate > 0, no parallel computation possible:
-      
-      rules <- c() # initialize with empty rule vector
-      
-      if (use.grad) { ## use ctrees with y_learn and eta:
-        
-        data_with_y_learn <- data
-        
-        ## set initial eta value:
-        if (family == "gaussian") {
-          y <- data[[y_name]]
-          eta_0 <- weighted.mean(y, weights)
-          eta <- rep(eta_0, length(y))
-          data_with_y_learn[[y_name]] <- y - eta
-        } else if (family == "binomial") {
-          y <- data[[y_name]] == levels(data[[y_name]])[1]
-          eta_0 <- get_intercept_logistic(y, weights)
-          eta <- rep(eta_0, length(y))
-          p_0 <- 1 / (1 + exp(-eta))
-          data_with_y_learn[[y_name]] <- ifelse(y, log(p_0), log(1 - p_0))
-        } else if (family == "poisson") {
-          y <- data[[y_name]] 
-          eta_0 <- get_intercept_count(y, weights)
-          eta <- rep(eta_0, length(y))
-          data_with_y_learn[[y_name]] <- y - exp(eta)
-        }
-        
-        ## grow trees:
-        for(i in 1:ntrees) {
-          # Take subsample of dataset:
-          if(use_samp_func) {
-            subsample <- sampfrac() 
-          } else {
-            if (sampfrac == 1) { # then bootstrap
-              subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-            } else if (sampfrac < 1) { # else subsample
-              subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                  prob = weights)
-            }
-          }
-          # Grow tree on subsample:
-          tree <- ctree(formula = formula, control = tree.control,
-                        data = data_with_y_learn[subsample, ])
-          # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
-          
-          ## Update eta and y_learn:
-          eta <- eta + learnrate * predict(tree, newdata = data)
-          if (family == "gaussian") {
-            data_with_y_learn[[y_name]] <- y - eta
-          } else if ( family == "binomial") {
-            data_with_y_learn[[y_name]] <- get_y_learn_logistic(eta, y)
-          } else if (family == "poisson") {
-            data_with_y_learn[[y_name]] <- get_y_learn_count(eta, y)
-          }
-        }
-        
-      } else { ## use.grad = FALSE, so use glmtrees with offset:
-        
-        ## initialize with 0 offset:
-        offset <- rep(0, times = nrow(data))
-
-        for(i in 1:ntrees) {
-          # Take subsample of dataset:
-          if(use_samp_func) {
-            subsample <- sampfrac() 
-          } else {
-            if (sampfrac == 1) { # then bootstrap
-              subsample <- sample(1:n, size = n, replace = TRUE, prob = weights)
-            } else if (sampfrac < 1) { # else subsample
-              subsample <- sample(1:n, size = round(sampfrac * n), replace = FALSE, 
-                                  prob = weights)
-            }
-          }
-          glmtree_args$data <- data[subsample,]
-          glmtree_args$offset <- offset[subsample] 
-          # Grow tree on subsample:
-          glmtree_args$data <- data[subsample, ]
-          if (family == "gaussian") {
-            tree <- do.call(lmtree, args = glmtree_args)      
-          } else {
-            tree <- do.call(glmtree, args = glmtree_args) 
-          }
-          # Collect rules from tree:
-          rules <- c(rules, list.rules(tree))
-          # Update offset (note: do not use a dataset which includes the offset for prediction!):
-          if (learnrate > 0) {
-            if (family == "gaussian") {
-              offset <- offset + learnrate * 
-                suppressWarnings(predict(tree, newdata = data))
-            } else {
-              offset <- offset + learnrate * 
-                suppressWarnings(predict(tree, newdata = data, type = "link"))
-            }
-          }
-        }
-      }
+  if (type == "linear") {
+    rules <- NULL
+  } else {
+    if (use_glmertree) {
+      pre_rules <- mixed_effects_rule_learner(formula = formula, 
+                                data = data,
+                                y_name = y_name,
+                                x_names = x_names,
+                                learnrate = learnrate, 
+                                par.init = par.init, 
+                                sampfrac = sampfrac, 
+                                n = n, 
+                                mtry = mtry,
+                                weights = weights, 
+                                ntrees = ntrees, 
+                                tree.control = tree.control, 
+                                maxdepth = maxdepth,
+                                use.grad = use.grad, 
+                                family = family, 
+                                verbose = verbose, 
+                                removeduplicates = removeduplicates, 
+                                removecomplements = removecomplements)
+    } else {
+      pre_rules <- rule_learner(formula = formula, 
+                                data = data,
+                                y_name = y_name,
+                                x_names = x_names,
+                                learnrate = learnrate, 
+                                par.init = par.init, 
+                                sampfrac = sampfrac, 
+                                n = n, 
+                                mtry = mtry,
+                                maxdepth = maxdepth,
+                                weights = weights, 
+                                ntrees = ntrees, 
+                                tree.control = tree.control, 
+                                use.grad = use.grad, 
+                                family = family, 
+                                verbose = verbose, 
+                                removeduplicates = removeduplicates, 
+                                removecomplements = removecomplements,
+                                tree.unbiased = tree.unbiased)
     }
-    
-    # Keep unique, non-empty rules only:
-    rules <- unique(rules[!rules==""])
-    if (verbose) {
-      cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
-    }
-    # Create dataframe with 0-1 coded rules:
-    if (length(rules) > 0) {
-      n_rules <- length(rules)
-      rulevars <- matrix(
-        NA, nrow = nrow(data), ncol = n_rules, 
-        dimnames = list(NULL, paste0("rule", 1:n_rules)))
-      names(rules) <- colnames(rulevars)
-      
-      for(i in 1:n_rules) {
-        rulevars[, i] <- with(data, eval(parse(text = rules[[i]])))
-      }
-      
-      if (removeduplicates) {
-        # Remove rules with identical support:
-        duplicates <- duplicated(rulevars, MARGIN = 2)
-        duplicates.removed <- data.frame(name = colnames(rulevars)[duplicates],
-                                         description = rules[duplicates])
-        rulevars <- rulevars[, !duplicates, drop = FALSE]
-        rules <- rules[!duplicates]
-      }
-      
-      if (removecomplements) { 
-        # remove rules with complement support:
-        sds <- apply(rulevars, 2, sd)
-        sds_distinct <- 
-          sapply(unique(sds), function(x) c(x, sum(sds == x)))
-        
-        complements <- vector(mode = "logical", length(sds))
-        for(i in 1:ncol(sds_distinct)){
-          if(sds_distinct[2, i] < 2)
-            next
-          
-          indices <- which(sds == sds_distinct[1, i])
-          for(j in 2:length(indices)){
-            indices_prev <- indices[1:(j - 1)] 
-            complements[indices_prev] <- 
-              complements[indices_prev] | apply(
-                rulevars[, indices_prev, drop = F] != rulevars[, indices[j]], 2, all)
-          }
-        }
-        
-        complements <- which(complements)
-        complements.removed <- data.frame(name = colnames(rulevars)[complements],
-                                          description = rules[complements])
-        if(length(complements) > 0){
-          rulevars <- rulevars[, -complements, drop = FALSE]
-          rules <- rules[-complements]
-        }
-      }
-      
-      if(!exists("complements.removed", inherits = FALSE))
-        complements.removed <- NULL
-      if(!exists("duplicates.removed", inherits = FALSE))
-        duplicates.removed <- NULL
-      
-      if (verbose && (removeduplicates|| removecomplements)) {
-        cat("\n\nA total of", sum(duplicates) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
-      }
-      
-      if (verbose) {
-        cat("\n\nAn initial ensemble consisting of", ncol(rulevars), "rules was succesfully created.")  
-      }
-      storage.mode(rulevars) <- "integer"
-      rulevars <- data.frame(rulevars)
-    }
-    # again check if rules were generated:
-    if (length(rules) == 0) {
-      warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
-      rules <- rulevars <- NULL
-    }
+    rules <- pre_rules$rules
   }
-  
-  if (type == "linear") {rules <- rulevars <- NULL}
-  
-  
-  
-  
+
   #########################################################################
   ## Prepare rules, linear terms, outcome variable and perform selection ##
   #########################################################################
   
   if (type == "rules" && length(rules) == 0) {
-    warning("No prediction rules could be derived from dataset.")
+    warning("No prediction rules could be derived from the data.")
     return(NULL)
   }
   
   ## Prepare right formula if glmertree was used for tree induction
   if (use_glmertree) {
-    glmnet_f <- as.formula(paste(formula[[2]], formula[[1]], paste(x_names, collapse = "+")))
+    modmat_f <- as.formula(paste(formula[[2]], formula[[1]], paste(x_names, collapse = "+")))
   } else {
-    glmnet_f <- formula
+    modmat_f <- formula
   }
   modmat_data <- get_modmat(
-    formula = glmnet_f, 
+    formula = modmat_f, 
     data = data, 
     rules = rules, 
     type = type, 
     winsfrac = winsfrac, 
-    x_names = x_names, 
+    x_names = x_names,
+    y_name = y_name,
     normalize = normalize)
   y <- modmat_data$y
   x <- modmat_data$x
@@ -700,19 +570,20 @@ pre <- function(formula, data, family = gaussian,
         glmnet.fit$nzero[l1se_ind], "\n  mean cv error (se) = ", 
         glmnet.fit$cvm[l1se_ind], " (", glmnet.fit$cvsd[l1se_ind], ")\n", sep="")
   }
-  result <- list(glmnet.fit = glmnet.fit, call = match.call(), weights = weights, 
+  result <- list(glmnet.fit = glmnet.fit, call = cl, weights = weights, 
                  data = data, normalize = normalize, x_scales = x_scales, 
                  type = type, x_names = x_names, y_name = y_name, 
                  modmat = x, modmat_formula = modmat_formula, 
                  wins_points = wins_points,
-                 family = family, formula = formula, orig_data = orig_data)
-  if (type != "linear" & length(rules) > 0 & length(names(rulevars)) > 0) {
-    result$complements.removed <- complements.removed
-    result$duplicates.removed <- duplicates.removed
-    result$rules <- data.frame(rule = names(rulevars), description = rules, 
+                 family = family, formula = formula)
+  if (type != "linear" & length(rules) > 0) {
+    result$complements.removed <- pre_rules$complements.removed
+    result$duplicates.removed <- pre_rules$duplicates.removed
+    result$rules <- data.frame(rule = names(rules), 
+                               description = rules, 
                                stringsAsFactors = FALSE)
-    result$rulevars <- rulevars 
   } 
+  
   class(result) <- "pre"
   return(result)
 }
@@ -721,13 +592,14 @@ pre <- function(formula, data, family = gaussian,
 
 get_modmat <- function(
   # Pass these if you already have an object
-  modmat_formula = NULL, wins_points = NULL, x_scales = NULL,
+  modmat_formula = NULL, wins_points = NULL, x_scales = NULL, y_name = NULL,
   # These should be passed in all calls
   formula, data, rules, type, winsfrac, x_names, normalize) {
+  
   if (miss_modmat_formula <- is.null(modmat_formula)) {
     #####
-    # Need to define modemat
-    str_terms <- if(type != "rules" || is.null(rules)) x_names else character()
+    # Need to define modmat
+    str_terms <- if (type != "rules" || is.null(rules)) x_names else character()
     if (type != "linear" && !is.null(rules)) {
       str_terms <- c(str_terms, paste0("I(", rules, ")"))
     }
@@ -747,15 +619,29 @@ get_modmat <- function(
   ## To create model frame, should use variable as numerical
   ## Cannot be separated now, because whole model.matrix is created in single step x <- ...
   
-  data <- model.frame(modmat_formula, data)
-  if (miss_modmat_formula) {
-    modmat_formula <- terms(data) # save terms so model factor levels are kept
+  if (length(y_name) > 1) { # multivariate response has been supplied
+    modmat_formula <- Formula(modmat_formula)
+    data <- model.frame(modmat_formula, data)
+    ## Next part is skipped, it may yield trouble becuase of how multivariate outcomes are represented:
+    #if (miss_modmat_formula) {
+    #  modmat_formula <- terms(data) # save terms so model factor levels are kept
+    #}
+    x <- model.matrix(modmat_formula, data = data)
+    if (!is.null(rules)) {
+      colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
+    }
+    y <- as.matrix(data[,y_name])
+  } else { # univariate response has been supplied
+    data <- model.frame(modmat_formula, data)
+    if (miss_modmat_formula) {
+      modmat_formula <- terms(data) # save terms so model factor levels are kept
+    }
+    x <- model.matrix(modmat_formula, data = data)
+    if (!is.null(rules)) {
+      colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
+    }
+    y <- model.response(data)
   }
-  x <- model.matrix(modmat_formula, data = data)
-  if (!is.null(rules)) {
-    colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
-  }
-  y <- model.response(data)
   
   #####
   # Remove intercept
@@ -765,7 +651,9 @@ get_modmat <- function(
   attr_x$assign <- attr_x$assign[-1]
   x <- x[, colnames(x) != "(Intercept)"]
   
-  if(type != "rules"){
+  #####
+  # Perform winsorizing and normalizing
+  if(type != "rules") {
     #####
     # if type is not rules, linear terms should be prepared:
     
@@ -805,7 +693,7 @@ get_modmat <- function(
     if (normalize) { 
       # Normalize linear terms (section 5 of F&P08), if there are any:
       needs_scaling <- x_names[sapply(data[x_names], # use data as it is un-transformed 
-                                       is.numeric)]
+                                      is.numeric)]
       needs_scaling <- which(colnames(x) %in% x_names)
       if (length(needs_scaling) > 0) {
         if (is.null(x_scales)) {
@@ -826,6 +714,471 @@ get_modmat <- function(
   list(x = x, y = y, modmat_formula = modmat_formula, 
        x_scales = x_scales, wins_points = wins_points)
 }
+
+
+
+
+## Rule learner for pre:
+rule_learner <- function(formula, data, y_name, x_names, 
+                         learnrate = .01, par.init = FALSE, sampfrac = .5, 
+                         n = nrow(data), weights = rep(1, nrow(data)),
+                         mtry = Inf, maxdepth = 3L,
+                         ntrees = 500, tree.control = ctree_control(), 
+                         use.grad = TRUE, family = "gaussian", verbose = FALSE, 
+                         removeduplicates = TRUE, removecomplements = TRUE,
+                         tree.unbiased = TRUE, return.dupl.compl = TRUE) {
+  
+  ## Prepare glmtree arguments, if necessary:
+  if (!use.grad && tree.unbiased) {
+    glmtree_args <- mob_control(maxdepth = maxdepth[1] + 1, mtry = mtry)
+    glmtree_args$formula <- formula(paste(paste(y_name, " ~ 1 |"), 
+                                          paste(x_names, collapse = "+")))
+    if (!family == "gaussian") {
+      glmtree_args$family <- family      
+    }
+  } else {
+    glmtree_args <- NULL
+  }
+
+  ## Set up subsamples (outside of the loop):
+  subsample <- list()
+  for (i in 1:ntrees) {
+    if (is.function(sampfrac)) {
+      subsample[[i]] <- sampfrac(n = n, weights = weights)
+    }
+    else if (sampfrac == 1) {
+      subsample[[i]] <- sample(1:n, size = n, replace = TRUE, 
+                               prob = weights)
+    }
+    else if (sampfrac < 1) {
+      subsample[[i]] <- sample(1:n, size = round(sampfrac * n), 
+                               replace = FALSE, prob = weights)
+    }
+  }  
+  
+  ## Grow trees:
+  if (learnrate == 0) {
+    
+    ## Set up rule learning function:
+    fit_tree_return_rules <- function(formula, data, family = NULL, 
+                                      use.grad = TRUE, tree.unbiased = TRUE,
+                                      glmtree_args = NULL, tree.control = NULL) {
+      if (tree.unbiased) {
+        if (use.grad) { # employ ctree
+          tree <- ctree(formula = formula, data = data, control = tree.control)
+          return(list.rules(tree))
+        } else { # employ (g)lmtree
+          glmtree_args$data <- data
+          if (family == "gaussian") {
+            tree <- do.call(lmtree, args = glmtree_args)
+          } else {
+            tree <- do.call(glmtree, args = glmtree_args)
+          }
+          return(list.rules(tree))
+        }
+      } else { # employ rpart
+        tree <- rpart(formula = formula, data = data, control = tree.control)
+        paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE)
+        return(unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1]))
+      }
+    }
+    
+    if (par.init) { # compute in parallel:
+      rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
+        
+        if (length(maxdepth) > 1) {
+          if (use.grad) {
+            tree.control$maxdepth <- maxdepth[i]
+          } else if (tree.unbiased) {
+            glmtree_args$maxdepth <- maxdepth[i] + 1
+          }
+        }
+        fit_tree_return_rules(data[subsample[[i]], ], formula = formula, family = family,
+                              use.grad = use.grad, tree.unbiased = tree.unbiased, 
+                              glmtree_args = glmtree_args, tree.control = tree.control)
+      }
+      
+    } else { # compute serial:
+      
+      rules <- c()
+      for (i in 1:ntrees) {
+        
+        if (length(maxdepth) > 1) {
+          if (use.grad) {
+            tree.control$maxdepth <- maxdepth[i]
+          } else if (tree.unbiased) {
+            glmtree_args$maxdepth <- maxdepth[i] + 1
+          }
+        }
+        rules <- c(rules, 
+                   fit_tree_return_rules(data[subsample[[i]], ], 
+                                         formula = formula, 
+                                         family = family, 
+                                         use.grad = use.grad, 
+                                         tree.unbiased = tree.unbiased, 
+                                         glmtree_args = glmtree_args, 
+                                         tree.control = tree.control))
+        
+      }
+    }
+  
+  } else { # learnrate > 0:
+    
+    rules <- c() # initialize with empty rule vector
+    
+    if (use.grad) { ## use ctrees with y_learn and eta:
+      
+      data_with_y_learn <- data
+      ## set initial y and eta value:
+      if (family == "gaussian") {
+        y <- data[[y_name]]
+        eta_0 <- weighted.mean(y, weights)
+        eta <- rep(eta_0, length(y))
+        data_with_y_learn[[y_name]] <- y - eta
+      } else if (family == "binomial") {
+        y <- data[[y_name]] == levels(data[[y_name]])[1]
+        eta_0 <- get_intercept_logistic(y, weights)
+        eta <- rep(eta_0, length(y))
+        p_0 <- 1 / (1 + exp(-eta))
+        data_with_y_learn[[y_name]] <- ifelse(y, log(p_0), log(1 - p_0))
+      } else if (family == "poisson") {
+        y <- data[[y_name]] 
+        eta_0 <- get_intercept_count(y, weights)
+        eta <- rep(eta_0, length(y))
+        data_with_y_learn[[y_name]] <- y - exp(eta)
+      } else if (family == "multinomial") {
+        y <- data[y_name]
+        ## create dummy variables:
+        y <- model.matrix(as.formula(paste0(" ~ ", y_name, " - 1")), data = y)
+        ## adjust formula used by ctree to involve multiple response variables:
+        formula_multinomial <- as.formula(paste(paste(colnames(y), collapse = " + "), 
+                                          "~", 
+                                          paste(x_names, collapse = " + ")))
+        ## get y_learn:
+        eta_0 <- get_intercept_multinomial(y, weights)
+        eta <- t(replicate(n = nrow(y), expr = eta_0))
+        p_0 <- 1 / (1 + exp(-eta))
+        for (i in 1:ncol(y)) {
+          y[,i] <- ifelse(y[,i] == 1, log(p_0[,i]), log(1 - p_0[,i]))
+        }
+        ## omit original response and include dummy-coded response in data:
+        data_with_y_learn <- cbind(data[,-which(names(data)== y_name)], y)
+        multinomial_y_names <- names(y)
+      } else if (family == "mgaussian") {
+        y <- data[,y_name]
+        eta_0 <- apply(y, 2, weighted.mean, weights = rep(1, nrow(y)))
+        eta <- t(replicate(n = nrow(y), expr = eta_0))
+        data_with_y_learn[,y_name] <- y - eta
+      }
+
+      for(i in 1:ntrees) {
+
+        if (length(maxdepth) > 1) {
+          tree.control$maxdepth <- maxdepth[i]
+        }
+        # Grow tree on subsample:
+        if (family == "multinomial") {
+          tree <- ctree(formula_multinomial, control = tree.control,
+                        data = data_with_y_learn[subsample[[i]], ])
+        } else {
+          tree <- ctree(formula, control = tree.control,
+                        data = data_with_y_learn[subsample[[i]], ])
+        }
+        # Collect rules:
+        rules <- c(rules, list.rules(tree))
+        
+        ## Update eta and y_learn:
+        eta <- eta + learnrate * predict(tree, newdata = data)
+        if (family == "gaussian") {
+          data_with_y_learn[[y_name]] <- y - eta
+        } else if (family == "binomial") {
+          data_with_y_learn[[y_name]] <- get_y_learn_logistic(eta, y)
+        } else if (family == "poisson") {
+          data_with_y_learn[[y_name]] <- get_y_learn_count(eta, y)
+        } else if (family == "multinomial") {
+          data_with_y_learn[,multinomial_y_names] <- get_y_learn_multinomial(eta, y)  
+        } else if (family == "mgaussian") {
+          data_with_y_learn[,y_name] <- y - eta
+        }
+      }
+      
+    } else { ## use.grad is FALSE, employ (g)lmtrees with offset:
+      
+      ## initialize with 0 offset:
+      offset <- rep(0, times = nrow(data))
+      
+      for(i in 1:ntrees) {
+        
+        # Take subsample of dataset:
+        glmtree_args$data <- data[subsample[[i]],]
+        glmtree_args$offset <- offset[subsample[[i]]] 
+        if (length(maxdepth) > 1) {
+          glmtree_args$maxdepth <- maxdepth[i] + 1
+        }
+        # Grow tree on subsample:
+        if (family == "gaussian") {
+          tree <- do.call(lmtree, args = glmtree_args)      
+        } else {
+          tree <- do.call(glmtree, args = glmtree_args) 
+        }
+        # Collect rules:
+        rules <- c(rules, list.rules(tree))
+        # Update offset (note: do not use a dataset which includes the offset for prediction!!!):
+        if (learnrate > 0) {
+          if (family == "gaussian") {
+            offset <- offset + learnrate * 
+              suppressWarnings(predict(tree, newdata = data))
+          } else {
+            offset <- offset + learnrate * 
+              suppressWarnings(predict(tree, newdata = data, type = "link"))
+          }
+        }
+      }
+    }
+  }
+  
+  # Keep unique, non-empty rules only:
+  rules <- unique(rules[!rules==""])
+  if (verbose) {
+    cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
+  }
+  
+  # Create matrix with 0-1 coded rules:
+  if (length(rules) > 0) {
+    n_rules <- length(rules)
+    rulevars <- matrix(
+      NA, nrow = nrow(data), ncol = n_rules, 
+      dimnames = list(NULL, paste0("rule", 1:n_rules)))
+    names(rules) <- colnames(rulevars)
+    
+    for(i in 1:n_rules) {
+      rulevars[, i] <- with(data, eval(parse(text = rules[[i]])))
+    }
+    
+    if (removeduplicates) {
+      # Remove rules with identical support:
+      duplicates <- duplicated(rulevars, MARGIN = 2)
+      duplicates.removed <- rules[duplicates]
+      rulevars <- rulevars[, !duplicates, drop = FALSE]
+      rules <- rules[!duplicates]
+    }
+    
+    if (removecomplements) { 
+      # remove rules with complement support:
+      sds <- apply(rulevars, 2, sd)
+      sds_distinct <- 
+        sapply(unique(sds), function(x) c(x, sum(sds == x)))
+      
+      complements <- vector(mode = "logical", length(sds))
+      for(i in 1:ncol(sds_distinct)){
+        if(sds_distinct[2, i] < 2)
+          next
+        
+        indices <- which(sds == sds_distinct[1, i])
+        for(j in 2:length(indices)){
+          indices_prev <- indices[1:(j - 1)] 
+          complements[indices_prev] <- 
+            complements[indices_prev] | apply(
+              rulevars[, indices_prev, drop = F] != rulevars[, indices[j]], 2, all)
+        }
+      }
+      
+      complements <- which(complements)
+      complements.removed <- rules[complements]
+      if(length(complements) > 0){
+        rulevars <- rulevars[, -complements, drop = FALSE]
+        rules <- rules[-complements]
+      }
+    }
+    
+    if(!exists("complements.removed", inherits = FALSE))
+      complements.removed <- NULL
+    if(!exists("duplicates.removed", inherits = FALSE))
+      duplicates.removed <- NULL
+    
+    if (verbose && (removeduplicates || removecomplements)) {
+      cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
+    }
+    
+    if (verbose) {
+      cat("\n\nAn initial ensemble consisting of", length(rules), "rules was succesfully created.")  
+    }
+    
+  }
+  # again check if rules were generated:
+  if (length(rules) == 0) {
+    warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
+    rules <- NULL
+  }
+  
+  if (return.dupl.compl) {
+    result <- list(rules = rules, 
+                   duplicates.removed = duplicates.removed, 
+                   complements.removed = complements.removed)
+  } else {
+    rules
+  }
+  return(result)
+}
+
+
+
+
+mixed_effects_rule_learner <- function(formula, data, family = "gaussian", 
+                                       y_name, x_names, learnrate = .01, 
+                                       sampfrac = .5, n = nrow(data), 
+                                       weights = rep(1, nrow(data)), 
+                                       mtry = Inf, maxdepth = 3L, ntrees = 500,
+                                       tree.control = ctree_control(mtry = mtry, maxdepth = maxdepth[1]), 
+                                       use.grad = TRUE, verbose = FALSE, 
+                                       removeduplicates = TRUE, 
+                                       removecomplements = TRUE, 
+                                       par.init = FALSE) {
+  
+  ## Prepare arguments:
+  glmertree_args <- tree.control    
+  glmertree_args$formula <- formula
+  if (family != "gaussian") {
+    glmertree_args$family <- family      
+  }
+  
+  ## TODO: Allow for boosting, maybe allow for applying learnrate to the mixed- or only fixed-effects predictions
+  
+  ## Setup samples:
+  subsample <- list()
+  for (i in 1:ntrees) {
+    if(is.function(sampfrac)) {
+      subsample[[i]] <- sampfrac(n = n, weights = weights) 
+    } else if (sampfrac == 1) { # then bootstrap
+      subsample[[i]] <- sample(1:n, size = n, replace = TRUE, prob = weights)
+    } else if (sampfrac < 1) { # else subsample
+      subsample[[i]] <- sample(1:n, size = sampfrac*n, replace = FALSE, prob = weights)
+    }
+  }
+  
+  rules <- c()
+  
+  if (par.init) { # compute in parallel:
+    
+    rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
+      
+      # Prepare call:
+      glmertree_args$data <- data[subsample[[i]], ]
+      if (length(maxdepth) > 1) {
+        glmertree_args$maxdepth <- maxdepth[i] + 1        
+      }
+      # Fit tree:
+      if (family == "gaussian") {
+        tree <- do.call(glmertree::lmertree, args = glmertree_args)$tree
+      } else {
+        tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
+      }
+      # Collect rules:
+      list.rules(tree)
+        
+    } 
+  } else { # do not compute in parallel:
+      
+    rules <- c()
+    for (i in 1:ntrees) {
+
+      # prepare call:
+      glmertree_args$data <- data[subsample[[i]], ]
+      if (length(maxdepth) > 1) {
+        glmertree_args$maxdepth <- maxdepth[i] + 1        
+      }
+      # Fit tree:
+      if (family == "gaussian") {
+        tree <- do.call(glmertree::lmertree, args = glmertree_args)$tree
+      } else {
+        tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
+      }
+      # Collect rules:
+      rules <- c(rules, list.rules(tree))
+    
+    }
+  } 
+    
+  # Keep unique, non-empty rules only:
+  rules <- unique(rules[!rules==""])
+  if (verbose) {
+    cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
+  }
+  
+  # Create matrix with 0-1 coded rules:
+  if (length(rules) > 0) {
+    n_rules <- length(rules)
+    rulevars <- matrix(
+      NA, nrow = nrow(data), ncol = n_rules, 
+      dimnames = list(NULL, paste0("rule", 1:n_rules)))
+    names(rules) <- colnames(rulevars)
+    
+    for(i in 1:n_rules) {
+      rulevars[, i] <- with(data, eval(parse(text = rules[[i]])))
+    }
+    
+    if (removeduplicates) {
+      # Remove rules with identical support:
+      duplicates <- duplicated(rulevars, MARGIN = 2)
+      duplicates.removed <- rules[duplicates]
+      rulevars <- rulevars[, !duplicates, drop = FALSE]
+      rules <- rules[!duplicates]
+    }
+    
+    if (removecomplements) { 
+      # remove rules with complement support:
+      sds <- apply(rulevars, 2, sd)
+      sds_distinct <- 
+        sapply(unique(sds), function(x) c(x, sum(sds == x)))
+      
+      complements <- vector(mode = "logical", length(sds))
+      for(i in 1:ncol(sds_distinct)){
+        if(sds_distinct[2, i] < 2)
+          next
+        
+        indices <- which(sds == sds_distinct[1, i])
+        for(j in 2:length(indices)){
+          indices_prev <- indices[1:(j - 1)] 
+          complements[indices_prev] <- 
+            complements[indices_prev] | apply(
+              rulevars[, indices_prev, drop = F] != rulevars[, indices[j]], 2, all)
+        }
+      }
+      
+      complements <- which(complements)
+      complements.removed <- rules[complements]
+      if(length(complements) > 0){
+        #rulevars <- rulevars[, -complements, drop = FALSE]
+        rules <- rules[-complements]
+      }
+    }
+    
+    if(!exists("complements.removed", inherits = FALSE))
+      complements.removed <- NULL
+    if(!exists("duplicates.removed", inherits = FALSE))
+      duplicates.removed <- NULL
+    
+    if (verbose && (removeduplicates || removecomplements)) {
+      cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
+    }
+    
+    if (verbose) {
+      cat("\n\nAn initial ensemble consisting of", length(rules), "rules was succesfully created.")  
+    }
+  }
+  # check if any rules were generated:
+  if (length(rules) == 0) {
+    warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
+    rules <- NULL
+  }
+  
+  result <- list(rules = rules,
+                 duplicates.removed = duplicates.removed, 
+                 complements.removed = complements.removed)
+  return(result)
+}
+
+
 
 
 
@@ -878,8 +1231,9 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
   }
   
   # function to round values:
-  rf <- function(x)
+  rf <- function(x) {
     signif(x, digits)
+  }
   
   if (penalty.par.val == "lambda.1se") {
     lambda_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.1se)
@@ -901,11 +1255,19 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
       " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ")", "\n\n  cv error type : ",
       x$glmnet.fit$name, "\n\n", sep = "")
   coefs <- coef(x, penalty.par.val = penalty.par.val)
-  coefs <- coefs[coefs$coefficient != 0, ]
+  if (x$family %in% c("gaussian", "poisson", "binomial")) {
+    coefs <- coefs[coefs$coefficient != 0, ]
+  } else if (x$family %in% c("mgaussian", "multinomial'")) {
+    coef_inds <- names(coefs)[!names(coefs) %in% c("rule", "description")]
+    coefs <- coefs[rowSums(coefs[,coef_inds]) != 0, ]
+  }
   # always put intercept first:
   is_intercept <- 
-    if(is.null(coefs$rule))
-      rownames(coefs) == "(Intercept)" else coefs$rule == "(Intercept)"
+    if (is.null(coefs$rule)) {
+      rownames(coefs) == "(Intercept)"
+    } else {
+      coefs$rule == "(Intercept)"
+    }
   coefs <- rbind(coefs[is_intercept,], coefs[!is_intercept,])
   
   print(coefs, print.gap = 2, quote = FALSE, row.names = FALSE, digits = digits)
@@ -992,20 +1354,20 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
   }
   
   
-  folds <- sample(rep(1:k, length.out = nrow(object$orig_data)), 
-                  size = nrow(object$orig_data), replace = FALSE)
+  folds <- sample(rep(1:k, length.out = nrow(object$data)), 
+                  size = nrow(object$data), replace = FALSE)
   if (parallel) {
     cvpreds_unsorted <- foreach::foreach(i = 1:k, .combine = "rbind") %dopar% {
       cl <- object$call
       cl$verbose <- FALSE
-      cl$data <- object$orig_data[folds != i,]
+      cl$data <- object$data[folds != i,]
       cvobject <- eval(cl)
-      data.frame(fold = rep(i, times = length(folds) - nrow(cvobject$orig_data)), 
+      data.frame(fold = rep(i, times = length(folds) - nrow(cvobject$data)), 
                  preds = predict.pre(cvobject, type = "response", 
-                                     newdata = object$orig_data[folds == i,], 
+                                     newdata = object$data[folds == i,], 
                                      penalty.par.val = penalty.par.val))
     }
-    cvpreds <- rep(NA, times = nrow(object$orig_data))
+    cvpreds <- rep(NA, times = nrow(object$data))
     for (i in 1:k) {
       cvpreds[folds == i] <- cvpreds_unsorted[cvpreds_unsorted$fold ==i, "preds"]
     }
@@ -1013,17 +1375,17 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
     if (verbose) {
       cat("Running cross validation in fold ")
     }
-    cvpreds <- rep(NA, times = nrow(object$orig_data))
+    cvpreds <- rep(NA, times = nrow(object$data))
     for (i in 1:k) {
       if (verbose) {
         cat(i, " of ", k, ", ", sep = "")
       }
       cl <- object$call
       cl$verbose <- FALSE
-      cl$data <- object$orig_data[folds != i,]
+      cl$data <- object$data[folds != i,]
       cvobject <- eval(cl)
       cvpreds[folds == i] <- predict.pre(
-        cvobject, newdata = object$orig_data[folds == i,], type = "response", 
+        cvobject, newdata = object$data[folds == i,], type = "response", 
         penalty.par.val = penalty.par.val)
       if (verbose & i == k) {
         cat("done!\n")
@@ -1110,15 +1472,27 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
     stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
   }
   
-  coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
-              Class = "matrix")
+  if (object$family %in% c("gaussian", "binomial", "poisson")) {
+    coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
+                Class = "matrix")
+  } else if (object$family %in% c("mgaussian", "multinomial")) {
+    coefs <- sapply(coef(object$glmnet.fit), as, Class = "matrix")
+    rownames(coefs) <- rownames(coef(object$glmnet.fit)[[1]])
+  }
+  
+  
   # coefficients for normalized variables should be unnormalized: 
   if (object$normalize & !is.null(object$x_scales) & object$type != "rules") {
     coefs[names(object$x_scales),] <- coefs[names(object$x_scales),] /
       object$x_scales
   }
-  coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs), 
-                      stringsAsFactors = FALSE)
+  if (object$family %in% c("gaussian", "binomial", "poisson")) {
+    coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs), 
+                        stringsAsFactors = FALSE)
+  } else if (object$family %in% c("mgaussian", "multinomial")) {
+    coefs <- data.frame(coefficient = coefs, rule = rownames(coefs), 
+                        stringsAsFactors = FALSE)
+  }
   # check whether there's duplicates in the variable names:
   # (can happen, for example, due to labeling of dummy indicators for factors)
   if (!(length(unique(coefs$rule)) == length(coefs$rule))) { 
@@ -1145,7 +1519,12 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
       order(coefs[coefs$rule %in% wp$varname,]$rule), ]$description <- 
       wp[order(wp$varname), ]$value  
   }
-  return(coefs[order(abs(coefs$coefficient), decreasing = TRUE),])
+  
+  if (object$family %in% c("gaussian", "binomial", "poisson")) {
+    return(coefs[order(abs(coefs$coefficient), decreasing = TRUE),])
+  } else if (object$family %in% c("mgaussian", "multinomial")) {
+    return(coefs[order(abs(coefs[,2]), decreasing = TRUE),])    
+  }
 }
 
 
@@ -1218,18 +1597,14 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     if (!is.data.frame(newdata)) {
       stop("newdata should be a data frame.")
     }
-    
-    # Get coefficients
-    coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val),
-                Class = "matrix")
-    
+
     # Get model matrix
     winsfrac <- (object$call)$winsfrac
     if(is.null(winsfrac))
       winsfrac <- formals(pre)$winsfrac
     
     ## Add temporary response variable to prevent errors using get_modmat():
-    if (!(object$y_name %in% names(newdata))) {
+    if (!(all(object$y_name %in% names(newdata)))) {
       newdata[, object$y_name] <- 0
     }
     
@@ -1251,8 +1626,13 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   }
   
   # Get predictions:
-  preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, 
-                             s = penalty.par.val, type = type, ...)[,1]
+  if (object$family %in% c("gaussian", "binomial", "poisson")) {
+    preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, 
+                               s = penalty.par.val, type = type, ...)[,1]
+  } else if (object$family %in% c("mgaussian", "multinomial")) {
+    preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, 
+                               s = penalty.par.val, type = type, ...)[,,1]
+  }
   return(preds)
 }
 
@@ -1309,6 +1689,10 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                        nvals = NULL, type = "response", ...)
 {
  
+  if (object$family %in% c("mgaussian", "multinomial")) {
+    stop("Function singleplot not implemented yet for multivariate and multinomial outcomes.")
+  }
+  
   ## Check if proper object argument is specified: 
   if(class(object) != "pre") {
     stop("Argument 'object' should be an object of class 'pre'")
@@ -1334,7 +1718,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   if (!is.null(nvals)) {
     if(!(length(nvals) == 1 && nvals == as.integer(nvals))) {
       stop("Argument 'nvals' should be an integer vector of length 1.")
-    } else if (is.factor(object$orig_data[,varname]) && !is.null(nvals)) {
+    } else if (is.factor(object$data[,varname]) && !is.null(nvals)) {
       warning("Plot is requested for variable of class factor. Value specified for
               nvals will be ignored.", immediate. = TRUE)
       nvals <- NULL
@@ -1348,13 +1732,13 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   
   # Generate expanded dataset:
   if (is.null(nvals)) {
-    newx <- unique(object$orig_data[,varname])
+    newx <- unique(object$data[,varname])
   } else {
     newx <- seq(
-      min(object$orig_data[,varname]), max(object$orig_data[,varname]), length = nvals)
+      min(object$data[,varname]), max(object$data[,varname]), length = nvals)
   }
-  exp_dataset <- object$orig_data[rep(row.names(object$orig_data), times = length(newx)),]
-  exp_dataset[,varname] <- rep(newx, each = nrow(object$orig_data))
+  exp_dataset <- object$data[rep(row.names(object$data), times = length(newx)),]
+  exp_dataset[,varname] <- rep(newx, each = nrow(object$data))
   
   # get predictions:
   exp_dataset$predy <- predict.pre(object, newdata = exp_dataset, type = type,
@@ -1437,12 +1821,16 @@ pairplot <- function(object, varnames, type = "both",
     stop("Argument 'object' should be an object of class 'pre'")
   }
   
+  if (object$family %in% c("mgaussian", "multinomial")) {
+    stop("Function pairplot not implemented yet for multivariate and multinomial outcomes.")
+  }
+  
   ## Check if proper varnames argument is specified: 
   if (!(length(varnames) == 2 && is.character(varnames))) {
     stop("Argument 'varnames' should be a character vector of length 2")
   } else if (!(all(varnames %in% object$x_names))) {
     stop("Argument 'varnames' should specify names of variables used to generate the ensemble.")
-  } else if (any(sapply(object$orig_data[,varnames], is.factor))) {
+  } else if (any(sapply(object$data[,varnames], is.factor))) {
     stop("3D partial dependence plots are currently not supported for factors.")
   }
   
@@ -1479,20 +1867,20 @@ pairplot <- function(object, varnames, type = "both",
 
   # generate expanded dataset:
   if (is.null(nvals)){
-    newx1 <- unique(object$orig_data[,varnames[1]])
-    newx2 <- unique(object$orig_data[,varnames[2]])
+    newx1 <- unique(object$data[,varnames[1]])
+    newx2 <- unique(object$data[,varnames[2]])
   } else {
-    newx1 <- seq(min(object$orig_data[,varnames[1]]), max(object$orig_data[,varnames[1]]),
+    newx1 <- seq(min(object$data[,varnames[1]]), max(object$data[,varnames[1]]),
                  length = nvals[1])
-    newx2 <- seq(min(object$orig_data[,varnames[2]]), max(object$orig_data[,varnames[2]]),
+    newx2 <- seq(min(object$data[,varnames[2]]), max(object$data[,varnames[2]]),
                  length = nvals[2])
   }
   nobs1 <- length(newx1)
   nobs2 <- length(newx2)
   nobs <- nobs1*nobs2
-  exp_dataset <- object$orig_data[rep(row.names(object$orig_data), times = nobs),]
-  exp_dataset[,varnames[1]] <- rep(newx1, each = nrow(object$orig_data)*nobs2)
-  exp_dataset[,varnames[2]] <- rep(rep(newx2, each = nrow(object$orig_data)),
+  exp_dataset <- object$data[rep(row.names(object$data), times = nobs),]
+  exp_dataset[,varnames[1]] <- rep(newx1, each = nrow(object$data)*nobs2)
+  exp_dataset[,varnames[2]] <- rep(rep(newx2, each = nrow(object$data)),
                                    times = nobs1)
   
   # get predictions:
@@ -1590,6 +1978,15 @@ importance <- function(object, standardize = FALSE, global = TRUE,
                        diag.xlab.hor = 0, diag.xlab.vert = 2,
                        cex.axis = 1, ...)
 {
+  
+  if (!inherits(object, what = "pre")) {
+    stop("Specified object is not of class 'pre'.")
+  }
+  
+  if (object$family %in% c("mgaussian", "multinomial")) {
+    stop("Function importance not implemented yet for multivariate and multinomial outcomes.")
+  }
+  
   ## Step 1: Calculate the importances of the base learners:
   
   # get base learner coefficients:
@@ -1611,7 +2008,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
         sds[names(object$x_scales)] <- sds[names(object$x_scales)] * object$x_scales
       }
     } else {
-      preds <- predict.pre(object, newdata = object$orig_data, type = "response",
+      preds <- predict.pre(object, newdata = object$data, type = "response",
                            penalty.par.val = penalty.par.val)
       local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
                                       preds <= quantile(preds, probs = quantprobs[2]),]
@@ -1782,6 +2179,11 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
                            penalty.par.val = "lambda.1se", verbose = FALSE)
 {
+  
+  if (object$family %in% c("mgaussian", "multinomial")) {
+    stop("Function bsnullinteract not implemented yet for multivariate and multinomial outcomes.")
+  }
+  
   # Preliminaries:
   if(object$family == "binomial") {
     stop("bsnullinteract is not yet available for categorical outcomes.")
@@ -1807,14 +2209,14 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
     if (verbose) cat("This may take a while.")
     bs.ens <- foreach::foreach(i = 1:nsamp) %dopar% {
       # step 1: Take bootstrap sample {x_p, y_p}:
-      bs_inds <- sample(1:nrow(object$orig_data), nrow(object$orig_data), replace = TRUE)
-      bsdataset <- object$orig_data[bs_inds,]
+      bs_inds <- sample(1:nrow(object$data), nrow(object$data), replace = TRUE)
+      bsdataset <- object$data[bs_inds,]
       # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
       bsnullmodcall$data <- bsdataset
       bs.ens.null <- eval(bsnullmodcall)
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
-      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data, 
+      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$data, 
                               penalty.par.val = penalty.par.val)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
@@ -1824,7 +2226,7 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       ytilde <- F_A_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
       # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
-      bsintmodcall$data <- object$orig_data
+      bsintmodcall$data <- object$data
       bsintmodcall$data[,all.vars(object$call$formula[[2]])] <- ytilde
       eval(bsintmodcall)
     }
@@ -1834,14 +2236,14 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
     for(i in 1:nsamp) {
       if (verbose) {cat(i, "of", nsamp, ", ")}
       # step 1: Take bootstrap sample {x_p, y_p}:
-      bs_inds <- sample(1:nrow(object$orig_data), nrow(object$orig_data), replace = TRUE)
-      bsdataset <- object$orig_data[bs_inds,]
+      bs_inds <- sample(1:nrow(object$data), nrow(object$data), replace = TRUE)
+      bsdataset <- object$data[bs_inds,]
       # step 2: Build F_A, a null interaction model involving main effects only using {x_p, y_p}:
       bsnullmodcall$data <- as.symbol(quote(bsdataset))
       bs.ens.null <- eval(bsnullmodcall, envir = environment())
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
-      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$orig_data)
+      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$data)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
       F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
@@ -1851,7 +2253,7 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       ytilde <- F_A_of_x + object$data[bs_inds, object$y_name] - F_A_of_x_p
       # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
-      tmp <- object$orig_data
+      tmp <- object$data
       tmp[,all.vars(object$call$formula[[2]])] <- ytilde
       bsintmodcall$data <- as.symbol(quote(tmp))
       bs.ens[[i]] <- eval(bsintmodcall, envir = environment())
@@ -1868,12 +2270,12 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
 # Internal function for calculating H statistic (section 8.1, equation 45):
 Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose = FALSE) {
   # Calculate the predicted value F(x) of the full model for each observation:
-  preds_x <- predict.pre(object, newdata = object$orig_data, penalty.par.val = penalty.par.val)
+  preds_x <- predict.pre(object, newdata = object$data, penalty.par.val = penalty.par.val)
   # Calculate the expected value of F_j(x_j), over all observed values x_/j,
   # and the expected value of F_/j(x_/j), over all observed values x_j:
-  exp_dataset <- object$orig_data[rep(row.names(object$orig_data),
-                                      times = nrow(object$orig_data)),]
-  exp_dataset[,varname] <- rep(object$orig_data[,varname], each = nrow(object$orig_data))
+  exp_dataset <- object$data[rep(row.names(object$data),
+                                      times = nrow(object$data)),]
+  exp_dataset[,varname] <- rep(object$data[,varname], each = nrow(object$data))
   # using predict.pre for a hughe dataset may lead to errors, so split
   # computations up in k parts:
   exp_dataset$ids <- sample(1:k, nrow(exp_dataset), replace = TRUE)
@@ -1884,10 +2286,10 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
       penalty.par.val = penalty.par.val)
   }
   # expected value of F_j(x_j), over all observed values x_/j:
-  exp_dataset$i_xj <- rep(1:nrow(object$orig_data), each = nrow(object$orig_data))
+  exp_dataset$i_xj <- rep(1:nrow(object$data), each = nrow(object$data))
   preds_xj <- aggregate(yhat ~ i_xj, data = exp_dataset, FUN = mean)$yhat
   # expected value of F_/j(x_/j), over all observed values x_j:
-  exp_dataset$i_xnotj <-  rep(1:nrow(object$orig_data), times = nrow(object$orig_data))
+  exp_dataset$i_xnotj <-  rep(1:nrow(object$data), times = nrow(object$data))
   preds_xnotj <- aggregate(yhat ~ i_xnotj, data = exp_dataset, FUN = mean)$yhat
   # H should be calculated based on centered functions:
   preds_x <- scale(preds_x, center = TRUE, scale = FALSE)
@@ -1989,6 +2391,11 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
                      main = "Interaction test statistics", 
                      se.linewidth = .05,
                      parallel = FALSE, k = 10, verbose = FALSE, ...) {
+  
+  if (object$family %in% c("mgaussian", "multinomial")) {
+    stop("Function interact not implemented yet for multivariate and multinomial outcomes.")
+  }
+
   # Preliminaries:
   if(parallel) {
     if (!(requireNamespace("foreach"))) {
@@ -2120,6 +2527,11 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
                      nterms = NULL, ask = FALSE, exit.label = "0", 
                      standardize = FALSE, plot.dim = c(3, 3), ...) {
+  
+  if (x$family %in% c("mgaussian", "multinomial")) {
+    stop("Plotting function not implemented yet for multivariate and multinomial outcomes.")
+  }
+  
   ## Preliminaries:
   if (!(requireNamespace("grid"))) {
     stop("Function plot.pre requires package grid. Download and install package
@@ -2378,7 +2790,7 @@ get_conditions <- function(object, penalty.par.val = "lambda.1se") {
                   ncol = max(lengths(parts)), byrow = TRUE)
   ## eliminate every fourth column (has "&" only):
   parts <- data.frame(parts[,!(1:ncol(parts) %% 4 == 0)])
-  ## set every third column to type numeric:
+  ## set every third column to type numeric (not a good idea, can be factors, too):
   parts[,(1:ncol(parts) %% 3 == 0)] <- apply(parts[,(1:ncol(parts) %% 3 == 0)], 2, as.numeric)
   parts <- data.frame(rule = rules$rule, parts)
   names(parts) <- c("rule", paste0(rep(c("splitvar", "splitop", "splitval"), 

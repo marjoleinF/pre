@@ -1,14 +1,30 @@
+Changes in Version 0.5 (2018-..-..)
+
+  - Function pre() now also supports multinomial and multivariate 
+      gaussian response variables.
+  
+  - Function pre() now has argument 'tree.unbiased'; if set to FALSE, 
+      the CART algorithm (as implemented in package 'rpart') is employed 
+      for rule induction.
+      
+  - Argument 'maxdepth' of function pre() allows for specifying 
+      varying maximum depth across trees, through specifying a 
+      vector of length ntrees, or a random number generating function.
+
+
+
+
 Changes in Version 0.4 (2017-08-31)
 
-  - Added dataset 'carrillo.Rdata'
+  - Added dataset 'carrillo'
   
   - By default, a gradient boosting approach is now taken for all response 
       types. That is, partykit::ctree() and a learning rate of .01 is 
-      employed by default. Alternatively, glmtree() can be employed for 
-      for tree induction by sprecifying use.grad = FALSE.
+      employed by default. Alternatively, glmtree() can be employed for tree 
+      induction by sprecifying use.grad = FALSE.
       
-  - The 'family' argument now takes character strings as well as glm family 
-      objects. 
+  - The 'family' argument in pre() now takes character strings as well as glm 
+      family objects. 
       
   - Functions pairplot() and interact() now use HCL instead of highly saturated
       HSV colors as default plotting colors.
@@ -23,6 +39,11 @@ Changes in Version 0.4 (2017-08-31)
 
 Changes in Version 0.3 (2017-08-03):
 
+  - Function gpe() added, which fits general prediction ensembles. By default,
+      it fits an ensemble of rules, linear and hinge functions. Function gpe()
+      allows for specifying custom baselearner generating functions and a custom
+      fitting function for the final model.
+  
   - Numerous bugs fixed, yielding faster computation times and clearer plots 
       with more customization options. 
       
