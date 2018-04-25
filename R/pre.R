@@ -2529,7 +2529,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                      standardize = FALSE, plot.dim = c(3, 3), ...) {
   
   if (x$family %in% c("mgaussian", "multinomial")) {
-    stop("Plotting function not implemented yet for multivariate and multinomial outcomes.")
+    warning("Plotting function not yet fully functional for multivariate and multinomial outcomes.")
   }
   
   ## Preliminaries:
@@ -2539,9 +2539,18 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
   }
 
   ## Get nonzero terms:
-  nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
-                             penalty.par.val = penalty.par.val, 
-                             standardize = standardize)$baseimps
+  if (x$family %in% c("multinomial", "mgaussian")) {
+    coefs <- coef(x)
+    nonzeroterms <- coefs[rowSums(coefs[,!names(coefs) %in% c("rule", "description")]) != 0,]
+    if ("(Intercept)" %in% nonzeroterms$rule) {
+      nonzeroterms <- nonzeroterms[-which(nonzeroterms$rule == "(Intercept)"), ]# omit intercept
+    }
+  } else {
+    nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
+                               penalty.par.val = penalty.par.val, 
+                               standardize = standardize)$baseimps
+  }
+
   if (!linear.terms) {
     nonzeroterms <- nonzeroterms[grep("rule", nonzeroterms$rule),]
   }
@@ -2583,10 +2592,16 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       grid::pushViewport(grid::viewport(layout.pos.col = nonzeroterms$colno[i],
                                         layout.pos.row = nonzeroterms$rowno[i]))
       ## Plot the linear term:
-      grid::grid.text(paste0("Linear effect of ", nonzeroterms$rule[i], 
-                             "\n\n Coefficient = ", round(nonzeroterms$coefficient[i], digits = 3),
-                             "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3)),
-                      gp = grid::gpar(...))
+      if (x$family %in% c("mgaussian", "multinomial")) {
+        grid::grid.text(paste0("Linear effect of ", nonzeroterms$rule[i], 
+                               "\n\n Coefficient = ", round(nonzeroterms[i, grep("coefficient", names(nonzeroterms))], digits = 3)),
+                        gp = grid::gpar(...))
+      } else {
+        grid::grid.text(paste0("Linear effect of ", nonzeroterms$rule[i], 
+                               "\n\n Coefficient = ", round(nonzeroterms$coefficient[i], digits = 3),
+                               "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3)),
+                        gp = grid::gpar(...))        
+      }
       grid::popViewport()
       
     } else { 
@@ -2650,12 +2665,24 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       if (cond[[1]][2] == " > ") { # If condition involves " > ", the tree has nonzero coef on right:
         nodes[[1]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL, 
                            info = exit.label)
-        nodes[[2]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
-                           info = round(nonzeroterms$coefficient[i], digits = 3))
+        if (x$family %in% c("multinomial", "mgaussian")) {
+          info <- paste(round(nonzeroterms[i, grep("coefficient", names(nonzeroterms))], digits = 3), collapse = "\n")
+          nodes[[2]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
+                             info = info)
+        } else {
+          nodes[[2]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
+                             info = round(nonzeroterms$coefficient[i], digits = 3))  
+        }
       } else { 
       ## If last condition has " <= " or " %in% " : coefficient on left, exit node on right:
-        nodes[[1]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
-                           info = round(nonzeroterms$coefficient[i], digits = 3))
+        if (x$family %in% c("multinomial", "mgaussian")) {
+          info <- paste(round(nonzeroterms[i, grep("coefficient", names(nonzeroterms))], digits = 3), collapse = "\n")
+          nodes[[1]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
+                             info = info)
+        } else {
+          nodes[[1]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
+                             info = round(nonzeroterms$coefficient[i], digits = 3))
+        }
         nodes[[2]] <- list(id = 2L, split = NULL, kids = NULL, surrogates = NULL,
                            info = exit.label)
       }
@@ -2708,16 +2735,24 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
     }
     
+    
+    
     ## Open viewport:
     grid::pushViewport(grid::viewport(layout.pos.col = nonzeroterms$colno[i],
                                       layout.pos.row = nonzeroterms$rowno[i]))
     
-    ## pPlot the rule:
+    ## Plot the rule:
     fftree <- party(nodes[[ncond * 2 + 1]], data = treeplotdata)
-    plot(fftree, newpage = FALSE, 
-         main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
-         inner_panel = node_inner(fftree, id = FALSE),
-         terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))
+    if (x$family %in% c("mgaussian", "multinomial")) {
+      plot(fftree, newpage = FALSE, main = nonzeroterms$rule[i],
+           inner_panel = node_inner(fftree, id = FALSE),
+           terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))
+    } else {
+      plot(fftree, newpage = FALSE, 
+           main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
+           inner_panel = node_inner(fftree, id = FALSE),
+           terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))      
+    }
     grid::popViewport()
   }
   }

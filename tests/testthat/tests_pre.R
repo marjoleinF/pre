@@ -63,3 +63,57 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   # save_to_test(fit, "PimaIndiansDiabetes_w_pre_LR")
   expect_equal(fit, read_to_test("PimaIndiansDiabetes_w_pre_LR"), tolerance = 1.490116e-08)
 })
+
+
+
+test_that("Get previous results with iris and pre function", {
+  #####
+  # With learning rate
+  set.seed(7385056)
+  data("iris")
+  fit <- pre(Species ~ ., data = iris, ntrees = 10, maxdepth = 3)
+  
+  # We remove some of the data to decrease the size
+  fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]
+  fit$glmnet.fit <- fit$glmnet.fit["glmnet.fit"]
+  fit$glmnet.fit$glmnet.fit <- fit$glmnet.fit$glmnet.fit["beta"]
+  fit$glmnet.fit$glmnet.fit[["beta"]]$virginica <- fit$glmnet.fit$glmnet.fit[["beta"]]$virginica
+  fit$rules <- as.matrix(fit$rules)
+  # save_to_test(fit, "iris_w_pre")
+  expect_equal(fit, read_to_test("iris_w_pre"), tolerance = 1.490116e-08)
+  
+  #####
+  # Without learning rate
+  set.seed(4989935)
+  fit <- pre(Species ~ ., data = iris, learnrate = 0, ntrees = 10, maxdepth = 3, nlambda =10)
+  
+  # We remove some of the data to decrease the size
+  fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]
+  fit$call <- NULL
+  fit$glmnet.fit <- fit$glmnet.fit["glmnet.fit"]
+  fit$glmnet.fit$glmnet.fit <- fit$glmnet.fit$glmnet.fit["beta"]
+  fit$glmnet.fit$glmnet.fit[["beta"]]$virginica <- fit$glmnet.fit$glmnet.fit[["beta"]]$virginica
+  fit$rules <- as.matrix(fit$rules)
+  # save_to_test(fit, "iris_w_pre_no_learn")
+  expect_equal(fit, read_to_test("iris_w_pre_no_learn"), tolerance = 1.490116e-08)
+  
+  #####
+  # Wihtout learning rate, parallel computation
+  library("parallel")
+  airq <- airquality[complete.cases(airquality),]
+  no_cores <- detectCores()
+  cl <- makeCluster(no_cores)
+  set.seed(4989935)
+  fit2 <- pre(Species ~ ., data = iris, learnrate = 0, ntrees = 10, maxdepth = 3, par.init=TRUE, par.final=TRUE, nlambda = 10)
+  stopCluster(cl)
+  # We remove some of the data to decrease the size
+  fit2 <- fit2[names(fit2) %in%  c("rules", "glmnet.fit")]
+  fit2$call <- NULL
+  fit2$glmnet.fit <- fit2$glmnet.fit["glmnet.fit"]
+  fit2$glmnet.fit$glmnet.fit <- fit2$glmnet.fit$glmnet.fit["beta"]
+  fit2$glmnet.fit$glmnet.fit[["beta"]]$virginica <- fit2$glmnet.fit$glmnet.fit[["beta"]]$virginica
+  fit2$rules <- as.matrix(fit2$rules)
+  # save_to_test(fit, "iris_w_pre_no_learn_par")
+  expect_equal(fit, fit2)
+  expect_equal(fit2, read_to_test("iris_w_pre_no_learn_par"), tolerance = 1.490116e-08)
+})
