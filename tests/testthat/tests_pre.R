@@ -96,13 +96,12 @@ test_that("Get previous results with iris and pre function", {
   fit$rules <- as.matrix(fit$rules)
   # save_to_test(fit, "iris_w_pre_no_learn")
   expect_equal(fit, read_to_test("iris_w_pre_no_learn"), tolerance = 1.490116e-08)
-  
+
   #####
   # Wihtout learning rate, parallel computation
-  library("parallel")
-  airq <- airquality[complete.cases(airquality),]
-  no_cores <- detectCores()
-  cl <- makeCluster(no_cores)
+  library("doParallel")
+  cl <- makeCluster(2)
+  registerDoParallel(cl)
   set.seed(4989935)
   fit2 <- pre(Species ~ ., data = iris, learnrate = 0, ntrees = 10, maxdepth = 3, par.init=TRUE, par.final=TRUE, nlambda = 10)
   stopCluster(cl)

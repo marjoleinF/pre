@@ -29,7 +29,7 @@ sex were also recorded and included in the dataset.
   \item conscientiousness total score: contot
   \item depression symptom severity: bdi
   \item sex: sexo
-  \item: age in years: edad
+  \item age in years: edad
 }
 }
 \examples{

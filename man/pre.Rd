@@ -8,8 +8,8 @@ pre(formula, data, family = gaussian, use.grad = TRUE, weights,
   type = "both", sampfrac = 0.5, maxdepth = 3L, learnrate = 0.01,
   mtry = Inf, ntrees = 500, removecomplements = TRUE,
   removeduplicates = TRUE, winsfrac = 0.025, normalize = TRUE,
-  nfolds = 10L, tree.control, tree.unbiased = TRUE, verbose = FALSE,
-  par.init = FALSE, par.final = FALSE, ...)
+  standardize = FALSE, nfolds = 10L, tree.control, tree.unbiased = TRUE,
+  verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -59,10 +59,15 @@ rules only) or \code{"linear"} (linear functions only).}
 the fraction of randomly selected training observations used to produce each 
 tree. Values \eqn{< 1} will result in sampling without replacement (i.e., 
 subsampling), a value of 1 will result in sampling with replacement 
-(i.e., bootstrapping). ALternatively, a sampling function may be supplied, 
-which should have argument \code{n} (sample size) and \code{weights}.}
+(i.e., bootstrapping). Alternatively, a sampling function may be supplied, 
+which should take arguments \code{n} (sample size) and \code{weights}.}
 
-\item{maxdepth}{positive integer. Maximum number of conditions in a rule.}
+\item{maxdepth}{positive integer. Maximum number of conditions in a rule. 
+If \code{length(maxdepth) == 1}, it specifies the maximum depth of 
+of each tree grown. If \code{length(maxdepth) == ntrees}, it specifies the
+maximum depth of every consecutive tree grown. If \code{maxdepth} is a 
+function, it should take argument \code{ntrees} and return \code{ntrees}
+integer values.}
 
 \item{learnrate}{numeric. Learning rate or boosting parameter.}
 
@@ -86,6 +91,11 @@ regression model and will also be winsorized.}
 regression model? Normalizing gives linear terms the same a priori influence 
 as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
 SD.}
+
+\item{standardize}{logical. Should rules and linear terms be standardized to
+have SD equal to 1 before estimating the regression model? This will also 
+standardize the dummified factors, users are advised to use the default 
+\code{standardize = FALSE}.}
 
 \item{nfolds}{numeric. Number of cross-validation folds to be used for 
 selecting the optimal value of the penalty parameter \eqn{\lambda} in selecting
@@ -139,13 +149,14 @@ prediction of a continuous or binary outcome.
 \details{
 Obervations with missing values will be removed prior to analysis.
 
-In rare cases, duplicated variable names may appear in the model.
+In some cases, duplicated variable names may appear in the model.
 For example, the first variable is a factor named 'V1' and there are also
-non-factor variables called 'V10' and/or 'V11' and/or 'V12' (etc). Then for 
-the binary factor V1, dummy contrast variables will be created, called 
+variables named 'V10' and/or 'V11' and/or 'V12' (etc). Then for 
+for the binary factor V1, dummy contrast variables will be created, named 
 'V10', 'V11', 'V12' (etc). As should be clear from this example, this yields 
-duplicated variable names, which will yield warnings, errors and incorrect 
-results. Users should prevent this by renaming variables prior to analysis.
+duplicated variable names, which may yield problems, for example in the 
+calculation of predictions and importances, later on. This can be prevented 
+by renaming factor variables with numbers in their name, prior to analysis.
 
 Inputs can be numeric, ordered or factor variables. Reponse can be
 a numeric, count or binary categorical variable.

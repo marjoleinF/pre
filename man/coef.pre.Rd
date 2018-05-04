@@ -32,14 +32,14 @@ rules).
 the final ensemble
 }
 \details{
-In rare cases, duplucated variable names may appear in the model.
-For example, when the first variable is named 'V1' and is a factor, and 
-there is a variable called 'V10' and/or 'V11' and/or 'V12' (etc), which 
-is/are numeric. For the binary factor V1, dummy contrast variables were 
-created to fit the model, called 'V10', 'V11', 'V12' (etc). As should be 
-clear from this example, this yields replicated variable names, which may
-yield errors or incorrect results. Users should avoid this situation by
-renaming the variables prior to the analysis.
+In some cases, duplicated variable names may appear in the model.
+For example, the first variable is a factor named 'V1' and there are also
+variables named 'V10' and/or 'V11' and/or 'V12' (etc). Then for 
+for the binary factor V1, dummy contrast variables will be created, named 
+'V10', 'V11', 'V12' (etc). As should be clear from this example, this yields 
+duplicated variable names, which may yield problems, for example in the 
+calculation of predictions and importances, later on. This can be prevented 
+by renaming factor variables with numbers in their name, prior to analysis.
 }
 \examples{
 \donttest{

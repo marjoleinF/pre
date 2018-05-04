@@ -1,6 +1,6 @@
 Package: pre
 Title: Prediction Rule Ensembles
-Version: 0.4.1
+Version: 0.5.0
 Authors@R: c(person("Marjolein", "Fokkema", role = c("aut", "cre"), email = 
   "m.fokkema@fsw.leidenuniv.nl"), person(given = "Benjamin", 
   family = "Christoffersen", role = "aut", email = "boennecd@gmail.com"))
@@ -10,9 +10,10 @@ Description: Derives prediction rule ensembles (PREs). Largely follows the
     procedure for deriving PREs as described in Friedman & Popescu (2008; 
     <DOI:10.1214/07-AOAS148>), with several adjustments and improvements. The 
     main function pre() derives prediction rule ensembles consisting of rules 
-    and/or linear terms for binary, count and continuous responses. Function 
-    gpe() derives generalized prediction ensembles, consisting of rules, hinge
-    and linear functions of the predictor variables.
+    and/or linear terms for binary, multinomial, count and (multivariate) 
+    continuous responses. Function gpe() derives generalized prediction 
+    ensembles, consisting of rules, hinge and linear functions of the predictor 
+    variables.
 URL: https://github.com/marjoleinF/pre
 BugReports: https://github.com/marjoleinF/pre/issues
 Depends:
@@ -33,7 +34,8 @@ Suggests:
     testthat,
     mlbench,
     datasets,
-    glmertree
+    glmertree, 
+    doParallel
 License: GPL-2 | GPL-3
 Encoding: UTF-8
 LazyData: true

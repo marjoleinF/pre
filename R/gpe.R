@@ -172,44 +172,14 @@ gpe_trees <- function(
     # method = "radix" is used to give same results on different platforms
     # see ?sort or http://stackoverflow.com/a/42272120
     rules <- base::sort.default(unname(rules), method = "radix")
-    rules <- paste0("rTerm(", rules, ")")
-    
-    if(remove_duplicates_complements){
-      frm <- paste("~", paste0(rules, collapse = " + "))
-      rulevars <- stats::model.frame.default(stats::formula(frm), data)
-      rulevars <- base::as.matrix.data.frame(rulevars)
-      row.names(rulevars) <- NULL
-      
-      # Remove duplicates
-      duplicates <- which(base::duplicated.matrix(rulevars, MARGIN = 2))
-      if(length(duplicates) > 0){
-        rulevars <- rulevars[, -duplicates]
-        rules <- rules[-duplicates]
-      }
-      
-      # Remove complements
-      sds <- apply(rulevars, 2, sd)
-      sds_distinct <- 
-        sapply(base::unique.default(sds), function(x) c(x, sum(sds == x)))
-      
-      complements <- vector(mode = "logical", length(sds))
-      for(i in seq_len(ncol(sds_distinct))){
-        if(sds_distinct[2, i] < 2)
-          next
-        
-        indices <- which(sds == sds_distinct[1, i])
-        for(j in 2:length(indices)){
-          indices_prev <- indices[1:(j - 1)] 
-          complements[indices_prev] <- 
-            complements[indices_prev] | apply(
-              rulevars[, indices_prev, drop = F] != rulevars[, indices[j]], 2, all)
-        }
-      }
-      
-      rules <- rules[!complements]
+
+    if(remove_duplicates_complements) {
+      rules <- delete_duplicates_complements(rules = rules, data = data, 
+                                    removecomplements = TRUE, 
+                                    removeduplicates = TRUE, 
+                                    return.dupl.compl = FALSE)
     }
-    
-    c(rules) 
+    rules <- paste0("rTerm(", rules, ")")
   }
   
   out

@@ -19,7 +19,7 @@
 #'   \item conscientiousness total score: contot
 #'   \item depression symptom severity: bdi
 #'   \item sex: sexo
-#'   \item: age in years: edad
+#'   \item age in years: edad
 #' }
 #'
 #' @name carrillo
