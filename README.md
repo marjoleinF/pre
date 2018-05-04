@@ -1,11 +1,11 @@
 pre: an R package for deriving prediction rule ensembles
 ========================================================
 
-pre is an R package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous and count outcome variables. Input variables may be numeric, ordinal and nominal. An extensive description of the implementation and functionality is provided in Fokkema (2017). The package largely implements the algorithm for deriving prediction rule ensembles as described in J. H. Friedman & Popescu (2008), with several adjustments:
+pre is an R package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous and count outcome variables. Input variables may be numeric, ordinal and nominal. An extensive description of the implementation and functionality is provided in Fokkema (2017). The package largely implements the algorithm for deriving prediction rule ensembles as described in J. Friedman & Popescu (2008), with several adjustments:
 
 1.  The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2.  The unbiased tree induction algorithms of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of Zeileis, Hothorn, & Hornik (2008) can be employed, or the classification and regression tree (CART) algorithm of Breiman, Friedman, Olshen, & Stone (1984).
-3.  The packake supports (multivariate) continuous, binary, multinomial and count response variables
+3.  The package supports (multivariate) continuous, binary, multinomial and count response variables
 4.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 5.  The initial ensembles may be generated as in bagging, boosting and/or random forests.
 6.  Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of J. H. Friedman (1991), using the gpe() function.
@@ -145,13 +145,42 @@ corplot(airq.ens)
 
 ![](inst/README-figures/README-unnamed-chunk-12-1.png)
 
-Including hinge functions
--------------------------
+Including hinge functions (multivariate adaptive regression splines)
+--------------------------------------------------------------------
 
-More complex prediction ensembles can be obtained using the `gpe()` function. The abbreviation gpe stands for generalized prediction ensembles, which may include hinge functions of the predictor variables as described in J. H. Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may improve predictive accuracy. More information about fitting generalized prediction ensembles can be obtained by typing:
+More complex prediction ensembles can be obtained using the `gpe()` function. The abbreviation gpe stands for generalized prediction ensembles, which may also include hinge functions of the predictor variables as described in J. H. Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may further improve predictive accuracy. See the following example:
 
 ``` r
-?gpe
+set.seed(42)
+airq.gpe <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),], 
+    base_learners = list(gpe_trees(), gpe_linear(), gpe_earth()))
+airq.gpe
+#> 
+#> Final ensemble with cv error within 1se of minimum: 
+#>   lambda =  2.44272
+#>   number of terms = 14
+#>   mean cv error (se) = 296.5474 (74.18922)
+#> 
+#>   cv error type : Mean-squared Error
+#> 
+#>                                   description  coefficient
+#>                                   (Intercept)  67.22404190
+#>                                    Temp <= 77  -7.72729559
+#>                       Temp <= 84 & Wind > 7.4  -0.03574864
+#>                  Wind <= 10.3 & Solar.R > 148   6.29678603
+#>                       Wind > 5.7 & Temp <= 82  -6.51245200
+#>                       Wind > 5.7 & Temp <= 84  -7.58076900
+#>                       Wind > 5.7 & Temp <= 87  -9.64346611
+#>           Wind > 5.7 & Temp <= 87 & Day <= 23  -4.38371322
+#>                       Wind > 6.3 & Temp <= 82  -4.18790433
+#>                       Wind > 6.3 & Temp <= 84  -4.88269073
+#>                       Wind > 6.9 & Temp <= 82  -0.12188611
+#>                       Wind > 6.9 & Temp <= 84  -0.93529314
+#>   eTerm(Solar.R * h(6.3 - Wind), scale = 150)   1.42794086
+#>        eTerm(h(6.9 - Wind) * Day, scale = 16)   1.35764132
+#>   eTerm(Solar.R * h(9.7 - Wind), scale = 410)   9.84395780
+#> 
+#>   'h' in the 'eTerm' indicates the hinge function
 ```
 
 References
@@ -163,7 +192,7 @@ Fokkema, M. (2017). Pre: An r package for fitting prediction rule ensembles. *ar
 
 Friedman, J. H. (1991). Multivariate adaptive regression splines. *The Annals of Statistics*, *19*(1), 1–67.
 
-Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954. Retrieved from <http://www.jstor.org/stable/30245114>
+Friedman, J., & Popescu, B. (2008). Predictive learning via rule ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954. Retrieved from <http://www.jstor.org/stable/30245114>
 
 Hothorn, T., Hornik, K., & Zeileis, A. (2006). Unbiased recursive partitioning: A conditional inference framework. *Journal of Computational and Graphical Statistics*, *15*(3), 651–674.
 
