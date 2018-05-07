@@ -15,15 +15,16 @@ predictor variables used for deriving the prediction rule ensemble.}
 
 \item{type}{character string. The type of prediction required; the default
 \code{type = "link"} is on the scale of the linear predictors. Alternatively,
-for nominal outputs, \code{type = "response"} gives the fitted probabilities
-and \code{type = "class"} gives the predicted class membership.}
+for count and factor outputs, \code{type = "response"} may be specified to obtain
+the fitted mean and fitted probabilities, respectively; \code{type = "class"} 
+returns the predicted class membership.}
 
-\item{penalty.par.val}{character. Penalty parameter criterion to be used for
-selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
-giving cv error that is within 1 standard error of minimum cv error
-("lambda.1se"). Alternatively, a numeric value may be specified, 
-corresponding to one of the values of lambda in the sequence used by glmnet,
-for which estimated cv error can be inspected by running 
+\item{penalty.par.val}{character or numeric. Penalty parameter criterion 
+to be used for selecting final model: lambda giving minimum cv error 
+(\code{"lambda.min"}) or lambda giving cv error that is within 1 standard 
+error of minimum cv error (\code{"lambda.1se"}). Alternatively, a numeric 
+value may be specified, corresponding to one of the values of lambda in the 
+sequence used by glmnet,for which estimated cv error can be inspected by running 
 \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
 \item{...}{further arguments to be passed to 
@@ -34,8 +35,8 @@ for which estimated cv error can be inspected by running
 ensemble, for training or new (test) observations
 }
 \details{
-When newdata is not provided, training data included in the specified
-object is used.
+If \code{newdata} is not provided, predictions for training data will be 
+returned.
 }
 \examples{
 \donttest{
@@ -49,5 +50,6 @@ predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}
 \seealso{
 \code{\link{pre}}, \code{\link{plot.pre}}, 
 \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}}, 
-\code{\link{interact}}, \code{\link{print.pre}}
+\code{\link{interact}}, \code{\link{print.pre}}, 
+\code{\link[glmnet]{predict.cv.glmnet}}
 }

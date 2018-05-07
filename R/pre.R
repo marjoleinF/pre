@@ -7,11 +7,13 @@ utils::globalVariables("%dopar%")
 #' 
 #' @param formula a symbolic description of the model to be fit of the form 
 #' \code{y ~ x1 + x2 + ...+ xn}. Response (left-hand side of the formula) 
-#' should be of class numeric or of class factor (with two levels). If the 
-#' response is a factor, an ensemble for binary classification is created.
+#' should be of class numeric (for continuous outcomes), integer (for count 
+#' outcomes) or a factor. In addition, a multivariate continuous response may be
+#' specified as follows: \code{y1 + y2 + y3 ~ x1 + x2 + x3}. If the 
+#' response is a factor, an ensemble for classification will be derived. 
 #' Otherwise, an ensemble for prediction of a numeric response is created. If
-#' the outcome is a non-negative count, this should additionally be specified 
-#' by setting\code{family = "poisson"}. Note that input variables may not have 
+#' the outcome is a non-negative count, this should be specified by setting
+#' \code{family = "poisson"}. Note that input variables may not have 
 #' 'rule' as (part of) their name, and the formula may not exclude the intercept 
 #' (that is, \code{+ 0} or \code{- 1} may not be used in the right-hand side of 
 #' the formula).
@@ -21,48 +23,52 @@ utils::globalVariables("%dopar%")
 #' @param family specification of a glm family. Can be a character string (i.e., 
 #' \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"multinomial"}, 
 #' or \code{"mgaussian"}) or a corresponding family object 
-#' (see \code{\link[stats]{family}}. Specification is required only 
-#' for non-negative count responses, e.g., \code{family = "poisson"}. Otherwise, 
-#' \code{family = "gaussian"} is employed if response is numeric,  
-#' \code{family = "binomial"} is employed if response is a binary factor.
-#' \code{family ="multinomial"} is employed if a factor with > 2 levels, and
+#' (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
+#' \code{\link[stats]{family}}). Specification is required only 
+#' for non-negative count responses, e.g., \code{family = "poisson"}. Otherwise,
+#' the program will try to make an informed guess: 
+#' \code{family = "gaussian"} will be employed a numeric,  
+#' \code{family = "binomial"} will be employed if a binary factor.
+#' \code{family ="multinomial"} will be employed if a factor with > 2 levels, and
 #' \code{family = "mgaussian"} will be employed if multiple continuous response
 #' variables were specified. 
-#' @param use.grad logical. Should binary outcomes use gradient boosting with 
-#' regression trees when \code{learnrate > 0}? That is, use 
-#' \code{\link[partykit]{ctree}} as in Friedman (2001), without the line search. 
-#' By default set to \code{TRUE}, as this yields shorter
-#' computation time. If set to \code{FALSE}, \code{\link[partykit]{glmtree}}
+#' @param use.grad logical. Should gradient boosting with regression trees be
+#' employed when \code{learnrate > 0}? That is, use 
+#' \code{\link[partykit]{ctree}} as in Friedman (2001), but without the line 
+#' search. If \code{FALSE}. By default set to \code{TRUE}, as this yields shorter
+#' computation times. If set to \code{FALSE}, \code{\link[partykit]{glmtree}}
 #' with intercept only models in the nodes will be employed. This will yield
-#' longer computation times (but may increase the likelihood of detecting
-#' interactions). 
+#' longer computation times, but may increase accuracy. See details below for 
+#' possible combinations with \code{family}, \code{use.grad} and \code{learnrate}.
 #' @param weights an optional vector of observation weights to be used for 
 #' deriving the ensemble.
 #' @param type character. Specifies type of base learners to be included in the 
 #' ensemble. Defaults to \code{"both"} (initial ensemble will include both rules 
 #' and linear functions). Other option are \code{"rules"} (prediction 
 #' rules only) or \code{"linear"} (linear functions only).
-#' @param sampfrac numeric. Takes values \eqn{> 0} and \eqn{\leq 1}, representing 
+#' @param sampfrac numeric value \eqn{> 0} and \eqn{\leq 1}. Specifies  
 #' the fraction of randomly selected training observations used to produce each 
 #' tree. Values \eqn{< 1} will result in sampling without replacement (i.e., 
 #' subsampling), a value of 1 will result in sampling with replacement 
-#' (i.e., bootstrapping). Alternatively, a sampling function may be supplied, 
+#' (i.e., bootstrap sampling). Alternatively, a sampling function may be supplied, 
 #' which should take arguments \code{n} (sample size) and \code{weights}. 
 #' @param maxdepth positive integer. Maximum number of conditions in a rule. 
 #' If \code{length(maxdepth) == 1}, it specifies the maximum depth of 
 #' of each tree grown. If \code{length(maxdepth) == ntrees}, it specifies the
-#' maximum depth of every consecutive tree grown. If \code{maxdepth} is a 
-#' function, it should take argument \code{ntrees} and return \code{ntrees}
-#' integer values. 
-#' @param learnrate numeric. Learning rate or boosting parameter.
-#' @param mtry numeric. Number of randomly selected predictor variables for 
-#' creating each split in each tree.
-#' @param ntrees numeric. Number of trees to generate for the initial ensemble.
-#' @param removeduplicates logical. Remove rules from the ensemble which have 
-#' the exact same support in training data?
-#' @param removecomplements logical. Remove rules from the ensemble which have
-#' the same support in the training data as (1 - earlier rules)? 
-#' @param winsfrac numeric. Quantiles of data distribution to be used for 
+#' maximum depth of every consecutive tree grown. Alternatively, a random
+#' sampling function may be supplied, which takes argument \code{ntrees} and 
+#' returns integer values. See also \code{\link{maxdepth_sampler}}.
+#' @param learnrate numeric value \eqn{> 0}. Learning rate or boosting parameter.
+#' @param mtry positive integer. Number of randomly selected predictor variables for 
+#' creating each split in each tree. Ignored when \code{tree.unbiased=FALSE}.
+#' @param ntrees positive integer value. Number of trees to generate for the 
+#' initial ensemble.
+#' @param removeduplicates logical. Remove rules from the ensemble which are 
+#' identical to an earlier rule?
+#' @param removecomplements logical. Remove rules from the ensemble which are
+#' identical to (1 - an earlier rule)? 
+#' @param winsfrac numeric value \eqn{> 0} and \eqn{\leq 0.5}. Quantiles of data 
+#' distribution to be used for 
 #' winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
 #' that ordinal variables are included as linear terms in estimating the
 #' regression model and will also be winsorized.
@@ -74,7 +80,7 @@ utils::globalVariables("%dopar%")
 #' have SD equal to 1 before estimating the regression model? This will also 
 #' standardize the dummified factors, users are advised to use the default 
 #' \code{standardize = FALSE}.
-#' @param nfolds numeric. Number of cross-validation folds to be used for 
+#' @param nfolds positive integer. Number of cross-validation folds to be used for 
 #' selecting the optimal value of the penalty parameter \eqn{\lambda} in selecting
 #' the final ensemble.
 #' @param verbose logical. Should information on the initial and final ensemble 
@@ -82,7 +88,7 @@ utils::globalVariables("%dopar%")
 #' @param par.init logical. Should parallel foreach be used to generate initial 
 #' ensemble? Only used when \verb{learnrate == 0}. Note: Must register parallel 
 #' beforehand, such as doMC or others. Furthermore, setting 
-#' \code{par.init = TRUE} will likely only increase computation time for smaller 
+#' \code{par.init = TRUE} will likely increase computation time for smaller 
 #' datasets.
 #' @param par.final logical. Should parallel foreach be used to perform cross 
 #' validation for selecting the final ensemble? Must register parallel beforehand, 
@@ -95,7 +101,8 @@ utils::globalVariables("%dopar%")
 #' be employed for rule generation? Defaults to \code{TRUE}, if set to 
 #' \code{FALSE}, rules will be generated employing the CART algorithm
 #' (which suffers from biased variable selection) as implemented in 
-#' \code{\link[rpart]{rpart}}.
+#' \code{\link[rpart]{rpart}}. See details below for possible combinations 
+#' with \code{family}, \code{use.grad} and \code{learnrate}.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' @details Obervations with missing values will be removed prior to analysis.
@@ -109,23 +116,60 @@ utils::globalVariables("%dopar%")
 #' duplicated variable names, which may yield problems, for example in the 
 #' calculation of predictions and importances, later on. This can be prevented 
 #' by renaming factor variables with numbers in their name, prior to analysis.
+#' 
+#' The table below provides an overview of combinations of response 
+#' variable types, \code{use.grad}, \code{tree.unbiased} and
+#' \code{learnrate} settings that are supported, and the tree induction 
+#' algorithm that will be employed as a result:
+#' 
+#' \tabular{lccccc}{
+#' \strong{use.grad} \tab \strong{tree.unbiased} \tab \strong{learnrate} \tab \strong{family} \tab \strong{tree alg.} \tab \strong{Response variable format} \cr
+#' \cr
+#' TRUE	\tab TRUE	\tab 0 \tab gaussian	  \tab ctree\tab Single, numeric (non-integer) \cr
+#' TRUE	\tab TRUE	\tab 0 \tab mgaussian	  \tab ctree\tab Multiple, numeric (non-integer) \cr
+#' TRUE	\tab TRUE	\tab 0 \tab binomial	  \tab ctree\tab Single, factor with 2 levels \cr
+#' TRUE	\tab TRUE	\tab 0 \tab multinomial	\tab ctree\tab Single, factor with \>2 levels \cr
+#' TRUE	\tab TRUE	\tab 0 \tab poisson	    \tab ctree\tab Single, integer \cr
+#' \cr
+#' TRUE	\tab TRUE	\tab >0 \tab 	gaussian	  \tab ctree \tab Sinlge, numeric (non-integer) \cr
+#' TRUE	\tab TRUE	\tab >0	\tab mgaussian	  \tab ctree \tab Mutliple, numeric (non-integer) \cr
+#' TRUE	\tab TRUE	\tab >0	\tab binomial	  \tab ctree  \tab Single, factor with 2 levels \cr
+#' TRUE	\tab TRUE	\tab >0	\tab multinomial	\tab ctree \tab Single, factor with >2 levels \cr
+#' TRUE	\tab TRUE	\tab >0	\tab poisson	    \tab ctree  \tab Single, integer \cr
+#' \cr
+#' FALSE \tab TRUE \tab 0 \tab gaussian	  \tab glmtree \tab Single, numeric (non-integer) \cr
+#' FALSE \tab TRUE \tab 0 \tab binomial	  \tab glmtree \tab Single, factor with 2 levels \cr
+#' FALSE \tab TRUE \tab 0 \tab poisson	    \tab glmtree \tab Single, integer \cr
+#' \cr
+#' FALSE \tab TRUE \tab >0 \tab gaussian	  \tab glmtree \tab Single, numeric (non-integer) \cr
+#' FALSE \tab TRUE \tab >0 \tab binomial	  \tab glmtree \tab Single, factor with 2 levels \cr
+#' FALSE \tab TRUE \tab >0 \tab poisson	    \tab glmtree \tab Single, integer \cr
+#' \cr
+#' TRUE	\tab FALSE \tab 0 \tab gaussian	  \tab rpart \tab Single, numeric (non-integer) \cr
+#' TRUE	\tab FALSE \tab 0 \tab binomial	  \tab rpart \tab Single, factor with 2 levels \cr
+#' TRUE	\tab FALSE \tab 0 \tab multinomial	\tab rpart \tab Single, factor with >2 levels \cr
+#' TRUE	\tab FALSE \tab 0 \tab poisson	    \tab rpart \tab Single, integer \cr
+#' \cr
+#' FALSE \tab FALSE	\tab >0 \tab gaussian	  \tab rpart \tab Single, numeric (non-integer) \cr
+#' FALSE \tab FALSE	\tab >0 \tab binomial	  \tab rpart \tab Single, factor with 2 levels \cr
+#' FALSE \tab FALSE	\tab >0 \tab poisson	    \tab rpart \tab Single, integer \cr
+#' }
+#' 
 #' @note The code for deriving rules from the nodes of trees was taken from an 
 #' internal function of the \code{partykit} package of Achim Zeileis and Torsten 
 #' Hothorn.
-#' @return an object of class \code{pre}, which contains the initial ensemble of 
+#' 
+#' @return An object of class \code{pre}, which contains the initial ensemble of 
 #' rules and/or linear terms and the final ensembles for a wide range of penalty
 #' parameter values. By default, the final ensemble employed by all of the other
 #' methods and functions in package \code{pre} is selected using the 'minimum
 #' cross validated error plus 1 standard error' criterion. All functions and 
-#' methods also take a \code{penalty.parameter.value} argument, which can be
-#' used to select a more or less sparse final ensembles. The 
-#' \code{penalty.parameter.value} argument takes values \code{"lambda.1se"} 
-#' (the default), \code{"lambda.min"}, or a numeric value. Users can assess 
-#' the trade of between sparsity and accuracy provided by every possible value 
+#' methods take a \code{penalty.parameter.value} argument, which can be
+#' used to select a more or less sparse final ensembles. Users can assess 
+#' the trade-off between sparsity and accuracy provided by every possible value 
 #' of the penalty parameter (\eqn{\lambda}) by running \code{object$glmnet.fit} 
 #' and \code{plot(object$glmnet.fit)}.
-#' @details Inputs can be numeric, ordered or factor variables. Reponse can be
-#' a numeric, count or binary categorical variable.
+#' 
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
@@ -137,6 +181,10 @@ utils::globalVariables("%dopar%")
 #' @references
 #' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 #' machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
+#' ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive 
+#' partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
 #' 
 pre <- function(formula, data, family = gaussian,
                 use.grad = TRUE, weights, type = "both", sampfrac = .5, 
@@ -307,6 +355,9 @@ pre <- function(formula, data, family = gaussian,
       tree.control <- mob_control(maxdepth = maxdepth[1] + 1, mtry = mtry)
     } else if (!tree.unbiased){
       tree.control <- rpart.control(maxdepth = maxdepth[1])
+      if(!is.infinite(mtry)) {
+        warning("Value specified for mtry will be ignored if tree.unbiased = FALSE.")
+      }
     }
   } else {
     if (!is.list(tree.control)) {
@@ -512,7 +563,6 @@ pre <- function(formula, data, family = gaussian,
                                 learnrate = learnrate, 
                                 par.init = par.init, 
                                 sampfrac = sampfrac, 
-                                n = n, 
                                 mtry = mtry,
                                 weights = weights, 
                                 ntrees = ntrees, 
@@ -527,7 +577,6 @@ pre <- function(formula, data, family = gaussian,
       rule_object <- pre_rules(formula = formula, 
                                data = data,
                                weights = weights,
-                               n = n,
                                y_names = y_names,
                                x_names = x_names,
                                learnrate = learnrate, 
@@ -760,7 +809,7 @@ get_modmat <- function(
 
 ## Rule learner for pre:
 pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
-                      n = nrow(data), y_names = NULL, x_names = NULL, 
+                      y_names, x_names, 
                       learnrate = .01, par.init = FALSE, sampfrac = .5, 
                       mtry = Inf, maxdepth = 3L, ntrees = 500, 
                       tree.control = ctree_control(), use.grad = TRUE, 
@@ -768,30 +817,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                       removeduplicates = TRUE, removecomplements = TRUE,
                       tree.unbiased = TRUE, return.dupl.compl = FALSE) {
   
-  ## Prepare x_names and y_names, if necessary:
-  if (is.null(x_names) && is.null(y_names)) {
-    data <- model.frame(Formula::as.Formula(formula), data = data, na.action = NULL)
-    x_names <- attr(attr(data, "terms"), "term.labels")
-  
-    if (family == "mgaussian") {
-      y_names <- all.vars(formula[[2]])
-      if (any(grepl(".", y_names, fixed = TRUE))) {
-        warning("If a multivariate response is specified, the left-hand side of the formula should not include '.' .")
-      }
-      ## With MV response, responses are included as terms, should be omitted from x_names:
-      x_names <- x_names[!x_names %in% y_names]
-    } else { # a single response was specified
-      y_names <- names(data)[attr(attr(data, "terms"), "response")]
-    }
-  
-    ## expand dot in formula, if present:
-    if (family != "mgaussian") {
-      formula <- formula(data)
-    }
-    if (nrow(data) != n) {
-      n <- nrow(data)
-    }
-  }
+  n <- nrow(data)
   
   ## Prepare glmtree arguments, if necessary:
   if (!use.grad && tree.unbiased) {
@@ -1082,19 +1108,91 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
   }
   
   if (return.dupl.compl) {
-    result <- list(rules = rules, 
-                   duplicates.removed = duplicates.removed, 
-                   complements.removed = complements.removed)
+    return(list(rules = rules, 
+                duplicates.removed = duplicates.removed, 
+                complements.removed = complements.removed))
   } else {
-    rules
+    return(rules)
   }
-  return(result)
 }
+
+
+
+
+
+
+
+
+#' Get rule learner for gpe which mimics behavior of pre
+#'
+#' \code{gpe_rules_pre} generates a learner function which generates rules like 
+#' pre, which can be supplied to the gpe base_learner argument
+#' 
+#' @inheritParams pre 
+#' @param maxdepth positive integer. Maximum number of conditions in a rule. 
+#' If length(maxdepth) == 1, it specifies the maximum depth of of each tree 
+#' grown. If length(maxdepth) == ntrees, it specifies the maximum depth of 
+#' every consecutive tree grown.
+#' @examples
+#' \dontrun{
+#' ## Obtain same fits with pre and gpe
+#' set.seed(42)
+#' gpe.mod <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),],  
+#'                base_learners = list(gpe_rules_pre(), gpe_linear()))
+#' set.seed(42)
+#' pre.mod <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),],)
+#' }
+#' @export
+gpe_rules_pre <- function(learnrate = .01, par.init = FALSE, 
+                          mtry = Inf, maxdepth = 3L, ntrees = 500, 
+                          tree.control = ctree_control(), use.grad = TRUE, 
+                          removeduplicates = TRUE, removecomplements = TRUE,
+                          tree.unbiased = TRUE) {
+  
+  function(formula, data, weights, sample_func, verbose, family, ...) {
+    if (!family %in% c("gaussian", "binomial")) {
+      warning("gpe_rules supports only gaussian and binomial family")
+    }
+    if (any(!complete.cases(data))) {
+      warning("data contains missing values'")
+    }
+    cl <- match.call()
+    data <- model.frame(Formula::as.Formula(formula), data = data, 
+                        na.action = NULL)
+    pre_rules_args <- list(
+      data = data,
+      x_names = attr(attr(data, "terms"), "term.labels"),
+      y_names = names(data)[attr(attr(data, "terms"), "response")],
+      formula = formula(data), # expands dots in formula
+      sampfrac = sample_func,
+      weights = if (is.null(cl$weights)) {rep(1, times = nrow(data))} else {cl$weights},
+      learnrate = ifelse(is.null(cl$learnrate), .01, cl$learnrate), 
+      par.init = ifelse(is.null(cl$par.init), FALSE, cl$par.init), 
+      mtry = ifelse(is.null(cl$mtry), Inf, cl$mtry), 
+      maxdepth = if (is.null(cl$maxdepth)) {3L} else {cl$maxdepth}, 
+      ntrees = ifelse(is.null(cl$ntrees), 500, cl$ntrees), 
+      tree.control = if (is.null(cl$tree.control)) {ctree_control()} else {cl$tree.control}, 
+      
+      use.grad = ifelse(is.null(cl$use.grad), TRUE, cl$use.grad), 
+      verbose = ifelse(is.null(cl$verbose), FALSE, cl$verbose), 
+      removeduplicates = ifelse(is.null(cl$removeduplicates), TRUE, cl$removeduplicates), 
+      removecomplements = ifelse(is.null(cl$removecomplements), TRUE, cl$removecomplements),
+      tree.unbiased = ifelse(is.null(cl$tree.unbiased), TRUE, cl$tree.unbiased), 
+      return.dupl.compl = FALSE
+    )
+    rules <- do.call(pre_rules, args = pre_rules_args)
+    paste0("rTerm(", rules, ")")
+  }
+  
+}
+
+
+
 
 
 pre_rules_mixed_effects <- function(formula, data, family = "gaussian", 
                                     y_names, x_names, learnrate = .01, 
-                                    sampfrac = .5, n = nrow(data), 
+                                    sampfrac = .5, 
                                     weights = rep(1, nrow(data)), 
                                     mtry = Inf, maxdepth = 3L, ntrees = 500,
                                     tree.control = ctree_control(mtry = mtry, maxdepth = maxdepth[1]), 
@@ -1102,6 +1200,8 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
                                     removeduplicates = TRUE, 
                                     removecomplements = TRUE, 
                                     par.init = FALSE) {
+  
+  n <- nrow(data)
   
   ## Prepare arguments:
   glmertree_args <- tree.control    
@@ -1212,13 +1312,16 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
 }
 
 
-#' Sampling function generator for specifyinf varying maximum tree depth
+#' Sampling function generator for specifyinf varying maximum tree depth 
+#' in a prediction rule ensemble (pre)
 #' 
-#' \code{maxdepth.sampler} generates a random sampling function, governed
+#' \code{maxdepth_sampler} generates a random sampling function, governed
 #' by a pre-specified average tree depth.
 #' 
-#' @param av.no.term.nodes integer of length one.
-#' @param av.tree.depth integer of length one.
+#' @param av.no.term.nodes integer of length one. Specifies the average 
+#' number of terminal nodes in trees used for rule inducation.
+#' @param av.tree.depth integer of length one. Specifies the average maximum
+#' tree depth in trees used for rule induction.
 #' @return Returns a random sampling function with single argument 'ntrees',
 #' which can be supplied to the \code{maxdepth} argument of function 
 #' \code{\link{pre}} to specify varying tree depths.
@@ -1226,7 +1329,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
 #' rule induction. Furthermore, it defined tree size in terms of the number
 #' of terminal nodes. In contrast, function \code{\link{pre}} defines the 
 #' maximum tree size in terms of a (constant) tree depth. Function 
-#' \code{maxdepth.sampler} allows for mimicing the behavior of the
+#' \code{maxdepth_sampler} allows for mimicing the behavior of the
 #' orignal RuleFit implementation. In effect, the maximum tree depth is 
 #' sampled from an exponential distribution with learning rate 
 #' \eqn{\frac{1}{\bar{L}-2}}, where \eqn{(\bar{L}) \geq 2} represents the
@@ -1235,23 +1338,40 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
 #' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @export
+#' @seealso \code{\link{pre}}
 #' @examples
-#' ## RuleFit default is 4 terminal nodes, on average:
-#' func1 <- maxdepth.sampler()
+#' ## RuleFit default is max. 4 terminal nodes, on average:
+#' func1 <- maxdepth_sampler()
 #' set.seed(42)
 #' func1(10)
-#' mean(func1(10000))
-#' ## Specify 16 terminal nodes on average (equals average maxdepth of 4):
-#' func2 <- maxdepth.sampler(av.no.term.nodes = 16L)
+#' mean(func1(1000))
+#' 
+#' ## Max. 16 terminal nodes, on average (equals average maxdepth of 4):
+#' func2 <- maxdepth_sampler(av.no.term.nodes = 16L)
 #' set.seed(42)
 #' func2(10)
-#' mean(func2(10000))
-#' ## Specify average maximum tree depth of 3:
-#' func3 <- maxdepth.sampler(av.tree.depth = 3)
+#' mean(func2(1000))
+#' 
+#' ## Max. tree depth of 3, on average:
+#' func3 <- maxdepth_sampler(av.tree.depth = 3)
 #' set.seed(42)
 #' func3(10)
-#' mean(func3(10000))
-maxdepth.sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
+#' mean(func3(1000))
+#' 
+#' ## Max. 2 of terminal nodes, on average (always yields maxdepth of 1):
+#' func4 <- maxdepth_sampler(av.no.term.nodes = 2L)
+#' set.seed(42)
+#' func4(10)
+#' mean(func4(1000))
+#' 
+#' \dontrun{
+#' ## Create rule ensemble with varying maxdepth:
+#' set.seed(42)
+#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),],
+#'                 maxdepth = func1)
+#' airq.ens  
+#' }
+maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
   function(ntrees, ...) {
     if (!is.null(av.tree.depth)) {
       av.no.term.nodes <- 2^av.tree.depth
@@ -1268,20 +1388,20 @@ maxdepth.sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
 #' ensemble to the command line
 #' 
 #' @param x An object of class \code{\link{pre}}.
-#' @param penalty.par.val character. Information for which final prediction rule
-#' ensemble(s) should be printed? The ensemble with penalty parameter criterion 
-#' yielding minimum cv error (\code{"lambda.min"}) or penalty parameter 
-#' yielding error within 1 standard error of minimum cv error 
+#' @param penalty.par.val character or numeric. Information for which final 
+#' prediction rule ensemble should be printed? The ensemble with penalty 
+#' parameter criterion yielding minimum cv error (\code{"lambda.min"}) 
+#' or penalty parameter yielding error within 1 standard error of minimum cv error 
 #' ("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
 #' corresponding to one of the values of lambda in the sequence used by glmnet,
-#' for which estimated cv error can be inspected by running \code{x$glmnet.fit}
+#' for which estimated cv error can be inspected by inspecting \code{x$glmnet.fit}
 #' and \code{plot(x$glmnet.fit)}.
-#' @param digits Number of digits to print
-#' @param ... Additional arguments, currently not used
+#' @param digits Number of decimal places to print
+#' @param ... Additional arguments, currently not used.
 #' @return Prints information about the fitted prediction rule ensemble.
 #' @details Note that the cv error is estimated with data that was also used 
-#' for learning rules and may be too optimistic. Use cvpre() to obtain an 
-#' accurate estimate of future prediction error.
+#' for learning rules and may be too optimistic. Use cvpre() to obtain a 
+#' more realistic estimate of future prediction error.
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
@@ -1357,10 +1477,11 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 
 
 
-#' Full k-fold cross validation of a pre
+#' Full k-fold cross validation of a prediction rule ensemble (pre)
 #' 
 #' \code{cvpre} performs k-fold cross validation on the dataset used to create 
-#' the ensemble, providing an estimate of predictive accuracy on future observations.
+#' the prediction rule ensemble, providing an estimate of predictive accuracy 
+#' on future observations.
 #' 
 #' @param object An object of class \code{\link{pre}}.
 #' @param k integer. The number of cross validation folds to be used.
@@ -1369,12 +1490,12 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' @param pclass numeric. Only used for classification. Cut-off value for the 
 #' predicted probabilities that should be used to classify observations to the
 #' second class. 
-#' @param penalty.par.val character. Calculate cross-validated error for ensembles 
-#' with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
-#' or giving cv error that is within 1 standard error of minimum cv error 
-#' ("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
-#' corresponding to one of the values of lambda in the sequence used by glmnet,
-#' for which estimated cv error can be inspected by running 
+#' @param penalty.par.val numeric or character. Calculate cross-validated error for 
+#' ensembles with penalty parameter criterion giving minimum cv error 
+#' (\code{"lambda.min"}) or giving cv error that is within 1 standard error of 
+#' minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric value may be 
+#' specified, corresponding to one of the values of lambda in the sequence used by 
+#' glmnet, for which estimated cv error can be inspected by running 
 #' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param parallel logical. Should parallel foreach be used? Must register parallel 
 #' beforehand, such as doMC or others.
@@ -1621,21 +1742,22 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' @param object object of class \code{\link{pre}}.
 #' @param newdata optional dataframe of new (test) observations, including all
 #' predictor variables used for deriving the prediction rule ensemble.
-#' @param penalty.par.val character. Penalty parameter criterion to be used for
-#' selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
-#' giving cv error that is within 1 standard error of minimum cv error
-#' ("lambda.1se"). Alternatively, a numeric value may be specified, 
-#' corresponding to one of the values of lambda in the sequence used by glmnet,
-#' for which estimated cv error can be inspected by running 
+#' @param penalty.par.val character or numeric. Penalty parameter criterion 
+#' to be used for selecting final model: lambda giving minimum cv error 
+#' (\code{"lambda.min"}) or lambda giving cv error that is within 1 standard 
+#' error of minimum cv error (\code{"lambda.1se"}). Alternatively, a numeric 
+#' value may be specified, corresponding to one of the values of lambda in the 
+#' sequence used by glmnet,for which estimated cv error can be inspected by running 
 #' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
 #' @param type character string. The type of prediction required; the default
 #' \code{type = "link"} is on the scale of the linear predictors. Alternatively,
-#' for nominal outputs, \code{type = "response"} gives the fitted probabilities
-#' and \code{type = "class"} gives the predicted class membership.
+#' for count and factor outputs, \code{type = "response"} may be specified to obtain
+#' the fitted mean and fitted probabilities, respectively; \code{type = "class"} 
+#' returns the predicted class membership.
 #' @param ... further arguments to be passed to 
 #' \code{\link[glmnet]{predict.cv.glmnet}}.
-#' @details When newdata is not provided, training data included in the specified
-#' object is used.
+#' @details If \code{newdata} is not provided, predictions for training data will be 
+#' returned.
 #' @examples \donttest{
 #' set.seed(1)
 #' train <- sample(1:sum(complete.cases(airquality)), size = 100)
@@ -1648,7 +1770,9 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' @method predict pre
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}}, 
-#' \code{\link{interact}}, \code{\link{print.pre}} 
+#' \code{\link{interact}}, \code{\link{print.pre}}, 
+#' \code{\link[glmnet]{predict.cv.glmnet}}
+#' 
 predict.pre <- function(object, newdata = NULL, type = "link",
                         penalty.par.val = "lambda.1se", ...)
 {
@@ -1723,7 +1847,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 
 
 
-#' Create partial dependence plot for a single variable
+#' Create partial dependence plot for a single variable in a prediction rule 
+#' ensemble (pre)
 #'
 #' \code{singleplot} creates a partial dependence plot, which shows the effect of
 #' a predictor variable on the ensemble's predictions
@@ -1837,7 +1962,8 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 
 
 
-#' Create partial dependence plot for a pair of predictor variables
+#' Create partial dependence plot for a pair of predictor variables in a prediction 
+#' rule ensemble (pre)
 #'
 #' \code{pairplot} creates a partial dependence plot to assess the effects of a
 #' pair of predictor variables on the predictions of the ensemble
@@ -1999,10 +2125,11 @@ pairplot <- function(object, varnames, type = "both",
 
 
 #' Calculate importances of baselearners (rules and linear terms) and input
-#' variables
+#' variables in a prediction rule ensemble (pre)
 #'
 #' \code{importance} calculates importances for rules, linear terms and input
-#' variables in the ensemble, and provides a bar plot of variable importances.
+#' variables in the prediction rule ensemble (pre), and creates a bar plot 
+#' of variable importances.
 #'
 #' @param object an object of class \code{\link{pre}}
 #' @param standardize logical. Should baselearner importances be standardized 
@@ -2016,13 +2143,13 @@ pairplot <- function(object, varnames, type = "both",
 #' \code{global = FALSE}. Probabilities for calculating sample quantiles of the 
 #' range of F(X), over which local importances are calculated. The default 
 #' provides variable importances calculated over the 25\% highest values of F(X).
-#' @param penalty.par.val character. Should model be selected with lambda yielding
-#' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-#' standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
-#' value may be specified, corresponding to one of the values of lambda in the 
-#' sequence used by glmnet.
+#' @param penalty.par.val character or numeric. Should model be selected with 
+#' lambda yielding minimum cv error ("lambda.min"), or lambda giving cv error 
+#' that is within 1 standard error of minimum cv error ("lambda.1se")? 
+#' Alternatively, a numeric value may be specified, corresponding to one of the 
+#' values of lambda in the sequence used by glmnet.
 #' @param round integer. Number of decimal places to round numeric results to.
-#' If NA (default), no rounding is performed.
+#' If \code{NA} (default), no rounding is performed.
 #' @param plot logical. Should variable importances be plotted?
 #' @param ylab character string. Plotting label for y-axis. Only used when
 #' \code{plot = TRUE}.
@@ -2231,7 +2358,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 
 
 
-#' Compute bootstrapped null interaction models
+#' Compute bootstrapped null interaction prediction rule ensembles
 #'
 #' \code{bsnullinteract} generates bootstrapped null interaction models,
 #' which can be used to derive a reference distribution of the test statistic
@@ -2240,31 +2367,32 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 #' @param object object of class \code{\link{pre}}.
 #' @param nsamp numeric. Number of bootstrapped null interaction models to be
 #' derived.
-#' @param penalty.par.val character. Which value of the penalty parameter
-#' criterion should be used? The value yielding minimum cv error
+#' @param penalty.par.val character or numeric. Which value of the penalty 
+#' parameter criterion should be used? The value yielding minimum cv error
 #' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
 #' error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
 #' value may be specified, corresponding to one of the values of lambda in the 
 #' sequence used by glmnet, for which estimated cv error can be inspected by 
-#' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' inspecting \code{object$glmnet.fit} and running 
+#' \code{plot(object$glmnet.fit)}.
 #' @param parallel logical. Should parallel foreach be used to generate initial
 #' ensemble? Must register parallel beforehand, such as doMC or others.
 #' @param verbose logical. should progress be printed to the command line?
-#' @return A list of length \code{nsamp} with null interaction datasets, to be
+#' @return A list of length \code{nsamp} with null interaction models, to be
 #' used as input for \code{\link{interact}}.
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' nullmods <- bsnullinteract(airq.ens)
 #' interact(airq.ens, nullmods = nullmods, col = c("#7FBFF5", "#8CC876"))}
-#' @details Computationally intensive. Progress info is printed to command line.
+#' @details Computationally intensive.
 #' @export
 #' @seealso \code{\link{pre}}, \code{\link{interact}} 
 bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
                            penalty.par.val = "lambda.1se", verbose = FALSE)
 {
   
-  if (object$family %in% c("mgaussian", "multinomial")) {
-    stop("Function bsnullinteract not implemented yet for multivariate and multinomial outcomes.")
+  if (object$family %in% c("mgaussian", "multinomial", "binomial")) {
+    stop("Function bsnullinteract not implemented yet for binomial, multinomial and multivariate outcomes.")
   }
   
   # Preliminaries:
@@ -2282,7 +2410,6 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
   # create call for generating bootstrapped null models:
   bsnullmodcall <- object$call
   bsnullmodcall$maxdepth <- 1
-  bsnullmodcall$verbose <- verbose
   # create call for model allowing for interactions, grown on bootstrapped
   # datasets without interactions:
   bsintmodcall <- object$call
@@ -2326,14 +2453,15 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       bs.ens.null <- eval(bsnullmodcall, envir = environment())
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
-      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$data)
+      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$data, type = "link")
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
       F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
-                                penalty.par.val = penalty.par.val)
+                                penalty.par.val = penalty.par.val,
+                                type = "link")
       # step 5: Calculate ytilde of formula 47 of F&P2008:
-      # FIXME: Does not compute for categorical outcomes: 
-      ytilde <- F_A_of_x + object$data[bs_inds, object$y_names] - F_A_of_x_p
+      # TODO: Does not compute for categorical outcomes: 
+      ytilde <- F_A_of_x + (object$data[bs_inds, object$y_names] - F_A_of_x_p)
       # step 6: Build a model using (x,ytilde), using the same procedure as was
       # originally applied to (x,y):
       tmp <- object$data
@@ -2392,11 +2520,12 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 
 
 
-#' Calculate interaction statistics for user-specified variables
+#' Calculate interaction statistics for variables in a prediction rule ensemble 
+#' (pre)
 #'
 #' \code{interact} calculates test statistics for assessing the strength of
-#' interactions between the input variable(s) specified, and all other input
-#' variables.
+#' interactions between a set of user-specified input variable(s), and all 
+#' other input variables.
 #'
 #' @param object an object of class \code{\link{pre}}.
 #' @param varnames character vector. Names of variables for which interaction
@@ -2665,10 +2794,11 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
   
   ## Generate a plot for every baselearner:
   for(i in 1:nrow(nonzeroterms)) {
+    
     if (conditions[[i]][1] == "linear") { 
       ## Plot linear term:
       ## Open new plotting page if needed:
-      if (nonzeroterms$rowno[i] == 1 && nonzeroterms$rowno[i] == 1) {
+      if (nonzeroterms$rowno[i] == 1 && nonzeroterms$colno[i] == 1) {
         grid::grid.newpage()
         grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
       }
@@ -2692,14 +2822,12 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
         
         grid::grid.text(paste0("Linear effect of ", nonzeroterms$rule[i], 
                              "\n\n Coefficient = ", round(nonzeroterms$coefficient[i], digits = 3),
-                               "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3)),
-                        gp = grid::gpar(...))        
+                               "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3)))#,
+                        #gp = grid::gpar(...))        
       }
       grid::popViewport()
       
-    } else { 
-      
-      ## Otherwise, plot rule:
+    } else { ## Otherwise, plot rule:
       
       # Create lists of arguments and operators for every condition:
       cond <- list()
@@ -2752,7 +2880,6 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       ## Generate partynode objects for plotting:
       
       nodes <- list()
-      
       ## Create level 0 (bottom level, last two nodes):
       ## If last condition has " > " : exit node on left, coefficient on right:
       if (cond[[1]][2] == " > ") { # If condition involves " > ", the tree has nonzero coef on right:
@@ -2767,7 +2894,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                              info = round(nonzeroterms$coefficient[i], digits = 3))  
         }
       } else { 
-      ## If last condition has " <= " or " %in% " : coefficient on left, exit node on right:
+        ## If last condition has " <= " or " %in% " : coefficient on left, exit node on right:
         if (x$family %in% c("multinomial", "mgaussian")) {
           info <- paste(round(nonzeroterms[i, grep("coefficient", names(nonzeroterms))], digits = 3), collapse = "\n")
           nodes[[1]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL,
@@ -2780,7 +2907,6 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                            info = exit.label)
       }
       class(nodes[[1]]) <- class(nodes[[2]]) <- "partynode"
-      
       
       ## Create inner levels (if necessary):
       if (ncond > 1) {
@@ -2809,45 +2935,45 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                                           kids = NULL, 
                                           surrogates = NULL, 
                                           info = exit.label)
-         }  
-         class(nodes[[level * 2 + 1]]) <- class(nodes[[level * 2 + 2]]) <- "partynode"
+          }  
+          class(nodes[[level * 2 + 1]]) <- class(nodes[[level * 2 + 2]]) <- "partynode"
+        }
       }
-    }
       
-    ## Create root node:
-    nodes[[ncond * 2 + 1]] <- list(id = as.integer(ncond * 2 + 1),
-                                   split = partysplit(as.integer(ncond), breaks = as.numeric(cond[[ncond]][3])),
-                                   kids = list(nodes[[ncond * 2 - 1]], nodes[[ncond * 2]]),
-                                   surrogates = NULL, 
-                                   info = NULL)
-    class(nodes[[ncond * 2 + 1]]) <- "partynode"
+      ## Create root node:
+      nodes[[ncond * 2 + 1]] <- list(id = as.integer(ncond * 2 + 1),
+                                     split = partysplit(as.integer(ncond), breaks = as.numeric(cond[[ncond]][3])),
+                                     kids = list(nodes[[ncond * 2 - 1]], nodes[[ncond * 2]]),
+                                     surrogates = NULL, 
+                                     info = NULL)
+      class(nodes[[ncond * 2 + 1]]) <- "partynode"
       
-    ## Open new plotting page if needed:
-    if (nonzeroterms$rowno[i] == 1 && nonzeroterms$colno[i] == 1) {
-      grid::grid.newpage()
-      grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
+    
+      ## Open new plotting page if needed:
+      if (nonzeroterms$rowno[i] == 1 && nonzeroterms$colno[i] == 1) {
+        grid::grid.newpage()
+        grid::pushViewport(grid::viewport(layout = grid::grid.layout(plot.dim[1], plot.dim[2])))
+      }
+    
+    
+      ## Open viewport:
+      grid::pushViewport(grid::viewport(layout.pos.col = nonzeroterms$colno[i],
+                                        layout.pos.row = nonzeroterms$rowno[i]))
+    
+      ## Plot the rule:
+      fftree <- party(nodes[[ncond * 2 + 1]], data = treeplotdata)
+      if (x$family %in% c("mgaussian", "multinomial")) {
+        plot(fftree, newpage = FALSE, main = nonzeroterms$rule[i],
+             inner_panel = node_inner(fftree, id = FALSE),
+             terminal_panel = node_terminal(fftree, id = FALSE))#, gp = grid::gpar(...))
+      } else {
+        plot(fftree, newpage = FALSE, 
+             main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
+             inner_panel = node_inner(fftree, id = FALSE),
+             terminal_panel = node_terminal(fftree, id = FALSE))#, gp = grid::gpar(...))      
+      }
+      grid::popViewport()
     }
-    
-    
-    
-    ## Open viewport:
-    grid::pushViewport(grid::viewport(layout.pos.col = nonzeroterms$colno[i],
-                                      layout.pos.row = nonzeroterms$rowno[i]))
-    
-    ## Plot the rule:
-    fftree <- party(nodes[[ncond * 2 + 1]], data = treeplotdata)
-    if (x$family %in% c("mgaussian", "multinomial")) {
-      plot(fftree, newpage = FALSE, main = nonzeroterms$rule[i],
-           inner_panel = node_inner(fftree, id = FALSE),
-           terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))
-    } else {
-      plot(fftree, newpage = FALSE, 
-           main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
-           inner_panel = node_inner(fftree, id = FALSE),
-           terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))      
-    }
-    grid::popViewport()
-  }
   }
   
   if (ask) {
@@ -2937,12 +3063,12 @@ get_conditions <- function(object, penalty.par.val = "lambda.1se") {
 
 
 
-#' Plotting baselearner correlations
+#' Plot correlations between baselearners in a prediction rule ensemble (ore)
 #' 
-#' \code{corplot} plots correlations between baselearners
+#' \code{corplot} plots correlations between baselearners in a prediction rule ensemble
 #'  
 #' @param object object of class pre
-#' @param penalty.par.val character. Value of the penalty parameter value 
+#' @param penalty.par.val character or numeric. Value of the penalty parameter 
 #' \eqn{\lambda} to be used for selecting the final ensemble. The ensemble 
 #' with penalty parameter criterion yielding minimum cv error 
 #' (\code{"lambda.min"}) is taken, by default. Alternatively, the penalty 
@@ -2952,22 +3078,23 @@ get_conditions <- function(object, penalty.par.val = "lambda.1se") {
 #' for which estimated cv error can be inspected by running \code{x$glmnet.fit}
 #' and \code{plot(x$glmnet.fit)}.
 #' @param colors vector of contiguous colors to be used for plotting. If 
-#' \code{colors = NULL} (default), \code{colorRampPalette(c("#053061", "#2166AC", 
-#' "#4393C3", "#92C5DE", "#D1E5F0", "#FFFFFF", "#FDDBC7", "#F4A582", "#D6604D", 
-#' "#B2182B", "#67001F"))(200)} is used. A different set of plotting colors can 
-#' be specified, for example: \code{colors = cm.colors(100)}, or
-#' \code{colorRampPalette(c("blue", "white", "red"))(150)}. See
-#' \code{\link[grDevices]{cm.colors}} or \code{\link[grDevices]{colorRampPalette}}.
+#' \code{colors = NULL} (default), \code{colorRampPalette} is used to generate
+#' a sequence of 200 colors going from red to white to blue. A different set of 
+#' plotting colors can be specified here, for example: 
+#' \code{cm.colors(100)}, \code{colorspace::rainbow_hcl)(100)} 
+#' or \code{colorRampPalette(c("red", "yellow", "green"))(100)}.
 #' @param fig.plot plotting region to be used for correlation plot. See 
 #' \code{fig} under \code{\link{par}}.
 #' @param fig.legend plotting region to be used for legend. See \code{fig} 
 #' under \code{\link{par}}.
-#' @param legend.breaks numeric vector of breakspoints and colors to be 
-#' depicted in the plot's legend.
+#' @param legend.breaks numeric vector of breakpoints to be depicted in the 
+#' plot's legend. Should be a sequence from -1 to 1.
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' corplot(airq.ens)
 #' }
+#' @seealso See
+#' \code{\link[colorspace]{rainbow_hcl}} and \code{\link[grDevices]{colorRampPalette}}.
 #' @export
 corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
                     fig.plot = c(0, 0.85, 0, 1), fig.legend = c(.8, .95, 0, 1),

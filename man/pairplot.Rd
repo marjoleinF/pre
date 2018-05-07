@@ -2,7 +2,8 @@
 % Please edit documentation in R/pre.R
 \name{pairplot}
 \alias{pairplot}
-\title{Create partial dependence plot for a pair of predictor variables}
+\title{Create partial dependence plot for a pair of predictor variables in a prediction 
+rule ensemble (pre)}
 \usage{
 pairplot(object, varnames, type = "both", penalty.par.val = "lambda.1se",
   nvals = c(20, 20), pred.type = "response", ...)

@@ -8,34 +8,34 @@ Author: Marjolein Fokkema [aut, cre], Benjamin Christoffersen [aut]
 Maintainer: Marjolein Fokkema <m.fokkema@fsw.leidenuniv.nl>
 Description: Derives prediction rule ensembles (PREs). Largely follows the
     procedure for deriving PREs as described in Friedman & Popescu (2008; 
-    <DOI:10.1214/07-AOAS148>), with several adjustments and improvements. The 
-    main function pre() derives prediction rule ensembles consisting of rules 
-    and/or linear terms for binary, multinomial, count and (multivariate) 
-    continuous responses. Function gpe() derives generalized prediction 
-    ensembles, consisting of rules, hinge and linear functions of the predictor 
-    variables.
+    <DOI:10.1214/07-AOAS148>), with adjustments and improvements. The 
+    main function pre() derives prediction rule ensembles consisting of 
+    rules and/or linear terms for continuous, binary, count, multinomial, 
+    and multivariate continuous responses. Function gpe() derives 
+    generalized prediction ensembles, consisting of rules, hinge and linear 
+    functions of the predictor variables.
 URL: https://github.com/marjoleinF/pre
 BugReports: https://github.com/marjoleinF/pre/issues
 Depends:
     R (>= 3.1.0)
 Imports:
-    glmnet,
-    Formula,
-    methods,
-    graphics,
-    partykit,
     earth,
+    Formula,
+    glmnet,
+    graphics,
+    methods,
+    partykit,
     rpart,
     stringr
 Suggests:
     akima,
-    grid,
-    foreach,
-    testthat,
-    mlbench,
     datasets,
+    doParallel,
+    foreach,
     glmertree, 
-    doParallel
+    grid,
+    mlbench,
+    testthat
 License: GPL-2 | GPL-3
 Encoding: UTF-8
 LazyData: true

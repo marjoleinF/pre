@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{corplot}
 \alias{corplot}
-\title{Plotting baselearner correlations}
+\title{Plot correlations between baselearners in a prediction rule ensemble (ore)}
 \usage{
 corplot(object, penalty.par.val = "lambda.1se", colors = NULL,
   fig.plot = c(0, 0.85, 0, 1), fig.legend = c(0.8, 0.95, 0, 1),
@@ -11,7 +11,7 @@ corplot(object, penalty.par.val = "lambda.1se", colors = NULL,
 \arguments{
 \item{object}{object of class pre}
 
-\item{penalty.par.val}{character. Value of the penalty parameter value 
+\item{penalty.par.val}{character or numeric. Value of the penalty parameter 
 \eqn{\lambda} to be used for selecting the final ensemble. The ensemble 
 with penalty parameter criterion yielding minimum cv error 
 (\code{"lambda.min"}) is taken, by default. Alternatively, the penalty 
@@ -22,12 +22,11 @@ for which estimated cv error can be inspected by running \code{x$glmnet.fit}
 and \code{plot(x$glmnet.fit)}.}
 
 \item{colors}{vector of contiguous colors to be used for plotting. If 
-\code{colors = NULL} (default), \code{colorRampPalette(c("#053061", "#2166AC", 
-"#4393C3", "#92C5DE", "#D1E5F0", "#FFFFFF", "#FDDBC7", "#F4A582", "#D6604D", 
-"#B2182B", "#67001F"))(200)} is used. A different set of plotting colors can 
-be specified, for example: \code{colors = cm.colors(100)}, or
-\code{colorRampPalette(c("blue", "white", "red"))(150)}. See
-\code{\link[grDevices]{cm.colors}} or \code{\link[grDevices]{colorRampPalette}}.}
+\code{colors = NULL} (default), \code{colorRampPalette} is used to generate
+a sequence of 200 colors going from red to white to blue. A different set of 
+plotting colors can be specified here, for example: 
+\code{cm.colors(100)}, \code{colorspace::rainbow_hcl)(100)} 
+or \code{colorRampPalette(c("red", "yellow", "green"))(100)}.}
 
 \item{fig.plot}{plotting region to be used for correlation plot. See 
 \code{fig} under \code{\link{par}}.}
@@ -35,15 +34,19 @@ be specified, for example: \code{colors = cm.colors(100)}, or
 \item{fig.legend}{plotting region to be used for legend. See \code{fig} 
 under \code{\link{par}}.}
 
-\item{legend.breaks}{numeric vector of breakspoints and colors to be 
-depicted in the plot's legend.}
+\item{legend.breaks}{numeric vector of breakpoints to be depicted in the 
+plot's legend. Should be a sequence from -1 to 1.}
 }
 \description{
-\code{corplot} plots correlations between baselearners
+\code{corplot} plots correlations between baselearners in a prediction rule ensemble
 }
 \examples{
 \donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 corplot(airq.ens)
 }
+}
+\seealso{
+See
+\code{\link[colorspace]{rainbow_hcl}} and \code{\link[grDevices]{colorRampPalette}}.
 }

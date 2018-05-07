@@ -2,7 +2,8 @@
 % Please edit documentation in R/pre.R
 \name{interact}
 \alias{interact}
-\title{Calculate interaction statistics for user-specified variables}
+\title{Calculate interaction statistics for variables in a prediction rule ensemble 
+(pre)}
 \usage{
 interact(object, varnames = NULL, nullmods = NULL,
   penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95), plot = TRUE,
@@ -89,8 +90,8 @@ of interaction effects by setting the \code{nsamp} argument of the function
 }
 \description{
 \code{interact} calculates test statistics for assessing the strength of
-interactions between the input variable(s) specified, and all other input
-variables.
+interactions between a set of user-specified input variable(s), and all 
+other input variables.
 }
 \details{
 Can be computationally intensive, especially when nullmods is 

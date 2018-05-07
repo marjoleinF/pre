@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{cvpre}
 \alias{cvpre}
-\title{Full k-fold cross validation of a pre}
+\title{Full k-fold cross validation of a prediction rule ensemble (pre)}
 \usage{
 cvpre(object, k = 10, verbose = FALSE, pclass = 0.5,
   penalty.par.val = "lambda.1se", parallel = FALSE)
@@ -19,12 +19,12 @@ to the command line?}
 predicted probabilities that should be used to classify observations to the
 second class.}
 
-\item{penalty.par.val}{character. Calculate cross-validated error for ensembles 
-with penalty parameter criterion giving minimum cv error (\code{"lambda.min"}) 
-or giving cv error that is within 1 standard error of minimum cv error 
-("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
-corresponding to one of the values of lambda in the sequence used by glmnet,
-for which estimated cv error can be inspected by running 
+\item{penalty.par.val}{numeric or character. Calculate cross-validated error for 
+ensembles with penalty parameter criterion giving minimum cv error 
+(\code{"lambda.min"}) or giving cv error that is within 1 standard error of 
+minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric value may be 
+specified, corresponding to one of the values of lambda in the sequence used by 
+glmnet, for which estimated cv error can be inspected by running 
 \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
 \item{parallel}{logical. Should parallel foreach be used? Must register parallel 
@@ -44,7 +44,8 @@ per class).
 }
 \description{
 \code{cvpre} performs k-fold cross validation on the dataset used to create 
-the ensemble, providing an estimate of predictive accuracy on future observations.
+the prediction rule ensemble, providing an estimate of predictive accuracy 
+on future observations.
 }
 \examples{
 \donttest{

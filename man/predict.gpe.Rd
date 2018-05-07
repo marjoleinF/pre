@@ -2,7 +2,7 @@
 % Please edit documentation in R/gpe_miscs.R
 \name{predict.gpe}
 \alias{predict.gpe}
-\title{Predicted Values Based on gpe Ensemble}
+\title{Predicted values based on gpe ensemble}
 \usage{
 \method{predict}{gpe}(object, newdata = NULL, type = "link",
   penalty.par.val = "lambda.1se", ...)

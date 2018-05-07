@@ -1,6 +1,8 @@
-#' @rdname print.pre
+#' Print a General Prediction Ensemble (gpe)
 #' @export
 #' @method print gpe
+#' @inheritParams print.pre
+#' @seealso \code{\link{print.pre}}
 print.gpe <- function(
   x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...){
   out <- print.pre(x, penalty.par.val, digits, ...)
@@ -12,9 +14,14 @@ print.gpe <- function(
   invisible(out)
 }
 
-#' @rdname coef.pre
+
+#' @title Coefficients for a General Prediction Ensemble (gpe)
+#' 
+#' @description coef function for \code{\link{gpe}}
 #' @export
 #' @method coef gpe
+#' @inheritParams coef.pre
+#' @seealso \code{\link{coef.pre}}
 coef.gpe <- function(object, penalty.par.val = "lambda.1se", ...)
 {
   coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
@@ -51,7 +58,7 @@ gpe_pretty_labels <- function(term_labels){
   out
 }
 
-#' @title Predicted Values Based on gpe Ensemble
+#' @title Predicted values based on gpe ensemble
 #' 
 #' @description 
 #' Predict function for \code{\link{gpe}}

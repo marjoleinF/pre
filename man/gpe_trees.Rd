@@ -48,7 +48,7 @@ gpe_earth(..., degree = 3, nk = 8, normalize = TRUE, ntrain = 100,
 \item{cor_thresh}{A threshold on the pairwise correlation for removal of basis functions. This is similar to \code{remove_duplicates_complements}. One of the basis functions in pairs where the correlation exceeds the threshold is excluded. \code{NULL} implies no exclusion. Setting a value closer to zero will decrease the time needed to fit the final model.}
 }
 \value{
-A function that has formal arguments \code{formula, data, weights, sample_func, verbose, family, ...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link{cv.glmnet}}
+A function that has formal arguments \code{formula}, \code{data}, \code{weights}, \code{sample_func}, \code{verbose}, \code{family}, \code{...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link{cv.glmnet}}
 }
 \description{
 Functions to get "learner" functions for \code{\link{gpe}}.

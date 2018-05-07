@@ -25,7 +25,8 @@ export("gpe_sample")
 export("gpe_cv.glmnet")
 export("singleplot")
 export("corplot")
-export("maxdepth.sampler")
+export("maxdepth_sampler")
+export("gpe_rules_pre")
 
 
 

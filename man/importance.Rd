@@ -3,7 +3,7 @@
 \name{importance}
 \alias{importance}
 \title{Calculate importances of baselearners (rules and linear terms) and input
-variables}
+variables in a prediction rule ensemble (pre)}
 \usage{
 importance(object, standardize = FALSE, global = TRUE,
   quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se", round = NA,
@@ -28,14 +28,14 @@ of the predictions F(x) in \code{quantprobs}.}
 range of F(X), over which local importances are calculated. The default 
 provides variable importances calculated over the 25\% highest values of F(X).}
 
-\item{penalty.par.val}{character. Should model be selected with lambda yielding
-minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
-value may be specified, corresponding to one of the values of lambda in the 
-sequence used by glmnet.}
+\item{penalty.par.val}{character or numeric. Should model be selected with 
+lambda yielding minimum cv error ("lambda.min"), or lambda giving cv error 
+that is within 1 standard error of minimum cv error ("lambda.1se")? 
+Alternatively, a numeric value may be specified, corresponding to one of the 
+values of lambda in the sequence used by glmnet.}
 
 \item{round}{integer. Number of decimal places to round numeric results to.
-If NA (default), no rounding is performed.}
+If \code{NA} (default), no rounding is performed.}
 
 \item{plot}{logical. Should variable importances be plotted?}
 
@@ -69,7 +69,8 @@ for all predictor variables.
 }
 \description{
 \code{importance} calculates importances for rules, linear terms and input
-variables in the ensemble, and provides a bar plot of variable importances.
+variables in the prediction rule ensemble (pre), and creates a bar plot 
+of variable importances.
 }
 \examples{
 \donttest{

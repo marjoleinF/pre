@@ -1,4 +1,4 @@
-Changes in Version 0.5 (2018-..-..)
+Changes in Version 0.5 (2018-05-07)
 
   - Function pre() now also supports multinomial and multivariate 
       gaussian response variables.
@@ -10,6 +10,7 @@ Changes in Version 0.5 (2018-..-..)
   - Argument 'maxdepth' of function pre() allows for specifying 
       varying maximum depth across trees, through specifying a 
       vector of length ntrees, or a random number generating function.
+      See ?maxdepth.sampler for details.
 
 
 

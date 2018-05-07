@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{bsnullinteract}
 \alias{bsnullinteract}
-\title{Compute bootstrapped null interaction models}
+\title{Compute bootstrapped null interaction prediction rule ensembles}
 \usage{
 bsnullinteract(object, nsamp = 10, parallel = FALSE,
   penalty.par.val = "lambda.1se", verbose = FALSE)
@@ -16,18 +16,19 @@ derived.}
 \item{parallel}{logical. Should parallel foreach be used to generate initial
 ensemble? Must register parallel beforehand, such as doMC or others.}
 
-\item{penalty.par.val}{character. Which value of the penalty parameter
-criterion should be used? The value yielding minimum cv error
+\item{penalty.par.val}{character or numeric. Which value of the penalty 
+parameter criterion should be used? The value yielding minimum cv error
 (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
 error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
 value may be specified, corresponding to one of the values of lambda in the 
 sequence used by glmnet, for which estimated cv error can be inspected by 
-running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
+inspecting \code{object$glmnet.fit} and running 
+\code{plot(object$glmnet.fit)}.}
 
 \item{verbose}{logical. should progress be printed to the command line?}
 }
 \value{
-A list of length \code{nsamp} with null interaction datasets, to be
+A list of length \code{nsamp} with null interaction models, to be
 used as input for \code{\link{interact}}.
 }
 \description{
@@ -36,7 +37,7 @@ which can be used to derive a reference distribution of the test statistic
 calculated with \code{\link{interact}}.
 }
 \details{
-Computationally intensive. Progress info is printed to command line.
+Computationally intensive.
 }
 \examples{
 \donttest{set.seed(42)

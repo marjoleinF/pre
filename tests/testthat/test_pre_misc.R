@@ -2,19 +2,19 @@ context("Tests the pre functions with S3 methods and maxdepth sampler.")
 
 test_that("maxdepth.sampler gives previous results", {
   
-  func1 <- maxdepth.sampler()
+  func1 <- maxdepth_sampler()
   set.seed(42)
   maxdepths <- func1(100)
   # save_to_test(maxdepths, "maxdepths_default")
   expect_equal(maxdepths, read_to_test("maxdepths_default"), tolerance = 1.490116e-03)
   
-  func2 <- maxdepth.sampler(av.no.term.nodes = 16L)
+  func2 <- maxdepth_sampler(av.no.term.nodes = 16L)
   set.seed(42)
   maxdepths2 <- func2(100)
   # save_to_test(maxdepths2, "maxdepths_16_term_nodes")
   expect_equal(maxdepths2, read_to_test("maxdepths_16_term_nodes"), tolerance = 1.490116e-03)
   
-  func3 <- maxdepth.sampler(av.tree.depth = 7)
+  func3 <- maxdepth_sampler(av.tree.depth = 7)
   set.seed(42)
   maxdepths3 <- func3(100)
   # save_to_test(maxdepths3, "maxdepths_tree_depth_7")

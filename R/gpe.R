@@ -28,7 +28,7 @@
 #' \code{gpe_earth} provides basis functions where each factor is a hinge function. The model is estimated with \code{\link{earth}}.
 #' 
 #' @return 
-#' A function that has formal arguments \code{formula, data, weights, sample_func, verbose, family, ...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link{cv.glmnet}}
+#' A function that has formal arguments \code{formula}, \code{data}, \code{weights}, \code{sample_func}, \code{verbose}, \code{family}, \code{...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link{cv.glmnet}}
 #' 
 #' @seealso 
 #' \code{\link{gpe}}, \code{\link{rTerm}}, \code{\link{lTerm}}, \code{\link{eTerm}}
@@ -664,39 +664,65 @@ gpe_sample <- function(sampfrac = .5){
 #' @description 
 #' Provides an interface for deriving sparse prediction ensembles where basis functions are selected through L1 penalization.
 #' 
-#' @param formula Symbolic description of the model to be fit of the form \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the formula) is a factor, an ensemble for binary classification is created. Otherwise, an ensemble for prediction of a continuous variable is created.
+#' @param formula Symbolic description of the model to be fit of the form 
+#' \code{y ~ x1 + x2 + ...+ xn}. If the output variable (left-hand side of the 
+#' formula) is a factor, an ensemble for binary classification is created. 
+#' Otherwise, an ensemble for prediction of a continuous variable is created.
 #' @param data \code{data.frame} containing the variables in the model.
-#' @param base_learners List of functions which has formal arguments \code{formula, data, weights, sample_func, verbose} and \code{family} and returns a vector of characters with terms for the final formula passed to \code{cv.glmnet}. See \code{\link{gpe_linear}}, \code{\link{gpe_trees}}, and \code{\link{gpe_earth}}.
+#' @param base_learners List of functions which has formal arguments 
+#' \code{formula}, \code{data}, \code{weights}, \code{sample_func}, \code{verbose},
+#' and \code{family} and returns a vector of characters with terms for the 
+#' final formula passed to \code{cv.glmnet}. See \code{\link{gpe_linear}}, 
+#' \code{\link{gpe_trees}}, and \code{\link{gpe_earth}}.
 #' @param weights Case weights with length equal to number of rows in \code{data}.
-#' @param sample_func Function used to sample when learning with base learners. The function should have formal argument \code{n} and \code{weights} and return a vector of indices. See \code{\link{gpe_sample}}.
-#' @param verbose \code{TRUE} if comments should be posted throughout the computations.
-#' @param penalized_trainer Function with formal arguments \code{x, y, weights, family} which returns a fit object. This can be changed to test other "penalized trainers" (like other function that perform an L1 penalty or L2 penalty and elastic net penalty). Not using \code{\link{cv.glmnet}} may cause other function for \code{gpe} objects to fail. See \code{\link{gpe_cv.glmnet}}.
+#' @param sample_func Function used to sample when learning with base learners. 
+#' The function should have formal argument \code{n} and \code{weights} and 
+#' return a vector of indices. See \code{\link{gpe_sample}}.
+#' @param verbose \code{TRUE} if comments should be posted throughout the 
+#' computations.
+#' @param penalized_trainer Function with formal arguments \code{x}, \code{y}, 
+#' \code{weights}, \code{family} which returns a fit object. This can be changed 
+#' to test other "penalized trainers" (like other function that perform an L1 
+#' penalty or L2 penalty and elastic net penalty). Not using 
+#' \code{\link{cv.glmnet}} may cause other function for \code{gpe} objects to 
+#' fail. See \code{\link{gpe_cv.glmnet}}.
 #' @param model \code{TRUE} if the \code{data} should added to the returned object.
 #' 
 #' @details 
-#' Provides a more general framework for making a sparse prediction ensemble than \code{\link{pre}}. A similar fit to \code{\link{pre}} can be estimated with the following call:
+#' Provides a more general framework for making a sparse prediction ensemble than 
+#' \code{\link{pre}}. 
 #' 
-#' \code{
-#' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees()))
-#' }
-#'     
-#' Products of hinge functions using MARS can be added to the ensemble above with the following call:
+#' By default, a similar fit to \code{\link{pre}} is obtained. In addition, 
+#' multivariate adaptive regression splines (Friedman, 1991) can be included
+#' with \code{gpe_earth}. See examples. 
 #' 
-#' \code{
-#' gpe(formula = y ~ x1 + x2 + x3, data = data, base_learners = list(gpe_linear(), gpe_trees(), gpe_earth))
-#' }
-#' 
-#' Other customs base learners can be implemented. See \code{\link{gpe_trees}}, \code{\link{gpe_linear}} or \code{\link{gpe_earth}} for details of the setup. The sampling function given by \code{sample_func} can also be replaced by a custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
+#' Other customs base learners can be implemented. See \code{\link{gpe_trees}}, 
+#' \code{\link{gpe_linear}} or \code{\link{gpe_earth}} for details of the setup. 
+#' The sampling function given by \code{sample_func} can also be replaced by a 
+#' custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
 #' 
 #' @return 
 #' An object of class \code{gpe}.
 #' 
-#' @seealso 
-#' \code{\link{pre}}, \code{\link{gpe_trees}}, \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
+#' @examples \dontrun{
+#' ## Obtain similar fit to \code{\link{pre}}:
+#' gpe.rules <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),], 
+#'   base_learners = list(gpe_linear(), gpe_trees()))
+#' gpe.rules
+#'   
+#' ## Also include products of hinge functions using MARS:
+#' gpe.hinge <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),], 
+#'   base_learners = list(gpe_linear(), gpe_trees(), gpe_earth()))
+#' }
+#' @seealso \code{\link{pre}}, \code{\link{gpe_trees}}, 
+#'   \code{\link{gpe_linear}}, \code{\link{gpe_earth}}, 
+#'   \code{\link{gpe_sample}}, \code{\link{gpe_cv.glmnet}}
 #' 
 #' @references 
-#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule ensembles. \emph{The Annals of Applied Statistics The Annals of Applied Statistics, 2}(3), 916-954.
-#' 
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
+#' ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' Friedman, J. H. (1991). Multivariate adaptive regression splines. 
+#' \emph{The Annals of Statistics, 19}(1), 1-67.
 #' @export
 gpe <- function(
   formula, data, 

@@ -2,7 +2,8 @@
 % Please edit documentation in R/pre.R
 \name{singleplot}
 \alias{singleplot}
-\title{Create partial dependence plot for a single variable}
+\title{Create partial dependence plot for a single variable in a prediction rule 
+ensemble (pre)}
 \usage{
 singleplot(object, varname, penalty.par.val = "lambda.1se", nvals = NULL,
   type = "response", ...)
