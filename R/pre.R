@@ -3156,7 +3156,7 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
 #'                   trControl = trainControl(number = 1))
 #'  prefit1                 
 #'  
-#'  ## Fit caret using formula and customized tuneGrid:
+#'  ## Fit caret using customized tuneGrid:
 #'  set.seed(42)
 #'  tuneGrid <- caret_pre_model$grid(x = x, y = y, 
 #'                   type = c("linear", "rules", "both"),
