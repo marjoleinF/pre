@@ -27,7 +27,7 @@ export("singleplot")
 export("corplot")
 export("maxdepth_sampler")
 export("gpe_rules_pre")
-
+export("caret_pre_model")
 
 
 import("Formula")

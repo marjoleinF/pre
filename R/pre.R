@@ -353,9 +353,13 @@ pre <- function(formula, data, family = gaussian,
       tree.control <- ctree_control(maxdepth = maxdepth[1], mtry = mtry)
     } else if (tree.unbiased && !use.grad) {
       tree.control <- mob_control(maxdepth = maxdepth[1] + 1, mtry = mtry)
-    } else if (!tree.unbiased){
+    } else if (!tree.unbiased) {
+      if (any(maxdepth > 29)) {
+        maxdepth[maxdepth > 29] <- 29
+        warning("If tree.unbiased = FALSE, max(maxdepth) is 29.")
+      }
       tree.control <- rpart.control(maxdepth = maxdepth[1])
-      if(!is.infinite(mtry)) {
+      if (!is.infinite(mtry)) {
         warning("Value specified for mtry will be ignored if tree.unbiased = FALSE.")
       }
     }
@@ -716,7 +720,7 @@ get_modmat <- function(
     #  modmat_formula <- terms(data) # save terms so model factor levels are kept
     #}
     x <- model.matrix(modmat_formula, data = data)
-    if (!is.null(rules)) {
+    if (!is.null(rules) && type != "linear") {
       colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
     }
     y <- as.matrix(data[,y_names])
@@ -726,7 +730,7 @@ get_modmat <- function(
       modmat_formula <- terms(data) # save terms so model factor levels are kept
     }
     x <- model.matrix(modmat_formula, data = data)
-    if (!is.null(rules)) {
+    if (!is.null(rules)  && type != "linear") {
       colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
     }
     y <- model.response(data)
@@ -1821,9 +1825,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       x_scales = object$x_scales, 
       formula = object$formula, 
       data = newdata, 
-      rules = structure(
-        object$rules$description, 
-        names = object$rules$rule), 
+      rules = if(object$type == "linear") {NULL} else {
+        structure(object$rules$description, names = object$rules$rule)}, 
       type = object$type, 
       winsfrac = winsfrac,
       x_names = object$x_names, 
@@ -2822,8 +2825,8 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
         
         grid::grid.text(paste0("Linear effect of ", nonzeroterms$rule[i], 
                              "\n\n Coefficient = ", round(nonzeroterms$coefficient[i], digits = 3),
-                               "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3)))#,
-                        #gp = grid::gpar(...))        
+                               "\n\n Importance = ", round(nonzeroterms$imp[i], digits = 3)),
+                        gp = grid::gpar(...))        
       }
       grid::popViewport()
       
@@ -2970,7 +2973,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
         plot(fftree, newpage = FALSE, 
              main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
              inner_panel = node_inner(fftree, id = FALSE),
-             terminal_panel = node_terminal(fftree, id = FALSE))#, gp = grid::gpar(...))      
+             terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))      
       }
       grid::popViewport()
     }
@@ -3063,7 +3066,7 @@ get_conditions <- function(object, penalty.par.val = "lambda.1se") {
 
 
 
-#' Plot correlations between baselearners in a prediction rule ensemble (ore)
+#' Plot correlations between baselearners in a prediction rule ensemble (pre)
 #' 
 #' \code{corplot} plots correlations between baselearners in a prediction rule ensemble
 #'  
@@ -3131,3 +3134,132 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
   axis(4, at = legend.breaks, las = 2)
   return(invisible(cormat))
 }
+
+
+
+#' Model set up for train function of package caret
+#' 
+#' \code{caret_pre_model} provides a model setup for the train function of
+#' package caret
+#'  
+#' @examples \dontrun{
+#'  
+#'  library("caret")
+#'  ## Generate some random data:
+#'  set.seed(42)
+#'  x <- data.frame(x1 = rnorm(50), x2 = rnorm(50), noise = rnorm(50))
+#'  y <- x$x1 + x$x2 + rnorm(50)
+#'  
+#'  ## Fit caret using only default settings:
+#'  set.seed(42)
+#'  prefit1 <- train(x = x, y = y, method = caret_pre_model, 
+#'                   trControl = trainControl(number = 1))
+#'  prefit1                 
+#'  
+#'  ## Fit caret using formula and customized tuneGrid:
+#'  set.seed(42)
+#'  tuneGrid <- caret_pre_model$grid(x = x, y = y, 
+#'                   type = c("linear", "rules", "both"),
+#'                   maxdepth = 2:5))
+#'  tuneGrid
+#'  prefit2 <- train(x = x, y = y, method = caret_pre_model, 
+#'                   trControl = trainControl(number = 1),
+#'                   tuneGrid = tuneGrid)
+#'  prefit2
+#'}
+caret_pre_model <- list(
+  
+  library = "pre",
+        
+  type = c("Classification", "Regression"),
+                        
+  parameters = data.frame(parameter = c("sampfrac", "maxdepth", 
+                                        "learnrate", "mtry", 
+                                        "ntrees", "winsfrac", 
+                                        "use.grad", "tree.unbiased", 
+                                        "type"),
+                          class = c(rep("numeric", times = 6), 
+                                    rep("logical", times = 2), 
+                                    "character"),
+                          label = c("sampfrac", "maxdepth", 
+                                    "learnrate", "mtry",
+                                    "ntrees", "winsfrac", 
+                                    "use.grad", "tree.unbiased", 
+                                    "type")),
+                        
+  grid = function(x, y, len = NULL, search = "grid", 
+                  sampfrac = .5, maxdepth = Inf, learnrate = .01, 
+                  mtry = Inf, ntrees = 500, winsfrac = .025, 
+                  use.grad = TRUE, tree.unbiased = TRUE, 
+                  type = "both") {
+    out <- expand.grid(sampfrac = sampfrac, maxdepth = maxdepth, 
+                       learnrate = learnrate, mtry = mtry, 
+                       ntrees = ntrees, winsfrac = winsfrac,
+                       use.grad = use.grad, tree.unbiased = tree.unbiased, 
+                       type = type)
+    # mtry cannot be used if tree.unbiased = FALSE
+    inds <- which(!out$tree.unbiased & !is.infinite(out$mtry))
+    if (length(inds) > 0) {
+      out <- out[-inds,]
+    }
+    # use.grad must be TRUE if tree.unbiased = FALSE
+    inds <- which(!out$tree.unbiased & !out$use.grad)
+    if (length(inds) > 0) {
+      out <- out[-inds,]
+    }
+    # type = "linear" makes all but winsfrac redundant
+    inds <- which(out$type == "linear")[-(1:length(winsfrac))]
+    if (length(inds) > 0) {
+      out <- out[-inds,]
+    }
+    out[out$type == "linear","winsfrac"] <- winsfrac
+    # type = "rules" makes winsfrac redundant
+    type_rules <- out[out$type == "rules",]
+    inds <- which(out$type == "rules")
+    if (length(inds) > 0) {
+      out <- out[-inds,]
+      type_rules <- unique(type_rules[,-which(names(type_rules) == "winsfrac")])
+      type_rules$winsfrac <- winsfrac[1] 
+      out <- rbind(out, type_rules)
+    }
+    return(out)
+  },
+                  
+  fit = function(x, y, # the current data used to fit the model
+                 wts = NULL, # optional instance weights (not applicable for this particular model)
+                 param, # the current tuning parameter values
+                 lev = NULL, # the class levels of the outcome (or NULL in regression)
+                 last = NULL, # a logical for whether the current fit is the final fit
+                 weights = NULL,
+                 classProbs, # a logical for whether class probabilities should be computed.
+                 ...) {
+    data <- data.frame(cbind(x, response = y))
+    formula <- response ~ .
+    if (is.null(weights)) {weights <- rep(1, times = nrow(x))}
+      pre_args <- list(formula = formula, data = data, 
+                       weights = weights, sampfrac = param$sampfrac, 
+                       maxdepth = param$maxdepth, 
+                       learnrate = param$learnrate, mtry = param$mtry, 
+                       ntrees = param$ntrees, winsfrac = param$winsfrac, 
+                       use.grad = param$use.grad, 
+                       tree.unbiased = param$tree.unbiased, 
+                       type = param$type)
+      do.call(pre, pre_args)
+    },
+  predict = function(modelFit, newdata, preProc = NULL, submodels = NULL) {
+    predict(object = modelFit, newdata = as.data.frame(newdata)) # submodels can be employed to loop through penalty.par.val
+  },
+  prob = function(modelFit, newdata, preProc = NULL, submodels = NULL) {
+                    predict.pre(object = modelFit, newdata = as.data.frame(newdata), type = "response")
+                  },
+  sort = NULL,
+  loop = NULL,  # something with penalty.par.val and predict.pre
+  levels = NULL,
+  tag = c("Tree-Based Model", "L1 regularization", "Bagging", "Boosting"),
+  label = "Prediction Rule Ensembles",
+  varImp = NULL, # something with pre::importance(plot = FALSE)
+  oob = NULL,
+  notes = NULL,
+  check = NULL
+)
+

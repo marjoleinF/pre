@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{corplot}
 \alias{corplot}
-\title{Plot correlations between baselearners in a prediction rule ensemble (ore)}
+\title{Plot correlations between baselearners in a prediction rule ensemble (pre)}
 \usage{
 corplot(object, penalty.par.val = "lambda.1se", colors = NULL,
   fig.plot = c(0, 0.85, 0, 1), fig.legend = c(0.8, 0.95, 0, 1),

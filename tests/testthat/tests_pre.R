@@ -67,10 +67,10 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
 
 
 test_that("Get previous results with iris and pre function", {
+  
   #####
   # With learning rate
   set.seed(7385056)
-  data("iris")
   fit <- pre(Species ~ ., data = iris, ntrees = 10, maxdepth = 3)
   
   # We remove some of the data to decrease the size
@@ -80,7 +80,7 @@ test_that("Get previous results with iris and pre function", {
   fit$glmnet.fit$glmnet.fit[["beta"]]$virginica <- fit$glmnet.fit$glmnet.fit[["beta"]]$virginica
   fit$rules <- as.matrix(fit$rules)
   # save_to_test(fit, "iris_w_pre")
-  expect_equal(fit, read_to_test("iris_w_pre"), tolerance = 1.490116e-08)
+  expect_equal(fit, read_to_test("iris_w_pre"), tolerance = 1.490116e-06)
   
   #####
   # Without learning rate
@@ -95,10 +95,10 @@ test_that("Get previous results with iris and pre function", {
   fit$glmnet.fit$glmnet.fit[["beta"]]$virginica <- fit$glmnet.fit$glmnet.fit[["beta"]]$virginica
   fit$rules <- as.matrix(fit$rules)
   # save_to_test(fit, "iris_w_pre_no_learn")
-  expect_equal(fit, read_to_test("iris_w_pre_no_learn"), tolerance = 1.490116e-08)
+  expect_equal(fit, read_to_test("iris_w_pre_no_learn"), tolerance = 1.490116e-06)
 
   #####
-  # Wihtout learning rate, parallel computation
+  # Without learning rate, parallel computation
   library("doParallel")
   cl <- makeCluster(2)
   registerDoParallel(cl)
@@ -114,5 +114,5 @@ test_that("Get previous results with iris and pre function", {
   fit2$rules <- as.matrix(fit2$rules)
   # save_to_test(fit, "iris_w_pre_no_learn_par")
   expect_equal(fit, fit2)
-  expect_equal(fit2, read_to_test("iris_w_pre_no_learn_par"), tolerance = 1.490116e-08)
+  expect_equal(fit2, read_to_test("iris_w_pre_no_learn_par"), tolerance = 1.490116e-06)
 })
