@@ -109,7 +109,7 @@ caret_pre_model <- list(
     if (modelFit$family %in% c("gaussian", "mgaussian")) {
       pre:::predict.pre(object = modelFit, newdata = as.data.frame(newdata)) # submodels can be employed to loop through penalty.par.val
     } else if (modelFit$family == "poisson") {
-      pre:::predict.pre(object = modelFit, newdata = as.data.frame(newdata), type = "link")
+      pre:::predict.pre(object = modelFit, newdata = as.data.frame(newdata), type = "response")
     } else {
       factor(pre:::predict.pre(object = modelFit, newdata = as.data.frame(newdata), type = "class"))      
     }
@@ -137,13 +137,14 @@ caret_pre_model <- list(
   
   predictors = function(x, ...) { 
     if (x$family %in% c("gaussian", "poisson", "binomial")) {
-      importance(x, ...)$varimps$varname
+      return(importance(x, plot = FALSE, ...)$varimps$varname)
     } else {
-      NULL
+      warning("Reporting the predictors in the model is not yet available for multinomial and multivariate responses")
+      return(NULL)
     }
   },
   
-  varImp = NULL, # something with pre::importance(plot = FALSE)
+  varImp = FALSE,
   
   oob = NULL,
   
