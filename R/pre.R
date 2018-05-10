@@ -719,7 +719,10 @@ get_modmat <- function(
     #if (miss_modmat_formula) {
     #  modmat_formula <- terms(data) # save terms so model factor levels are kept
     #}
+    
     x <- model.matrix(modmat_formula, data = data)
+    #x <- Matrix::sparse.model.matrix(modmat_formula, data = data) # may save computation time but currently breaks stuff
+    
     if (!is.null(rules) && type != "linear") {
       colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
     }
@@ -729,7 +732,10 @@ get_modmat <- function(
     if (miss_modmat_formula) {
       modmat_formula <- terms(data) # save terms so model factor levels are kept
     }
+    
     x <- model.matrix(modmat_formula, data = data)
+    #x <- Matrix::sparse.model.matrix(modmat_formula, data = data) # may save computation time but currenty breaks stuff
+    
     if (!is.null(rules)  && type != "linear") {
       colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
     }
@@ -792,6 +798,17 @@ get_modmat <- function(
         if (is.null(x_scales)) {
           x_scales <- apply(
             x[, needs_scaling, drop = FALSE], 2, sd, na.rm = TRUE) / 0.4
+ 
+        }
+        ## check if variables have non-zero variance (otherwise, do not scale):
+        almost_zero_var_inds <- which(x_scales < 1e-100)
+        tol <- sqrt(.Machine$double.eps)
+        for(i in almost_zero_var_inds) {
+          if (abs(max(x[,i]) - min(x[,i])) < tol) {
+            warning("Variable ", x_names[i], " has sd < ", tol, " and will not be normalized. Thi may be harmless,  but carefully check your data and results. For example, inspect the sds of your input variables and their distribution. You might also consider setting winsfrac=0.")  
+            # omit from needs_scaling:
+            x_scales[i] <- 1
+          }
         }
         x[, needs_scaling] <- scale(
           x[, needs_scaling, drop = FALSE], center = FALSE, scale = x_scales)
@@ -1100,7 +1117,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     }
     
     if (verbose) {
-      cat("\n\nAn initial ensemble consisting of", length(rules), "rules was succesfully created.")  
+      cat("\n\nAn initial ensemble consisting of", length(rules), "rules was successfully created.")  
     }
     
   }

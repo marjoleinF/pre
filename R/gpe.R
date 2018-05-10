@@ -775,7 +775,10 @@ gpe <- function(
   modmat_formula <- lapply(formulas, paste0, collapse = " + ")
   modmat_formula <- paste0(unlist(modmat_formula), collapse = " + ")
   modmat_formula <- stats::formula(paste("~", modmat_formula))
+  
   x <- model.matrix(modmat_formula, data = data)
+  #x <- Matrix::sparse.model.matrix(modmat_formula, data = data) # may save computation time but currently breaks stuff (at leas in pre)
+  
   Terms <- terms(modmat_formula, data = data)
   
   ##################################################
