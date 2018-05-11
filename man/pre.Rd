@@ -87,7 +87,7 @@ identical to (1 - an earlier rule)?}
 \item{removeduplicates}{logical. Remove rules from the ensemble which are 
 identical to an earlier rule?}
 
-\item{winsfrac}{numeric value \eqn{> 0} and \eqn{\leq 0.5}. Quantiles of data 
+\item{winsfrac}{numeric value \eqn{> 0} and \eqn{\le 0.5}. Quantiles of data 
 distribution to be used for 
 winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
 that ordinal variables are included as linear terms in estimating the

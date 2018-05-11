@@ -67,7 +67,7 @@ utils::globalVariables("%dopar%")
 #' identical to an earlier rule?
 #' @param removecomplements logical. Remove rules from the ensemble which are
 #' identical to (1 - an earlier rule)? 
-#' @param winsfrac numeric value \eqn{> 0} and \eqn{\leq 0.5}. Quantiles of data 
+#' @param winsfrac numeric value \eqn{> 0} and \eqn{\le 0.5}. Quantiles of data 
 #' distribution to be used for 
 #' winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
 #' that ordinal variables are included as linear terms in estimating the
@@ -472,15 +472,15 @@ pre <- function(formula, data, family = gaussian,
     } else if (is.numeric(data[,y_names])) { # then family should be poisson or gaussian
       if (family[1] %in% c("binomial", "multinomial")) {
         if (isTRUE(all.equal(round(data[,y_names]), data[,y_names]))) { # then poisson
-          warning("Argument 'formula' specified an integer variable as the response, while 'family' was set to", family, "; 'family' will be set to 'poisson'.")
+          warning("Argument 'formula' specified an integer variable as the response, while 'family' was set to ", family, "; 'family' will be set to 'poisson'.")
           family <- "poisson"
         } else { # then gaussian
-          warning("Argument 'formula' specified a numeric variable as the response, while 'family' was set to", family, "; 'family' will be set to 'gaussian'.")
+          warning("Argument 'formula' specified a numeric variable as the response, while 'family' was set to ", family, "; 'family' will be set to 'gaussian'.")
           family <- "gaussian"
         }
       } else if (family == "poisson") {
         if (!isTRUE(all.equal(round(data[,y_names]), data[,y_names]))) {
-          warning("Argument 'formula' specified a non-integer variable as the response, while 'family' was set to", family, ". The specified response will be coerced to integer.")
+          warning("Argument 'formula' specified a non-integer variable as the response, while 'family' was set to ", family, ". The specified response will be coerced to integer.")
           data[, y_names] <- as.integer(data[, y_names])
         } 
       } 
