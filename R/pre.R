@@ -809,7 +809,8 @@ get_modmat <- function(
  
         }
         ## check if variables have zero variance (if so, do not scale):
-        almost_zero_var_inds <- which(x_scales < 1e-100)
+        tol <- sqrt(.Machine$double.eps)
+        almost_zero_var_inds <- which(x_scales < tol)
         for(i in almost_zero_var_inds) {
           if (abs(max(x[,i]) - min(x[,i])) < tol) {
             warning("Variable ", x_names[i], " has sd < ", tol, " and will not be normalized. This may be harmless, but carefully check your data and results. Do all input variables specified have variance > 0?")  
@@ -1111,22 +1112,21 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       duplicates.removed <- rules$duplicates.removed
       rules <- rules$rules
     }
+  }
     
-    if (!exists("complements.removed", inherits = FALSE)) { 
-      complements.removed <- NULL
-    }
-    if (!exists("duplicates.removed", inherits = FALSE)) {
-      duplicates.removed <- NULL
-    }
+  if (!exists("complements.removed", inherits = FALSE)) { 
+    complements.removed <- NULL
+  }
+  if (!exists("duplicates.removed", inherits = FALSE)) {
+    duplicates.removed <- NULL
+  }
       
-    if (verbose && (removeduplicates || removecomplements)) {
-      cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
-    }
+  if (verbose && (removeduplicates || removecomplements)) {
+    cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
+  }
     
-    if (verbose) {
-      cat("\n\nAn initial ensemble consisting of", length(rules), "rules was successfully created.")  
-    }
-    
+  if (verbose) {
+    cat("\n\nAn initial ensemble consisting of", length(rules), "rules was successfully created.")  
   }
   
   # Check if any rules were generated:
@@ -1849,7 +1849,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       x_scales = object$x_scales, 
       formula = object$formula, 
       data = newdata, 
-      rules = if(object$type == "linear") {NULL} else {
+      rules = if(object$type == "linear" || is.null(object$rules)) {NULL} else {
         structure(object$rules$description, names = object$rules$rule)}, 
       type = object$type, 
       winsfrac = winsfrac,
