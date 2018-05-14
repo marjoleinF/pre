@@ -782,8 +782,16 @@ get_modmat <- function(
           lb <- wins_points$lb[j]
           ub <- wins_points$ub[j]
           
-          x[, x_idx][x[, x_idx] < lb] <- lb
-          x[, x_idx][x[, x_idx] > ub] <- ub
+          ## If lower and upper bound are equal, do not winsorize and issue warning
+          tol <- sqrt(.Machine$double.eps)
+          if (ub - lb < tol) {
+            warning("Variable ", x_names[j], " will be winsozired employing winsfrac = 0, to prevent reducing the variance of its linear term to 0.")
+            wins_points$lb[j] <- min(x[, x_idx])
+            wins_points$ub[j] <- max(x[, x_idx])
+          } else {
+            x[, x_idx][x[, x_idx] < lb] <- lb
+            x[, x_idx][x[, x_idx] > ub] <- ub
+          }
         }
       }
     }
@@ -800,12 +808,11 @@ get_modmat <- function(
             x[, needs_scaling, drop = FALSE], 2, sd, na.rm = TRUE) / 0.4
  
         }
-        ## check if variables have non-zero variance (otherwise, do not scale):
+        ## check if variables have zero variance (if so, do not scale):
         almost_zero_var_inds <- which(x_scales < 1e-100)
-        tol <- sqrt(.Machine$double.eps)
         for(i in almost_zero_var_inds) {
           if (abs(max(x[,i]) - min(x[,i])) < tol) {
-            warning("Variable ", x_names[i], " has sd < ", tol, " and will not be normalized. Thi may be harmless,  but carefully check your data and results. For example, inspect the sds of your input variables and their distribution. You might also consider setting winsfrac=0.")  
+            warning("Variable ", x_names[i], " has sd < ", tol, " and will not be normalized. This may be harmless, but carefully check your data and results. Do all input variables specified have variance > 0?")  
             # omit from needs_scaling:
             x_scales[i] <- 1
           }
