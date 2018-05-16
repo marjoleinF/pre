@@ -793,7 +793,7 @@ gpe <- function(
   ####################
   
   result <- list(
-    glmnet.fit = glmnet.fit, call = match.call, 
+    glmnet.fit = glmnet.fit, call = match.call(), 
     family = family, base_learners = base_learners, 
     modmat_formula = modmat_formula, terms = Terms)
   

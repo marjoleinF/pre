@@ -785,7 +785,8 @@ get_modmat <- function(
           ## If lower and upper bound are equal, do not winsorize and issue warning
           tol <- sqrt(.Machine$double.eps)
           if (ub - lb < tol) {
-            warning("Variable ", x_names[j], " will be winsozired employing winsfrac = 0, to prevent reducing the variance of its linear term to 0.")
+            warning("Variable ", x_names[j], " will be winsozired employing winsfrac = 0, to prevent reducing the variance of its linear term to 0.",
+                    immediate. = TRUE)
             wins_points$lb[j] <- min(x[, x_idx])
             wins_points$ub[j] <- max(x[, x_idx])
           } else {
