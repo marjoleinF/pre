@@ -181,8 +181,10 @@ utils::globalVariables("%dopar%")
 #' @references
 #' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 #' machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
+#' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
 #' ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' 
 #' Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive 
 #' partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
 #' 
@@ -734,7 +736,7 @@ get_modmat <- function(
     }
     
     x <- model.matrix(modmat_formula, data = data)
-    #x <- Matrix::sparse.model.matrix(modmat_formula, data = data) # may save computation time but currenty breaks stuff
+    #x <- Matrix::sparse.model.matrix(modmat_formula, data = data) # may save computation time but currently breaks stuff
     
     if (!is.null(rules)  && type != "linear") {
       colnames(x)[(ncol(x) - length(rules) + 1):ncol(x)] <- names(rules)
@@ -749,6 +751,9 @@ get_modmat <- function(
   attr_x$dim[2] <- attr_x$dim[2] - 1
   attr_x$assign <- attr_x$assign[-1]
   x <- x[, colnames(x) != "(Intercept)"]
+  if (!is.matrix(x)) { ## Prevent x becoming from a vector if it has only a single row
+    x <- as.matrix(t(x), nrow = 1) 
+  }
   
   #####
   # Perform winsorizing and normalizing

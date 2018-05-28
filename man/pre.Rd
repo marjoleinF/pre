@@ -214,8 +214,10 @@ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbo
 \references{
 Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
+
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
 ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+
 Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive 
 partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
 }
