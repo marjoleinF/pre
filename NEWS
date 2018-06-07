@@ -1,3 +1,14 @@
+Changes in Version 0.... (....-..-..)
+
+  - Function cvpre() now returns accurate standard error for classification 
+      (before, SD was returned)
+
+  - Bugs in coef(), print(), plot() and importance() functions fixed when 
+      tree.unbiased = FALSE. 
+
+
+
+
 Changes in Version 0.5 (2018-05-07)
 
   - Function pre() now also supports multinomial and multivariate 

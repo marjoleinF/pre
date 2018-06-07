@@ -631,40 +631,69 @@ pre <- function(formula, data, family = gaussian,
     x_names = x_names,
     y_names = y_names,
     normalize = normalize)
-  y <- modmat_data$y
-  x <- modmat_data$x
+  
   x_scales <- modmat_data$x_scales
   modmat_formula <- modmat_data$modmat_formula
   wins_points <- modmat_data$wins_points
   
-  # check whether there's duplicates in the variable names:
-  # (can happen, for example, due to labeling of dummy indicators for factors)
-  if (!(length(unique(colnames(x))) == length(colnames(x)))) { 
-    warning("There are variables in the model with overlapping variable names. If predictor variables of type factor were specified with numbers in their name, consider renaming these and rerunning the analysis. See 'Details' under ?pre.") 
-  } 
   
-  glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
-                          family = family, parallel = par.final, 
-                          standardize = standardize, ...)
-  lmin_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.min)
-  l1se_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.1se)
-
+  ############################
+  ### Fit regression model ###
+  ############################
+  
+  ### Allow for forward selection:
+  ## Include additional argument regression = "glmnet"
+  ## which also takes argument "stepAIC"
+  ## then number of terms (i.e., steps argument) should be specified
+  ## But would be nice to always take e.g., 100 steps, 
+  ## and then select number of terms with penalty.par.val in print etc. 
+  ## would allow only for ""continuous
+  
+  #if (regression == "stepAIC") {
+  #  if (family %in% c("gaussian", "binomial")) {
+  #    data <- cbind(modmat_data$y, modmat_data$x)
+  #    lm_full <- lm()
+  #    lm_intercept <- lm()
+  #    MASS::stepAIC(object = lm_intercept, scope = list(upper = lm_full, lower = lm_intercept),
+  #                  direction = "forward", type)    
+  #    ## with stepAIC seems tricky to save intermediate models.
+  #    ## Create a loop with MASS::addterm
+  #    
+  #    
+  #  }
+  #  
+  #
+  #} else if (regression == "glmnet") {
+    y <- modmat_data$y
+    x <- modmat_data$x  
+    
+    # check whether there's duplicates in the variable names:
+    # (can happen, for example, due to labeling of dummy indicators for factors)
+    if (!(length(unique(colnames(x))) == length(colnames(x)))) { 
+      warning("There are variables in the model with overlapping variable names. If predictor variables of type factor were specified with numbers in their name, consider renaming these and rerunning the analysis. See 'Details' under ?pre.") 
+    } 
+    glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
+                            family = family, parallel = par.final, 
+                            standardize = standardize, ...)
+    lmin_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.min)
+    l1se_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.1se)
+    if (verbose) {
+      cat("\n\nFinal ensemble with minimum cv error: \n  lambda = ", 
+          glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
+          glmnet.fit$nzero[lmin_ind], "\n  mean cv error (se) = ", 
+          glmnet.fit$cvm[lmin_ind], " (", glmnet.fit$cvsd[lmin_ind], ")", 
+          "\n\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
+          glmnet.fit$lambda[l1se_ind],  "\n  number of terms = ", 
+          glmnet.fit$nzero[l1se_ind], "\n  mean cv error (se) = ", 
+          glmnet.fit$cvm[l1se_ind], " (", glmnet.fit$cvsd[l1se_ind], ")\n", sep="")
+    }
+  #}
   
   
   ####################
   ## Return results ##
   ####################
-  
-  if (verbose) {
-    cat("\n\nFinal ensemble with minimum cv error: \n  lambda = ", 
-        glmnet.fit$lambda[lmin_ind], "\n  number of terms = ", 
-        glmnet.fit$nzero[lmin_ind], "\n  mean cv error (se) = ", 
-        glmnet.fit$cvm[lmin_ind], " (", glmnet.fit$cvsd[lmin_ind], ")", 
-        "\n\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
-        glmnet.fit$lambda[l1se_ind],  "\n  number of terms = ", 
-        glmnet.fit$nzero[l1se_ind], "\n  mean cv error (se) = ", 
-        glmnet.fit$cvm[l1se_ind], " (", glmnet.fit$cvsd[l1se_ind], ")\n", sep="")
-  }
+
   result <- list(glmnet.fit = glmnet.fit, call = cl, weights = weights, 
                  data = data, normalize = normalize, x_scales = x_scales, 
                  type = type, x_names = x_names, y_names = y_names, 
@@ -1081,25 +1110,27 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     if (any(sapply(data, is.factor))) {
       # replace "=" by " %in% c('"
       for (i in names(data)[sapply(data, is.factor)]) { 
-        rules <- sub(pattern = paste0(i, "="), replacement = paste0(i, " %in% c('"), 
+        rules <- gsub(pattern = paste0(i, "="), replacement = paste0(i, " %in% c(\""), 
                      x = rules, fixed = TRUE)
       }
       # replace all "," by "','"
-      rules <- sub(pattern = ",", replacement = "','", x = rules)
+      rules <- gsub(pattern = ",", replacement = "\", \"", x = rules, fixed = TRUE)
       ## add "')" at the end of the string
-      rules <- strsplit(x = rules, split = "&", fixed = TRUE)
+      rules <- strsplit(x = rules, split = " & ", fixed = TRUE)
       for (i in 1:length(rules)) {
         for (j in names(data)[sapply(data, is.factor)]) {
           if (any(grepl(j, rules[[i]], fixed = TRUE))) {
             rules[[i]][grepl(j, rules[[i]], fixed = TRUE)] <- paste0(
-              rules[[i]][grepl(j, rules[[i]], fixed = TRUE)], "')")
+              rules[[i]][grepl(j, rules[[i]], fixed = TRUE)], "\")")
           }        
         }
       }
     }
-    
-    rules <- sapply(rules, paste0, collapse = "&")
-    
+    rules <- sapply(rules, paste0, collapse = " & ")
+    # "<" should be " <"
+    # ">=" should be " >= "
+    rules <- gsub(pattern = ">=", replacement = " >= ", fixed = TRUE,
+                  x = gsub(pattern = "<", replacement = " <", x = rules, fixed = TRUE))
   }
   
   
@@ -1446,7 +1477,8 @@ maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 print.pre <- function(x, penalty.par.val = "lambda.1se", 
-                      digits = getOption("digits"), ...) {
+                      digits = getOption("digits"),
+                      ...) {
   
   if (!(class(x) == "pre" || class(x) == "gpe")) {
     stop("Argument 'x' should be of class 'pre'.")
@@ -1491,9 +1523,9 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
   coefs <- coef(x, penalty.par.val = penalty.par.val)
   if (x$family %in% c("gaussian", "poisson", "binomial")) {
     coefs <- coefs[coefs$coefficient != 0, ]
-  } else if (x$family %in% c("mgaussian", "multinomial'")) {
+  } else if (x$family %in% c("mgaussian", "multinomial")) {
     coef_inds <- names(coefs)[!names(coefs) %in% c("rule", "description")]
-    coefs <- coefs[rowSums(coefs[,coef_inds]) != 0, ]
+    coefs <- coefs[rowSums(coefs[,coef_inds]) != 0, ]    
   }
   # always put intercept first:
   is_intercept <- 
@@ -1629,11 +1661,13 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
   }
   accuracy <- list()
   if (object$family == "binomial") {
-    accuracy$SEL<- c(mean((as.numeric(object$data[,object$y_names]) - 1 - cvpreds)^2),
-                     sd((as.numeric(object$data[,object$y_names]) - 1 - cvpreds)^2))
+    accuracy$SEL<- c(
+      mean((as.numeric(object$data[,object$y_names]) - 1 - cvpreds)^2),
+      sd((as.numeric(object$data[,object$y_names]) - 1 - cvpreds)^2)/sqrt(length(cvpreds)))
     names(accuracy$SEL) <- c("SEL", "se")    
-    accuracy$AEL <- c(mean(abs(as.numeric(object$data[,object$y_names]) - 1 - cvpreds)),
-                      sd(abs(as.numeric(object$data[,object$y_names]) - 1 - cvpreds)))
+    accuracy$AEL <- c(
+      mean(abs(as.numeric(object$data[,object$y_names]) - 1 - cvpreds)),
+      sd(abs(as.numeric(object$data[,object$y_names]) - 1 - cvpreds))/sqrt(length(cvpreds)))
     names(accuracy$AEL) <- c("AEL", "se")     
     cvpreds_d <- as.numeric(cvpreds > .5)
     accuracy$MCR <- 1 - sum(diag(prop.table(table(cvpreds_d, 
@@ -1714,7 +1748,8 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
     coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
                 Class = "matrix")
   } else if (object$family %in% c("mgaussian", "multinomial")) {
-    coefs <- sapply(coef(object$glmnet.fit), as, Class = "matrix")
+    coefs <- sapply(coef(object$glmnet.fit, s = penalty.par.val, ...), as, 
+                    Class = "matrix")
     rownames(coefs) <- rownames(coef(object$glmnet.fit)[[1]])
   }
   
@@ -1749,6 +1784,10 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
                         coefficient = coefs[,1],
                         stringsAsFactors = FALSE)
   }
+  
+  ## Description of the intercept should be 1:
+  coefs$description[which(coefs$rule == "(Intercept)")] <- "1"
+
   # include winsorizing points in the description if they were used in 
   # generating the ensemble (and if there are no duplicate variable names):  
   if (!is.null(object$wins_points) && !replicates_in_variable_names) { 
@@ -2779,6 +2818,14 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                      nterms = NULL, ask = FALSE, exit.label = "0", 
                      standardize = FALSE, plot.dim = c(3, 3), ...) {
   
+  if (is.null(x$call$tree.unbiased)) {
+    right <- TRUE
+  } else if (x$call$tree.unbiased) {
+    right <- TRUE  
+  } else if (!x$call$tree.unbiased) {
+    right <- FALSE
+  }
+  
   if (x$family %in% c("mgaussian", "multinomial")) {
     warning("Plotting function not yet fully functional for multivariate and multinomial outcomes.")
   }
@@ -2882,13 +2929,19 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
           cond[[j]][1] <- unlist(strsplit(condition_j, " > "))[1]
           cond[[j]][2] <- " > "
           cond[[j]][3] <- unlist(strsplit(condition_j, " > "))[2]
-        }
-        if (length(grep(" <= ", condition_j)) > 0) {
+        } else if (length(grep(" >= ", condition_j)) > 0) {
+          cond[[j]][1] <- unlist(strsplit(condition_j, " >= "))[1]
+          cond[[j]][2] <- " >= "
+          cond[[j]][3] <- unlist(strsplit(condition_j, " >= "))[2]
+        } else if (length(grep(" <= ", condition_j)) > 0) {
           cond[[j]][1] <- unlist(strsplit(condition_j, " <= "))[1]
           cond[[j]][2] <- " <= "
           cond[[j]][3] <- unlist(strsplit(condition_j, " <= "))[2]
-        }
-        if (length(grep(" %in% ", condition_j)) > 0) {
+        } else if (length(grep(" < ", condition_j)) > 0) {
+          cond[[j]][1] <- unlist(strsplit(condition_j, " < "))[1]
+          cond[[j]][2] <- " < "
+          cond[[j]][3] <- unlist(strsplit(condition_j, " < "))[2]
+        } else if (length(grep(" %in% ", condition_j)) > 0) {
           cond[[j]][1] <- unlist(strsplit(condition_j, " %in% "))[1]
           cond[[j]][2] <- " %in% "
           cond[[j]][3] <- unlist(strsplit(condition_j, " %in% "))[2]
@@ -2921,7 +2974,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       nodes <- list()
       ## Create level 0 (bottom level, last two nodes):
       ## If last condition has " > " : exit node on left, coefficient on right:
-      if (cond[[1]][2] == " > ") { # If condition involves " > ", the tree has nonzero coef on right:
+      if (cond[[1]][2] %in% c(" > ", " >= ")) { # If condition involves " > ", the tree has nonzero coef on right:
         nodes[[1]] <- list(id = 1L, split = NULL, kids = NULL, surrogates = NULL, 
                            info = exit.label)
         if (x$family %in% c("multinomial", "mgaussian")) {
@@ -2958,14 +3011,18 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                                           surrogates = NULL, 
                                           info = exit.label)
             nodes[[level * 2 + 2]] <- list(id = as.integer(level * 2 + 2), 
-                                          split = partysplit(as.integer(level), breaks = as.numeric(cond[[level]][3])),
+                                          split = partysplit(as.integer(level), 
+                                                             breaks = as.numeric(cond[[level]][3]),
+                                                             right = right),
                                           kids = list(nodes[[level * 2 - 1]], nodes[[level * 2]]),
                                           surrogates = NULL, 
                                           info = NULL)
             } else { 
             ## If condition in level above has " <= " or " %in% " : left node has kids, exit node right:
             nodes[[level * 2 + 1]] <- list(id = as.integer(level * 2 + 1),
-                                          split = partysplit(as.integer(level), breaks = as.numeric(cond[[level]][3])),
+                                          split = partysplit(as.integer(level), 
+                                                             breaks = as.numeric(cond[[level]][3]),
+                                                             right = right),
                                           kids = list(nodes[[level * 2 - 1]], nodes[[level * 2]]),
                                           surrogates = NULL, 
                                           info = NULL)
@@ -2981,7 +3038,9 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       
       ## Create root node:
       nodes[[ncond * 2 + 1]] <- list(id = as.integer(ncond * 2 + 1),
-                                     split = partysplit(as.integer(ncond), breaks = as.numeric(cond[[ncond]][3])),
+                                     split = partysplit(as.integer(ncond), 
+                                                        breaks = as.numeric(cond[[ncond]][3]),
+                                                        right = right),
                                      kids = list(nodes[[ncond * 2 - 1]], nodes[[ncond * 2]]),
                                      surrogates = NULL, 
                                      info = NULL)
