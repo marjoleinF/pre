@@ -22,16 +22,17 @@ utils::globalVariables("%dopar%")
 #' variables must be of class numeric, factor or ordered factor.
 #' @param family specification of a glm family. Can be a character string (i.e., 
 #' \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"multinomial"}, 
-#' or \code{"mgaussian"}) or a corresponding family object 
+#' \code{"cox"} or \code{"mgaussian"}), or a corresponding family object 
 #' (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
 #' \code{\link[stats]{family}}). Specification is required only 
 #' for non-negative count responses, e.g., \code{family = "poisson"}. Otherwise,
 #' the program will try to make an informed guess: 
-#' \code{family = "gaussian"} will be employed a numeric,  
+#' \code{family = "gaussian"} will be employed if a numeric,  
 #' \code{family = "binomial"} will be employed if a binary factor.
-#' \code{family ="multinomial"} will be employed if a factor with > 2 levels, and
-#' \code{family = "mgaussian"} will be employed if multiple continuous response
-#' variables were specified. 
+#' \code{family ="multinomial"} will be employed if a factor with > 2 levels, 
+#' \code{family = "cox"} will be employed if a survival object (e.g., 
+#' \code{Surv(time, event)} and \code{family = "mgaussian"} will be employed 
+#' if multiple continuous response variables were specified. 
 #' @param use.grad logical. Should gradient boosting with regression trees be
 #' employed when \code{learnrate > 0}? That is, use 
 #' \code{\link[partykit]{ctree}} as in Friedman (2001), but without the line 
@@ -128,7 +129,7 @@ utils::globalVariables("%dopar%")
 #' TRUE	\tab TRUE	\tab 0 \tab gaussian	  \tab ctree\tab Single, numeric (non-integer) \cr
 #' TRUE	\tab TRUE	\tab 0 \tab mgaussian	  \tab ctree\tab Multiple, numeric (non-integer) \cr
 #' TRUE	\tab TRUE	\tab 0 \tab binomial	  \tab ctree\tab Single, factor with 2 levels \cr
-#' TRUE	\tab TRUE	\tab 0 \tab multinomial	\tab ctree\tab Single, factor with \>2 levels \cr
+#' TRUE	\tab TRUE	\tab 0 \tab multinomial	\tab ctree\tab Single, factor with >2 levels \cr
 #' TRUE	\tab TRUE	\tab 0 \tab poisson	    \tab ctree\tab Single, integer \cr
 #' \cr
 #' TRUE	\tab TRUE	\tab >0 \tab 	gaussian	  \tab ctree \tab Sinlge, numeric (non-integer) \cr
@@ -244,7 +245,7 @@ pre <- function(formula, data, family = gaussian,
     }
   }
   if (is.character(family)) {
-    if (!any(family %in% c("gaussian", "binomial", "poisson", "mgaussian", "multinomial"))) {
+    if (!any(family %in% c("gaussian", "binomial", "poisson", "mgaussian", "multinomial", "cox"))) {
       stop("Argument 'family' should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian' or a corresponding family object.")
     }
   }
@@ -431,8 +432,16 @@ pre <- function(formula, data, family = gaussian,
     warning("Argument 'family' was set to 'mgaussian', but less than two response variables were specified.")
   }
   
-  if (family == "mgaussian" || length(all.vars(formula[[2]])) == 2) {
-    family <- "mgaussian"
+  
+  if (family == "cox" || (length(formula[[2]]) == 3L && 
+    grepl("Surv", as.character(formula[[2]]), fixed = TRUE)[1])) {
+    family <- "cox"
+    y_names <- names(data)[attr(attr(data, "terms"), "response")]
+    #if (learnrate > 0) {
+    #  warning("Survival regression with a learnrate > 0 is currently not supported; learnrate will be set to 0.")
+    #  learnrate <- 0
+    #}
+  } else if (family == "mgaussian" || length(all.vars(formula[[2]])) >= 2) {
     y_names <- all.vars(formula[[2]])
     if (any(grepl(".", y_names, fixed = TRUE))) {
       warning("If a multivariate response is specified, the left-hand side of the formula should not include '.' .")
@@ -471,6 +480,11 @@ pre <- function(formula, data, family = gaussian,
           family <- "multinomial"
         }
       }
+    } else if (is.Surv(data[,y_names])) {
+      if(!(is.null(cl$family)) && cl$family != "cox") {
+        warning("A survival object was specified as the response variable, but argument 'family' was not set to 'cox', but to ", family)
+      }
+      family <- "cox"
     } else if (is.numeric(data[,y_names])) { # then family should be poisson or gaussian
       if (family[1] %in% c("binomial", "multinomial")) {
         if (isTRUE(all.equal(round(data[,y_names]), data[,y_names]))) { # then poisson
@@ -507,6 +521,8 @@ pre <- function(formula, data, family = gaussian,
       stop("Employing (g)lmtree for rule induction with a multinomial response variable is not supported. Set argument 'use.grad' to TRUE for multivariate responses.")
     } else if (family == "mguassian") {
       stop("Employing (g)lmtree for rule induction with a multivariate response variable is not supported. Set argument 'use.grad' to TRUE for multivariate responses.")
+    } else if (family == "cox") {
+      stop("Employing (g)lmertree for rule induction with a survival response is not supported. Set argument 'use.grad' to TRUE for a survival response.")
     }
   }
 
@@ -550,6 +566,9 @@ pre <- function(formula, data, family = gaussian,
       cat("A rule ensemble for prediction of a categorical response with > 2 levels will be created.\n")
     } else if (family == "mgaussian") {
       cat("A rule ensemble for prediction of multivariate continyous response will be created.\n")
+    } else if (family == "cox") {
+    } else if (family == "mgaussian") {
+      cat("A rule ensemble for prediction of a survival response will be created.\n")
     }
   }
   
@@ -736,7 +755,8 @@ get_modmat <- function(
   
   # convert ordered categorical predictor variables to linear terms:
   data[,sapply(data, is.ordered)] <- # Needs to be called on the data.frame
-    as.numeric(as.character(data[,sapply(data, is.ordered)]))
+    #as.numeric(as.character(data[,sapply(data, is.ordered)]))
+    as.numeric(data[,sapply(data, is.ordered)])    
   ## FIXME: problem with ordered variable may be due because data is used below 
   ## to create a model frame in x <- model.matrix(modmat_formula, data = data)
   ## To evaluate rules, should use variable as ordered factors
@@ -780,7 +800,7 @@ get_modmat <- function(
   attr_x$dim[2] <- attr_x$dim[2] - 1
   attr_x$assign <- attr_x$assign[-1]
   x <- x[, colnames(x) != "(Intercept)"]
-  if (!is.matrix(x)) { ## Prevent x becoming from a vector if it has only a single row
+  if (!is.matrix(x)) { ## Prevent x from becoming a vector if it has only a single row
     x <- as.matrix(t(x), nrow = 1) 
   }
   
@@ -957,7 +977,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                               glmtree_args = glmtree_args, tree.control = tree.control)
       }
       
-    } else { # compute serial:
+    } else { # compute in serial:
       
       rules <- c()
       for (i in 1:ntrees) {
@@ -1028,6 +1048,14 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
         eta_0 <- apply(y, 2, weighted.mean, weights = rep(1, nrow(y)))
         eta <- t(replicate(n = nrow(y), expr = eta_0))
         data_with_y_learn[,y_names] <- y - eta
+      } else if (family == "cox") {
+        formula_cox <- as.formula(paste0("pseudo_y ~ ", 
+                                        paste0(x_names, collapse = " + ")))
+        y <- data[,y_names]
+        eta_0 <- 0
+        eta <- rep(0, times = nrow(data))
+        ngradient_CoxPH <- mboost::CoxPH()@ngradient
+        data_with_y_learn$pseudo_y <- ngradient_CoxPH(y = y, f = eta, w = weights)
       }
 
       for(i in 1:ntrees) {
@@ -1040,6 +1068,9 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           if (family == "multinomial") {
             tree <- ctree(formula_multinomial, control = tree.control,
                           data = data_with_y_learn[subsample[[i]], ])
+          } else if (family == "cox") {
+            tree <- ctree(formula_cox, control = tree.control, 
+                       data = data_with_y_learn[subsample[[i]], ])
           } else {
             tree <- ctree(formula, control = tree.control,
                           data = data_with_y_learn[subsample[[i]], ])
@@ -1065,6 +1096,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           data_with_y_learn[,multinomial_y_names] <- get_y_learn_multinomial(eta, y)  
         } else if (family == "mgaussian") {
           data_with_y_learn[,y_names] <- y - eta
+        } else if (family == "cox") {
+          data_with_y_learn$pseudo_y <- ngradient_CoxPH(y = y, f = eta, w = weights)
         }
       }
       
@@ -1521,7 +1554,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
       " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ")", "\n\n  cv error type : ",
       x$glmnet.fit$name, "\n\n", sep = "")
   coefs <- coef(x, penalty.par.val = penalty.par.val)
-  if (x$family %in% c("gaussian", "poisson", "binomial")) {
+  if (x$family %in% c("gaussian", "poisson", "binomial", "cox")) {
     coefs <- coefs[coefs$coefficient != 0, ]
   } else if (x$family %in% c("mgaussian", "multinomial")) {
     coef_inds <- names(coefs)[!names(coefs) %in% c("rule", "description")]
@@ -1744,7 +1777,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
     stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
   }
   
-  if (object$family %in% c("gaussian", "binomial", "poisson")) {
+  if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
     coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
                 Class = "matrix")
   } else if (object$family %in% c("mgaussian", "multinomial")) {
@@ -1759,7 +1792,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
     coefs[names(object$x_scales),] <- coefs[names(object$x_scales),] /
       object$x_scales
   }
-  if (object$family %in% c("gaussian", "binomial", "poisson")) {
+  if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
     coefs <- data.frame(coefficient = coefs[,1], rule = rownames(coefs), 
                         stringsAsFactors = FALSE)
   } else if (object$family %in% c("mgaussian", "multinomial")) {
@@ -1787,6 +1820,9 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   
   ## Description of the intercept should be 1:
   coefs$description[which(coefs$rule == "(Intercept)")] <- "1"
+  
+  ## Description of factor variables:
+  coefs$description[is.na(coefs$description)] <- coefs$rule[is.na(coefs$description)]
 
   # include winsorizing points in the description if they were used in 
   # generating the ensemble (and if there are no duplicate variable names):  
@@ -1797,7 +1833,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
       wp[order(wp$varname), ]$value  
   }
   
-  if (object$family %in% c("gaussian", "binomial", "poisson")) {
+  if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
     return(coefs[order(abs(coefs$coefficient), decreasing = TRUE),])
   } else if (object$family %in% c("mgaussian", "multinomial")) {
     return(coefs[order(abs(coefs[,2]), decreasing = TRUE),])    
@@ -1905,7 +1941,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   }
   
   # Get predictions:
-  if (object$family %in% c("gaussian", "binomial", "poisson")) {
+  if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
     preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, 
                                s = penalty.par.val, type = type, ...)[,1]
   } else if (object$family %in% c("mgaussian", "multinomial")) {
@@ -2282,13 +2318,19 @@ importance <- function(object, standardize = FALSE, global = TRUE,
   # only continue when there are nonzero terms besides intercept:
   if (sum(coefs$coefficient != 0) > 1) { 
     # give factors a description:
-    coefs$description[is.na(coefs$description)] <-
-      paste0(as.character(coefs$rule)[is.na(coefs$description)], " ")
+    if (any(is.na(coefs$description))) {
+      coefs$description[is.na(coefs$description)] <-
+        paste0(as.character(coefs$rule)[is.na(coefs$description)], " ")
+    }
     coefs <- coefs[order(coefs$rule),]
     # Get sds for every baselearner:
     if (global) {
       # object$x_scales should be used to get correct SDs for linear terms:
-      sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))  
+      if (object$family == "cox") {
+        sds <- apply(object$modmat, 2, sd, na.rm = TRUE)  
+      } else {
+        sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))          
+      }
       if (standardize) {
         sd_y <- sd(object$data[,object$y_names])
       }
@@ -2303,7 +2345,13 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       if (nrow(local_modmat) < 2) {stop("Selected subregion contains less than 2
                                         observations, importances cannot be calculated")}
       # object$x_scales should be used to get correct SDs for linear terms:
-      sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
+      if (object$family == "cox") {
+        ## cox prop haz model has no intercept, so should be omitted
+        sds <- apply(local_modmat, 2, sd, na.rm = TRUE)
+      } else {
+        sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
+      }
+
       if(object$normalize) {
         sds[names(object$x_scales)] <- sds[names(object$x_scales)] * object$x_scales
       }
@@ -2313,7 +2361,9 @@ importance <- function(object, standardize = FALSE, global = TRUE,
                                object$y_names])
       }
     }
-    names(sds)[1] <- "(Intercept)"
+    if (object$family != "cox") {
+      names(sds)[1] <- "(Intercept)"
+    }
     sds <- sds[order(names(sds))]
     ## TODO: Is this next part even helpful?
     if (all(names(sds) != coefs$rule)) {
@@ -2796,6 +2846,11 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' @param nterms numeric. The total number of terms (or rules, if 
 #' \code{linear.terms = FALSE}) being plotted. Default is \code{NULL}, 
 #' resulting in all terms of the final ensemble to be plotted.
+#' @param fill character. Background color(s) for terminal panels. If one color
+#' is specified, all terminal panels will have the specified background color. 
+#' If two colors are specified (the default, the first color will be used as 
+#' the background color for rules with a positively valued coefficient; the 
+#' second color will be used for rules with a negatively valued coefficient.
 #' @param plot.dim integer vector of length two. Specifies the number of rows
 #' and columns in the plot. The default yields a plot with three rows and three 
 #' columns, depicting nine baselearners per plotting page.
@@ -2815,8 +2870,9 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' @seealso \code{\link{pre}}, \code{\link{print.pre}}
 #' @method plot pre
 plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
-                     nterms = NULL, ask = FALSE, exit.label = "0", 
-                     standardize = FALSE, plot.dim = c(3, 3), ...) {
+                     nterms = NULL, fill = c("#D6BCC0", "#BEC1D4"), ask = FALSE, 
+                     exit.label = "0", standardize = FALSE, plot.dim = c(3, 3), 
+                     ...) {
   
   if (is.null(x$call$tree.unbiased)) {
     right <- TRUE
@@ -3063,16 +3119,29 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       if (x$family %in% c("mgaussian", "multinomial")) {
         plot(fftree, newpage = FALSE, main = nonzeroterms$rule[i],
              inner_panel = node_inner(fftree, id = FALSE),
-             terminal_panel = node_terminal(fftree, id = FALSE))#, gp = grid::gpar(...))
+             terminal_panel = node_terminal(fftree, id = FALSE, 
+                                            fill = ifelse(length(fill) > 1, 
+                                                          ifelse(nonzeroterms$coefficient[i] > 0, fill[1], fill[2]), 
+                                                          fill), 
+                                            gp = grid::gpar(...)))
       } else {
         plot(fftree, newpage = FALSE, 
              main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
              inner_panel = node_inner(fftree, id = FALSE),
-             terminal_panel = node_terminal(fftree, id = FALSE), gp = grid::gpar(...))      
+             terminal_panel = node_terminal(fftree, id = FALSE, fill = ifelse(length(fill) > 1, 
+                                                                              ifelse(nonzeroterms$coefficient[i] > 0, fill[1], fill[2]), 
+                                                                              fill), 
+                                            gp = grid::gpar(...)))      
       }
       grid::popViewport()
     }
   }
+  
+  if (length(fill) > 1) {
+    fill <- ifelse(nonzeroterms$coefficient[i] > 0, fill[1], fill[2])
+  }
+  
+  
   
   if (ask) {
     grDevices::devAskNewPage(ask = FALSE)

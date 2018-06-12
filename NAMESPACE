@@ -36,7 +36,7 @@ import("stats")
 import("graphics")
 import("partykit")
 import("rpart")
-
+import("survival")
 
 
 importFrom("methods", "as")

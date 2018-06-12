@@ -26,7 +26,8 @@ Imports:
     methods,
     partykit,
     rpart,
-    stringr
+    stringr,
+    survival
 Suggests:
     akima,
     datasets,
@@ -35,7 +36,8 @@ Suggests:
     glmertree, 
     grid,
     mlbench,
-    testthat
+    testthat,
+    mboost
 License: GPL-2 | GPL-3
 Encoding: UTF-8
 LazyData: true

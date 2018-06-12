@@ -5,8 +5,8 @@
 \title{Plot method for class pre}
 \usage{
 \method{plot}{pre}(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
-  nterms = NULL, ask = FALSE, exit.label = "0", standardize = FALSE,
-  plot.dim = c(3, 3), ...)
+  nterms = NULL, fill = c("#D6BCC0", "#BEC1D4"), ask = FALSE,
+  exit.label = "0", standardize = FALSE, plot.dim = c(3, 3), ...)
 }
 \arguments{
 \item{x}{an object of class \code{\link{pre}}.}
@@ -24,6 +24,12 @@ running \code{x$glmnet.fit} and \code{plot(x$glmnet.fit)}.}
 \item{nterms}{numeric. The total number of terms (or rules, if 
 \code{linear.terms = FALSE}) being plotted. Default is \code{NULL}, 
 resulting in all terms of the final ensemble to be plotted.}
+
+\item{fill}{character. Background color(s) for terminal panels. If one color
+is specified, all terminal panels will have the specified background color. 
+If two colors are specified (the default, the first color will be used as 
+the background color for rules with a positively valued coefficient; the 
+second color will be used for rules with a negatively valued coefficient.}
 
 \item{ask}{logical. Should user be prompted before starting a new page of
 plots?}

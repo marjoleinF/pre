@@ -31,16 +31,17 @@ variables must be of class numeric, factor or ordered factor.}
 
 \item{family}{specification of a glm family. Can be a character string (i.e., 
 \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"multinomial"}, 
-or \code{"mgaussian"}) or a corresponding family object 
+\code{"cox"} or \code{"mgaussian"}), or a corresponding family object 
 (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
 \code{\link[stats]{family}}). Specification is required only 
 for non-negative count responses, e.g., \code{family = "poisson"}. Otherwise,
 the program will try to make an informed guess: 
-\code{family = "gaussian"} will be employed a numeric,  
+\code{family = "gaussian"} will be employed if a numeric,  
 \code{family = "binomial"} will be employed if a binary factor.
-\code{family ="multinomial"} will be employed if a factor with > 2 levels, and
-\code{family = "mgaussian"} will be employed if multiple continuous response
-variables were specified.}
+\code{family ="multinomial"} will be employed if a factor with > 2 levels, 
+\code{family = "cox"} will be employed if a survival object (e.g., 
+\code{Surv(time, event)} and \code{family = "mgaussian"} will be employed 
+if multiple continuous response variables were specified.}
 
 \item{use.grad}{logical. Should gradient boosting with regression trees be
 employed when \code{learnrate > 0}? That is, use 
@@ -174,7 +175,7 @@ algorithm that will be employed as a result:
 TRUE	\tab TRUE	\tab 0 \tab gaussian	  \tab ctree\tab Single, numeric (non-integer) \cr
 TRUE	\tab TRUE	\tab 0 \tab mgaussian	  \tab ctree\tab Multiple, numeric (non-integer) \cr
 TRUE	\tab TRUE	\tab 0 \tab binomial	  \tab ctree\tab Single, factor with 2 levels \cr
-TRUE	\tab TRUE	\tab 0 \tab multinomial	\tab ctree\tab Single, factor with \>2 levels \cr
+TRUE	\tab TRUE	\tab 0 \tab multinomial	\tab ctree\tab Single, factor with >2 levels \cr
 TRUE	\tab TRUE	\tab 0 \tab poisson	    \tab ctree\tab Single, integer \cr
 \cr
 TRUE	\tab TRUE	\tab >0 \tab 	gaussian	  \tab ctree \tab Sinlge, numeric (non-integer) \cr
