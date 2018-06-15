@@ -24,15 +24,15 @@ utils::globalVariables("%dopar%")
 #' \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"multinomial"}, 
 #' \code{"cox"} or \code{"mgaussian"}), or a corresponding family object 
 #' (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
-#' \code{\link[stats]{family}}). Specification is required only 
-#' for non-negative count responses, e.g., \code{family = "poisson"}. Otherwise,
-#' the program will try to make an informed guess: 
+#' \code{\link[stats]{family}}). Specification of argument \code{family} is 
+#' not required, but advised, especially for count and multivariate responses. 
+#' Otherwise, the program will try to make an informed guess: 
 #' \code{family = "gaussian"} will be employed if a numeric,  
 #' \code{family = "binomial"} will be employed if a binary factor.
 #' \code{family ="multinomial"} will be employed if a factor with > 2 levels, 
 #' \code{family = "cox"} will be employed if a survival object (e.g., 
-#' \code{Surv(time, event)} and \code{family = "mgaussian"} will be employed 
-#' if multiple continuous response variables were specified. 
+#' \code{Surv(time, event)} was specified as the response variable. See Examples 
+#' below. 
 #' @param use.grad logical. Should gradient boosting with regression trees be
 #' employed when \code{learnrate > 0}? That is, use 
 #' \code{\link[partykit]{ctree}} as in Friedman (2001), but without the line 
@@ -131,12 +131,14 @@ utils::globalVariables("%dopar%")
 #' TRUE	\tab TRUE	\tab 0 \tab binomial	  \tab ctree\tab Single, factor with 2 levels \cr
 #' TRUE	\tab TRUE	\tab 0 \tab multinomial	\tab ctree\tab Single, factor with >2 levels \cr
 #' TRUE	\tab TRUE	\tab 0 \tab poisson	    \tab ctree\tab Single, integer \cr
+#' TRUE \tab TRUE \tab 0 \tab cox         \tab ctree\tab Object of class 'Surv' \cr
 #' \cr
 #' TRUE	\tab TRUE	\tab >0 \tab 	gaussian	  \tab ctree \tab Sinlge, numeric (non-integer) \cr
 #' TRUE	\tab TRUE	\tab >0	\tab mgaussian	  \tab ctree \tab Mutliple, numeric (non-integer) \cr
 #' TRUE	\tab TRUE	\tab >0	\tab binomial	  \tab ctree  \tab Single, factor with 2 levels \cr
 #' TRUE	\tab TRUE	\tab >0	\tab multinomial	\tab ctree \tab Single, factor with >2 levels \cr
 #' TRUE	\tab TRUE	\tab >0	\tab poisson	    \tab ctree  \tab Single, integer \cr
+#' TRUE \tab TRUE \tab >0 \tab cox         \tab ctree\tab Object of class 'Surv \cr'
 #' \cr
 #' FALSE \tab TRUE \tab 0 \tab gaussian	  \tab glmtree \tab Single, numeric (non-integer) \cr
 #' FALSE \tab TRUE \tab 0 \tab binomial	  \tab glmtree \tab Single, factor with 2 levels \cr
@@ -150,15 +152,17 @@ utils::globalVariables("%dopar%")
 #' TRUE	\tab FALSE \tab 0 \tab binomial	  \tab rpart \tab Single, factor with 2 levels \cr
 #' TRUE	\tab FALSE \tab 0 \tab multinomial	\tab rpart \tab Single, factor with >2 levels \cr
 #' TRUE	\tab FALSE \tab 0 \tab poisson	    \tab rpart \tab Single, integer \cr
+#' TRUE \tab FALSE \tab 0 \tab cox         \tab rpart\tab Object of class 'Surv' \cr
 #' \cr
-#' FALSE \tab FALSE	\tab >0 \tab gaussian	  \tab rpart \tab Single, numeric (non-integer) \cr
-#' FALSE \tab FALSE	\tab >0 \tab binomial	  \tab rpart \tab Single, factor with 2 levels \cr
-#' FALSE \tab FALSE	\tab >0 \tab poisson	    \tab rpart \tab Single, integer \cr
+#' TRUE \tab FALSE	\tab >0 \tab gaussian	  \tab rpart \tab Single, numeric (non-integer) \cr
+#' TRUE \tab FALSE	\tab >0 \tab binomial	  \tab rpart \tab Single, factor with 2 levels \cr
+#' TRUE \tab FALSE	\tab >0 \tab poisson	  \tab rpart \tab Single, integer \cr
+#' TRUE \tab FALSE \tab >0 \tab cox         \tab rpart \tab Object of class 'Surv'
 #' }
 #' 
-#' @note The code for deriving rules from the nodes of trees was taken from an 
-#' internal function of the \code{partykit} package of Achim Zeileis and Torsten 
-#' Hothorn.
+#' @note Parts of the code for deriving rules from the nodes of trees was copied 
+#' with permission from an internal function of the \code{partykit} package, written
+#' by Achim Zeileis and Torsten Hothorn.
 #' 
 #' @return An object of class \code{pre}, which contains the initial ensemble of 
 #' rules and/or linear terms and the final ensembles for a wide range of penalty
@@ -172,8 +176,41 @@ utils::globalVariables("%dopar%")
 #' and \code{plot(object$glmnet.fit)}.
 #' 
 #' @examples \donttest{
+#' ## Fit pre to a continuous response:
+#' airq <- airquality[complete.cases(airquality), ]
 #' set.seed(42)
-#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),], verbose = TRUE)}
+#' airq.ens <- pre(Ozone ~ ., data = airq, verbose = TRUE)
+#' airq.ens
+#' 
+#' ## Fit pre to a binary response:
+#' airq2 <- airquality[complete.cases(airquality), ]
+#' airq2$Ozone <- factor(airq2$Ozone > median(airq2$Ozone))
+#' set.seed(42)
+#' airq.ens2 <- pre(Ozone ~ ., data = airq2, family = "binomial", 
+#'                  verbose = TRUE)
+#' airq.ens2
+#' 
+#' ## Fit pre to a multivariate continuous response:
+#' airq3 <- airquality[complete.cases(airquality), ] 
+#' set.seed(42)
+#' airq.ens3 <- pre(Ozone + Wind ~ ., data = airq3, family = "mgaussian", 
+#'                  verbose = TRUE)
+#' airq.ens3
+#' 
+#' ## Fit pre to a multinomial response:
+#' set.seed(42)
+#' iris.pre <- pre(Species ~ ., data = iris, family = "multinomial",
+#'                 verbose = TRUE)
+#' iris.pre
+#' 
+#' ## Fit pre to a survival response:
+#' library("survival")
+#' lung <- lung[complete.cases(lung), ]
+#' set.seed(42)
+#' lung.ens <- pre(Surv(time, status) ~ . - sex, data = lung, family = "cox", 
+#'                 verbose = TRUE)
+#' lung.ens
+#' }
 #' @import glmnet partykit datasets
 #' @export
 #' @seealso \code{\link{print.pre}}, \code{\link{plot.pre}}, 
@@ -526,6 +563,9 @@ pre <- function(formula, data, family = gaussian,
     }
   }
 
+  if (!requireNamespace("mboost", quietly = TRUE)) {
+    stop("For fitting a prediction rule ensemble with a survival response and learning rate > 0, package mboost should be installed.")
+  }
 
   ## Prevent response from being interpreted as count by ctree or rpart:
   if (learnrate == 0 && family == "gaussian" && (!(tree.unbiased && !use.grad))) { # if glmtree is not employed
@@ -552,9 +592,13 @@ pre <- function(formula, data, family = gaussian,
     weights <- weights[complete.cases(data)]
     data <- data[complete.cases(data),]
     n <- nrow(data)
-    warning("Some observations have missing values and have been removed. New sample size is ", n, ".\n", immediate. = TRUE)
+    warning("Some observations have missing values and have been removed from the data. New sample size is ", n, ".\n", immediate. = TRUE)
   }
 
+  if (family == "cox" && !requireNamespace("survival")) {
+    stop("For fitting a prediction rule ensemble with a survival response, package survival should be installed and loaded")    
+  }
+  
   if (verbose) {
     if (family == "gaussian") {
       cat("A rule ensemble for prediction of a continuous response will be created.\n")
@@ -565,7 +609,7 @@ pre <- function(formula, data, family = gaussian,
     } else if (family == "multinomial") {
       cat("A rule ensemble for prediction of a categorical response with > 2 levels will be created.\n")
     } else if (family == "mgaussian") {
-      cat("A rule ensemble for prediction of multivariate continyous response will be created.\n")
+      cat("A rule ensemble for prediction of a multivariate continuous response will be created.\n")
     } else if (family == "cox") {
     } else if (family == "mgaussian") {
       cat("A rule ensemble for prediction of a survival response will be created.\n")
