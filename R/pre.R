@@ -989,7 +989,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       if (tree.unbiased) {
         if (use.grad) { # employ ctree
           tree <- ctree(formula = formula, data = data, control = tree.control)
-          return(list.rules(tree))
+          return(list.rules(tree, removecomplements = removecomplements))
         } else { # employ (g)lmtree
           glmtree_args$data <- data
           if (family == "gaussian") {
@@ -997,12 +997,17 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           } else {
             tree <- do.call(glmtree, args = glmtree_args)
           }
-          return(list.rules(tree))
+          return(list.rules(tree, removecomplements = removecomplements))
         }
       } else { # employ rpart
-        tree <- rpart(formula = formula, data = data, control = tree.control)
+        tree <- rpart(formula = formula, data = data, control = tree.control, maxdepth = 1)
         paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE)
-        return(unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1]))
+        paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
+        if (removecomplements) {
+          ## Omit first rule, as it is the complent of a later rule, by definition:
+          paths <- paths[-1]
+        }
+        return(paths)
       }
     }
     
@@ -1120,12 +1125,17 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                           data = data_with_y_learn[subsample[[i]], ])
           }
           # Collect rules:
-          rules <- c(rules, list.rules(tree))
+          rules <- c(rules, list.rules(tree, removecomplements = removecomplements))
         } else {
           tree <- rpart(formula, control = tree.control,
                         data = data_with_y_learn[subsample[[i]], ])
           paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE, pretty = 0)
-          rules <- c(rules, unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1]))
+          paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
+          if (removecomplements) {
+            paths <- paths[-1]
+          }
+          
+          rules <- c(rules, paths)
         }
         
         ## Update eta and y_learn:
@@ -1165,7 +1175,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           tree <- do.call(glmtree, args = glmtree_args) 
         }
         # Collect rules:
-        rules <- c(rules, list.rules(tree))
+        rules <- c(rules, list.rules(tree, removecomplements = removecomplements))
         # Update offset (note: do not use a dataset which includes the offset for prediction!!!):
         if (learnrate > 0) {
           if (family == "gaussian") {
@@ -1384,7 +1394,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
         tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
       }
       # Collect rules:
-      list.rules(tree)
+      list.rules(tree, removecomplements = removecomplements)
         
     } 
   } else { # do not compute in parallel:
@@ -1404,7 +1414,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
         tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
       }
       # Collect rules:
-      rules <- c(rules, list.rules(tree))
+      rules <- c(rules, list.rules(tree, removecomplements = removecomplements))
     
     }
   } 
@@ -1746,17 +1756,20 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
       mean(abs(as.numeric(object$data[,object$y_names]) - 1 - cvpreds)),
       sd(abs(as.numeric(object$data[,object$y_names]) - 1 - cvpreds))/sqrt(length(cvpreds)))
     names(accuracy$AEL) <- c("AEL", "se")     
-    cvpreds_d <- as.numeric(cvpreds > .5)
+    cvpreds_d <- as.numeric(cvpreds > pclass)
     accuracy$MCR <- 1 - sum(diag(prop.table(table(cvpreds_d, 
                                                   object$data[,object$y_names]))))
     accuracy$table <- prop.table(table(cvpreds_d, object$data[,object$y_names]))
-  } else {
+  } else if (object$family %in% c("gaussian", "poisson")) {
     accuracy$MSE <- c(mean((object$data[,object$y_names] - cvpreds)^2),
                       sd((object$data[,object$y_names] - cvpreds)^2)/sqrt(length(cvpreds)))
     names(accuracy$MSE) <- c("MSE", "se")
     accuracy$MAE <- c(mean(abs(object$data[,object$y_names] - cvpreds)),
                       sd(abs(object$data[,object$y_names] - cvpreds))/sqrt(length(cvpreds)))
     names(accuracy$MAE) <- c("MAE", "se")
+  } else {
+    ## TODO: Implement support for multinomial, multivariate, and survival responses 
+    stop("Function cvpre does not support response variable families other than binomial, gaussian and poisson yet.")  
   }
   result <- list(cvpreds = cvpreds, fold_indicators = folds, accuracy = accuracy)
   return(result)
@@ -3166,16 +3179,16 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
              terminal_panel = node_terminal(fftree, id = FALSE, 
                                             fill = ifelse(length(fill) > 1, 
                                                           ifelse(nonzeroterms$coefficient[i] > 0, fill[1], fill[2]), 
-                                                          fill), 
-                                            gp = grid::gpar(...)))
+                                                          fill)), 
+             gp = grid::gpar(...))
       } else {
         plot(fftree, newpage = FALSE, 
              main = paste0(nonzeroterms$rule[i], ": Importance = ", round(nonzeroterms$imp[i], digits = 3)),
              inner_panel = node_inner(fftree, id = FALSE),
              terminal_panel = node_terminal(fftree, id = FALSE, fill = ifelse(length(fill) > 1, 
                                                                               ifelse(nonzeroterms$coefficient[i] > 0, fill[1], fill[2]), 
-                                                                              fill), 
-                                            gp = grid::gpar(...)))      
+                                                                              fill)), 
+             gp = grid::gpar(...))      
       }
       grid::popViewport()
     }

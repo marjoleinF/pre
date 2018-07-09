@@ -15,7 +15,7 @@ Changes in Version 0.... (....-..-..)
       coefficient (by default, light blue and red colors are employed for
       negative and positive coefficient values, respectively)
 
-
+  - Bug fixed in cvpre(): pclass argument now functions correctly  
 
 
 Changes in Version 0.5 (2018-05-07)

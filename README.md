@@ -1,7 +1,7 @@
 pre: an R package for deriving prediction rule ensembles
 ========================================================
 
-pre is an R package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous and count outcome variables. Input variables may be numeric, ordinal and nominal. An extensive description of the implementation and functionality is provided in Fokkema (2017). The package largely implements the algorithm for deriving prediction rule ensembles as described in J. Friedman & Popescu (2008), with several adjustments:
+pre is an R package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival outcome variables. Input variables may be numeric, ordinal and nominal. An extensive description of the implementation and functionality is provided in Fokkema (2017). The package largely implements the algorithm for deriving prediction rule ensembles as described in J. Friedman & Popescu (2008), with several adjustments:
 
 1.  The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2.  The unbiased tree induction algorithms of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of Zeileis, Hothorn, & Hornik (2008) can be employed, or the classification and regression tree (CART) algorithm of Breiman, Friedman, Olshen, & Stone (1984).
@@ -36,7 +36,7 @@ airq.ens
 #>   cv error type : Mean-Squared Error
 #> 
 #>          rule  coefficient                          description
-#>   (Intercept)   72.9680699                                 <NA>
+#>   (Intercept)   72.9680699                                    1
 #>       rule191  -15.6401487              Wind > 5.7 & Temp <= 87
 #>       rule173   -8.6645924              Wind > 5.7 & Temp <= 82
 #>       rule204    8.1715564         Wind <= 10.3 & Solar.R > 148
@@ -66,7 +66,7 @@ We can obtain the estimated coefficients for each of the baselearners using the 
 coefs <- coef(airq.ens)
 coefs[1:10,]
 #>            rule coefficient                         description
-#> 201 (Intercept)   72.968070                                <NA>
+#> 201 (Intercept)   72.968070                                   1
 #> 166     rule191  -15.640149             Wind > 5.7 & Temp <= 87
 #> 149     rule173   -8.664592             Wind > 5.7 & Temp <= 82
 #> 178     rule204    8.171556        Wind <= 10.3 & Solar.R > 148

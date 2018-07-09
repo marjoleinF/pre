@@ -97,24 +97,40 @@ is_almost_eq <- function(x, y, tolerance = sqrt(.Machine$double.eps)) {
 # rules at the terminal nodes. This is done to get the rules as in: 
 #   Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
 #   ensembles. The Annals of Applied Statistics, 916-954.
-list.rules <- function (x, i = NULL, ...){
+
+
+list.rules <- function (x, i = NULL, removecomplements = TRUE, ...) {
   if (is.null(i)) 
     i <- partykit::nodeids(x, terminal = TRUE)
   if (length(i) > 1) {
     # ret <- sapply(i, list.rules, x = x)
     # TODO: Benjamin Christoffersen changed this part. This can be done smarter
-    # then finding all and then removing duplicates. I guess the computational
+    # than finding all and then removing duplicates. I guess the computational
     # cost is low, though
     ret <- lapply(i, list.rules, x = x, simplify = FALSE)
     
     # Find the first rules. We will only keep one of these
-    first_rules <- unique(sapply(ret, "[[", 1))
-    first_rule_remove <- first_rules[2]
+    
+    ## TODO: If we apply non-negativity constraints,
+    ## the rule that is kept should correlate positively
+    ## with the outcome, if we apply negativity constraint,
+    ## the rule that is kep should correlate negatively with 
+    ## the response.
+    ## I.e., if  'lower.limits = 0' or 'upper.limits = 0' was used in calling pre()
+    ##
+    ## Easier solution may be to just not remove first rule here
+    ## E..g, employ rm.firstrule argument (which is true by default)
+    if (removecomplements) {
+      first_rules <- unique(sapply(ret, "[[", 1))
+      first_rule_remove <- first_rules[2]
+    }
     
     # Make list of final rules
     ret <- unlist(ret)
     ret <- ret[!duplicated(ret)]
-    ret <- ret[ret != first_rule_remove]
+    if (removecomplements) {
+      ret <- ret[ret != first_rule_remove]
+    }
     # TODO: this still leaves us with complements for non-terminal rules
     # names(ret) <- if (is.character(i)) 
     #   i else names(x)[i]
