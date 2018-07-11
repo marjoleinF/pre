@@ -2364,16 +2364,27 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     stop("Specified object is not of class 'pre'.")
   }
   
-  if (object$family %in% c("mgaussian", "multinomial")) {
-    stop("Function importance not implemented yet for multivariate and multinomial outcomes.")
+  if (!global) {
+    if (object$family %in% c("mgaussian", "multinomial")) {
+      warning("Local importances cannot be calculated for multivariate and multinomial outcomes. Global importances will be returned.")
+      global <- TRUE 
+    }
   }
   
   ## Step 1: Calculate the importances of the base learners:
   
   # get base learner coefficients:
-  coefs <- coef.pre(object, penalty.par.val = penalty.par.val)
+  coefs <- coef(object, penalty.par.val = penalty.par.val)
+  if (object$family %in% c("mgaussian", "multinomial")) {
+    coef_inds <- names(coefs)[!names(coefs) %in% c("rule", "description")]
+  }
+
   # only continue when there are nonzero terms besides intercept:
-  if (sum(coefs$coefficient != 0) > 1) { 
+  if ((object$family %in% c("gaussian", "binomial", "poisson") && 
+      sum(coefs$coefficient != 0) > 1 ) || 
+      (object$family %in% c("mgaussian", "multinomial") && 
+       sum(rowSums(coefs[,coef_inds]) != 0) > 1) ||
+      (object$family == "cox" && sum(coefs$coefficient != 0) > 0)) { 
     # give factors a description:
     if (any(is.na(coefs$description))) {
       coefs$description[is.na(coefs$description)] <-
@@ -2389,7 +2400,14 @@ importance <- function(object, standardize = FALSE, global = TRUE,
         sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))          
       }
       if (standardize) {
-        sd_y <- sd(object$data[,object$y_names])
+        if (object$family == "cox") {
+          warning("For survival responses, standardized importances cannot be calculated. Unstandardized importances will be returned")
+          standardize <- FALSE
+        } else if (object$family %in% c("mgaussian", "multinomial")) {
+          sd_y <- sapply(object$data[,object$y_names], sd)
+        } else {
+          sd_y <- sd(object$data[,object$y_names])
+        }
       }
       if(object$normalize) {
         sds[names(object$x_scales)] <- sds[names(object$x_scales)] * object$x_scales
@@ -2422,7 +2440,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       names(sds)[1] <- "(Intercept)"
     }
     sds <- sds[order(names(sds))]
-    ## TODO: Is this next part even helpful?
+    ## TODO: Are next four lines even helpful?
     if (all(names(sds) != coefs$rule)) {
       warning("There seems to be a problem with the ordering or size of the
               coefficient and sd vectors. Importances cannot be calculated.")
@@ -2430,9 +2448,19 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     
     # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
     if (standardize) {
-      baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds/sd_y)
+      if (object$family %in% c("multinomial", "mgaussian")) {
+        # TODO: Implement this!!!
+        stop("Calculating standardized importances for multivariate and multinomial responses is not yet supported.")
+      } else {
+        baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds/sd_y)
+      }
     } else {
-      baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
+      if (object$family %in% c("multinomial", "mgaussian")) {
+        baseimps <- data.frame(coefs, sd = sds)
+        baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) {x/sds}))
+      } else {
+        baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
+      }
     }
     
     
@@ -2450,7 +2478,12 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     baseimps <- base::merge.data.frame(
       frame.mat.conv, baseimps, by.x = "modmatname", by.y = "rule",
       all.x = TRUE, all.y = TRUE, sort = FALSE)
-    baseimps <- baseimps[baseimps$coefficient != 0,]
+    ## Remove nonzero terms:
+    if (object$family %in% c("mgaussian", "multinomial")) {
+      baseimps <- baseimps[rowSums(baseimps[,coef_inds]) != 0, ]   
+    } else {
+      baseimps <- baseimps[baseimps$coefficient != 0,]
+    }
     baseimps <- baseimps[baseimps$description != "(Intercept) ",]
     # For rules, calculate the number of terms in each rule:
     baseimps$nterms <- NA
@@ -2464,8 +2497,13 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       }
     }
     # Calculate variable importances:
-    varimps <- data.frame(varname = object$x_names, imp = 0,
-                          stringsAsFactors = FALSE)
+    if (object$family %in% c("mgaussian", "multinomial")) {
+      varimps <- data.frame(varname = object$x_names, stringsAsFactors = FALSE)
+      varimps[,gsub("coefficient", "importance", coef_inds)] <- 0
+    } else {
+      varimps <- data.frame(varname = object$x_names, imp = 0,
+                            stringsAsFactors = FALSE)
+    }
     # Get importances for rules:
     for(i in 1:nrow(varimps)) { # for every variable:
       # For every baselearner:
@@ -2479,8 +2517,14 @@ importance <- function(object, standardize = FALSE, global = TRUE,
           n_occ <- length(gregexpr(paste0(" ", varimps$varname[i], " "),
                                    paste0(" ", baseimps$description[j]), fixed = TRUE)[[1]])
           # and add it to the importance of the variable:
-          varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] /
-                                                baseimps$nterms[j])
+          if (object$family %in% c("mgaussian", "multinomial")) {
+            varimps[i,gsub("coefficient", "importance", coef_inds)] <- varimps[i,gsub("coefficient", "importance", coef_inds)] + 
+              (n_occ * baseimps[j,gsub("coefficient", "importance", coef_inds)] / baseimps$nterms[j])
+              
+          } else {
+            varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] /
+                                                  baseimps$nterms[j])
+          }
         }
       }
     }
@@ -2494,50 +2538,68 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       }
     }
     
-    
 
+    
     ## Step 3: return (and plot) importances:
-    baseimps <- baseimps[baseimps$imp != 0,]
-    baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE, method = "radix"),]
-    varimps <- varimps[order(varimps$imp, decreasing = TRUE, method = "radix"),]
-    varimps <- varimps[varimps$imp != 0,]
+    if (object$family %in% c("mgaussian", "multinomial")) {
+      varimps <- varimps[rowSums(varimps[,gsub("coefficient", "importance", coef_inds)]) != 0,]   
+    } else {
+      baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE, method = "radix"),]
+      varimps <- varimps[order(varimps$imp, decreasing = TRUE, method = "radix"),]
+      varimps <- varimps[varimps$imp != 0,]
+    }
+    
     if (plot & nrow(varimps) > 0) {
-      if (diag.xlab) {
-        xlab.pos <- barplot(height = varimps$imp, xlab = "", ylab = ylab, 
-                            main = main, cex.axis = cex.axis, ...)
-        ## add specified number of trailing spaces to variable names:
-        plotnames <- varimps$varname
-        if (diag.xlab.vert > 0) {
-          for (i in 1:diag.xlab.vert) {
-            plotnames <- paste0(plotnames, " ")
-          }
-        }
-        text(xlab.pos + diag.xlab.hor, par("usr")[3], srt = 45, adj = 1, xpd = TRUE, 
-             labels = plotnames, cex = cex.axis)
+      if (object$family %in% c("mgaussian", "multinomial")) {
+        plot_varimps <- reshape(data = varimps, direction = "long", 
+                                varying = gsub("coefficient", "importance", coef_inds))
+        print(ggplot(plot_varimps, aes(varname, importance, fill = time)) +
+              geom_bar(stat = "identity", position = "dodge") + 
+                xlab("") + ylab("Importance") + labs(fill = "") + 
+                theme(axis.text = element_text(size = 5*cex.axis),
+                      axis.title = element_text(size = 5*cex.axis)))
       } else {
-        barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
-                main = main, ...)
+        if (diag.xlab) {
+          xlab.pos <- barplot(height = varimps$imp, xlab = "", ylab = ylab, 
+                              main = main, cex.axis = cex.axis, ...)
+          ## add specified number of trailing spaces to variable names:
+          plotnames <- varimps$varname
+          if (diag.xlab.vert > 0) {
+            for (i in 1:diag.xlab.vert) {
+              plotnames <- paste0(plotnames, " ")
+            }
+          }
+          text(xlab.pos + diag.xlab.hor, par("usr")[3], srt = 45, adj = 1, xpd = TRUE, 
+               labels = plotnames, cex = cex.axis)
+          } else {
+          barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
+                  main = main, ...)
+          }
       }
     }
     if (!is.na(round)) {
-      varimps[,"imp"] <- round(varimps[,"imp"], digits = round)
-      baseimps[,c("imp", "coefficient", "sd")] <- round(
-        baseimps[,c("imp", "coefficient", "sd")], digits = round)
+      baseimps[,sapply(baseimps, is.numeric)] <- round(baseimps[,sapply(baseimps, is.numeric)], digits = round)
+      varimps[,sapply(varimps, is.numeric)] <- round(varimps[,sapply(varimps, is.numeric)], digits = round)
     }
     row.names(baseimps) <- NULL
     row.names(varimps) <- NULL
-    
+    keep <- c("description",
+              names(baseimps)[-which(names(baseimps) %in% 
+                                       c("modmatname", "modframename", 
+                                         "nterms", "description", "sd"))],
+              "sd")
     return(invisible(list(
       varimps = varimps, 
       baseimps = data.frame(
         rule = baseimps$modmatname,
-        baseimps[baseimps$description != "(Intercept) ", c("description", "imp", "coefficient", "sd")],
+        baseimps[baseimps$description != "1(Intercept) ", keep],
         stringsAsFactors = FALSE))))
     } else {
       warning("No non-zero terms in the ensemble. All importances are zero.")
       return(invisible(NULL))
     }
 }
+
 
 
 
