@@ -779,9 +779,9 @@ pre <- function(formula, data, family = gaussian,
 
 get_modmat <- function(
   # Pass these if you already have an object
-  modmat_formula = NULL, wins_points = NULL, x_scales = NULL, y_names = NULL,
+  modmat_formula = NULL, wins_points = NULL, x_scales = NULL,
   # These should be passed in all calls
-  formula, data, rules, type, winsfrac, x_names, normalize) {
+  formula, data, rules, type, winsfrac, x_names, normalize, y_names) {
   
   if (miss_modmat_formula <- is.null(modmat_formula)) {
     #####
@@ -810,7 +810,7 @@ get_modmat <- function(
   if (length(y_names) > 1) { # multivariate response has been supplied
     modmat_formula <- Formula(modmat_formula)
     data <- model.frame(modmat_formula, data)
-    ## Next part is skipped, it may yield trouble becuase of how multivariate outcomes are represented:
+    ## Next part is skipped, it may yield trouble because of how multivariate outcomes are represented:
     #if (miss_modmat_formula) {
     #  modmat_formula <- terms(data) # save terms so model factor levels are kept
     #}
@@ -864,9 +864,18 @@ get_modmat <- function(
       for(i in x_names) {
         j <- j + 1
         if (is.numeric(data[[i]])) {
-          x_idx <- which(
-            which(attr(terms(data), "term.labels") == i) == 
+          ## TODO: This is problematic for multivariate responses,
+          ## as terms(data, "term.labels") will include all variables in formula
+          ## While attr_x$assign contains only x variables
+          if (length(y_names) > 1) {
+            x_idx <- which(
+              which(attr(terms(modmat_formula, lhs = 0, rhs = NULL), "term.labels") == i) ==
               attr_x$assign)
+          } else {
+            x_idx <- which(
+              which(attr(terms(data), "term.labels") == i) == 
+                attr_x$assign)
+          }
           if (length(x_idx) > 1) { # User have made a one to many transformation
             next                # We do not winsorize in this case
           }
@@ -1640,9 +1649,6 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' @param k integer. The number of cross validation folds to be used.
 #' @param verbose logical. Should progress of the cross validation be printed 
 #' to the command line?
-#' @param pclass numeric. Only used for classification. Cut-off value for the 
-#' predicted probabilities that should be used to classify observations to the
-#' second class. 
 #' @param penalty.par.val numeric or character. Calculate cross-validated error for 
 #' ensembles with penalty parameter criterion giving minimum cv error 
 #' (\code{"lambda.min"}) or giving cv error that is within 1 standard error of 
@@ -1650,18 +1656,21 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' specified, corresponding to one of the values of lambda in the sequence used by 
 #' glmnet, for which estimated cv error can be inspected by running 
 #' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @param pclass numeric. Only used for binary classification. Cut-off value for the 
+#' predicted probabilities that should be used to classify observations to the
+#' second class. 
 #' @param parallel logical. Should parallel foreach be used? Must register parallel 
 #' beforehand, such as doMC or others.
-#' @return A list with three objects: \code{$cvpreds} (a vector with cross-validated
-#' predicted y values), \code{$ss} (a vector indicating the cross-validation subsample 
-#' each training observation was assigned to) and \code{$accuracy}. For continuous 
-#' outputs, accuracy is a list with elements \code{$MSE} (mean squared error on test 
-#' observations), \code{$MAE} (mean absolute error on test observations). For 
-#' classification, accuracy is a list with elements 
+#' @return Prints the accuracy estimates to the command line. Invisibly returns a list
+#' three object: \code{accuracy} (containing accuracy estimates), \code{cvpreds}
+#' (containing cross-validated predictions) and \code{fold_indicators} (a vector indicating
+#' the cross validation fold each observation was part of). For (multivariate) continuous 
+#' outcomes, accuracy is a list with elements \code{$MSE} (mean squared error on test 
+#' observations) and \code{$MAE} (mean absolute error on test observations). For 
+#' (binary and multiclass) classification, accuracy is a list with elements 
 #' \code{$SEL} (mean squared error on predicted probabilities), \code{$AEL} (mean absolute 
 #' error on predicted probabilities), \code{$MCR} (average misclassification error rate) 
-#' and \code{$table} (table with proportions of (in)correctly classified observations 
-#' per class).
+#' and \code{$table} (proportion table with (mis)classification rates).
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
@@ -1670,8 +1679,8 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{print.pre}} 
-cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5, 
-                  penalty.par.val = "lambda.1se", parallel = FALSE) {
+cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", 
+                  verbose = FALSE, pclass = .5, parallel = FALSE) {
   
   ## check if proper object argument is specified:
   if (class(object) != "pre") {
@@ -1679,22 +1688,22 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
   }
   
   ## Check if proper k argument is specified:  
-  if (!(is.numeric(k) && length(k) == 1 && k == as.integer(k))) {
+  if (!(is.numeric(k) && length(k) == 1L && k == as.integer(k))) {
     stop("Argument 'k' should be a single positive integer.")
   }  
   
   ## Check if proper verbose argument is specified:  
-  if (!(is.logical(verbose) && length(verbose) == 1)) {
+  if (!(is.logical(verbose) && length(verbose) == 1L)) {
     stop("Argument 'verbose' should be TRUE or FALSE.")
   }  
   
   ## check if pclass is a numeric vector of length 1, and <= 1 and > 0
-  if (!(is.numeric(pclass) && length(pclass) == 1 && pclass <= 1 && pclass > 0)) {
+  if (!(is.numeric(pclass) && length(pclass) == 1L && pclass <= 1 && pclass > 0)) {
     stop("Argument 'verbose' should be TRUE or FALSE.")
   }  
   
   ## check if proper penalty.par.val argument is specified:
-  if (!(length(penalty.par.val) == 1)) {
+  if (!(length(penalty.par.val) == 1L)) {
     stop("Argument 'penalty.par.val' should be a vector of length 1.")
   } else if (!(penalty.par.val == "lambda.min" || 
                penalty.par.val == "lambda.1se" || 
@@ -1703,76 +1712,100 @@ cvpre <- function(object, k = 10, verbose = FALSE, pclass = .5,
   }
   
   ## check if proper parallel argument is specified:
-  if (!(is.logical(parallel) && length(parallel) == 1)) {
+  if (!(is.logical(parallel) && length(parallel) == 1L)) {
     stop("Argument 'parallel' should be TRUE or FALSE")
   }
-  
-  
-  folds <- sample(rep(1:k, length.out = nrow(object$data)), 
+
+  ## Set up fold-ids, seeds and object for collecting CV predictions:
+  fold_ids <- sample(rep(1:k, length.out = nrow(object$data)), 
                   size = nrow(object$data), replace = FALSE)
+  seeds <- sample(k*99, size = k)
+  ncol <- ifelse(object$family == "multinomial", nlevels(object$data[,object$y_names]), length(object$y_names)) 
+  cvpreds <- replicate(n = ncol, rep(NA, times = nrow(object$data)))
+  cl <- object$call
+  cl$verbose <- FALSE
+  
+  ## Perform the CV:
   if (parallel) {
-    cvpreds_unsorted <- foreach::foreach(i = 1:k, .combine = "rbind") %dopar% {
-      cl <- object$call
-      cl$verbose <- FALSE
-      cl$data <- object$data[folds != i,]
+    cvpreds_unsorted <- foreach::foreach(i = 1:k) %dopar% {
+      cl$data <- object$data[fold_ids != i,]
+      set.seed(seeds[i])
       cvobject <- eval(cl)
-      data.frame(fold = rep(i, times = length(folds) - nrow(cvobject$data)), 
-                 preds = predict.pre(cvobject, type = "response", 
-                                     newdata = object$data[folds == i,], 
-                                     penalty.par.val = penalty.par.val))
+      predict(cvobject, type = "response", newdata = object$data[fold_ids == i,], 
+              penalty.par.val = penalty.par.val)
     }
-    cvpreds <- rep(NA, times = nrow(object$data))
     for (i in 1:k) {
-      cvpreds[folds == i] <- cvpreds_unsorted[cvpreds_unsorted$fold ==i, "preds"]
+      cvpreds[fold_ids == i,] <- cvpreds_unsorted[[i]]
     }
   } else {
     if (verbose) {
       cat("Running cross validation in fold ")
     }
-    cvpreds <- rep(NA, times = nrow(object$data))
     for (i in 1:k) {
+      
       if (verbose) {
         cat(i, " of ", k, ", ", sep = "")
       }
-      cl <- object$call
-      cl$verbose <- FALSE
-      cl$data <- object$data[folds != i,]
+      
+      cl$data <- object$data[fold_ids != i,]
+      set.seed(seeds[i])
       cvobject <- eval(cl)
-      cvpreds[folds == i] <- predict.pre(
-        cvobject, newdata = object$data[folds == i,], type = "response", 
-        penalty.par.val = penalty.par.val)
-      if (verbose & i == k) {
+      cvpreds[fold_ids == i,] <- predict(
+        cvobject, newdata = object$data[fold_ids == i,], 
+        type = "response", penalty.par.val = penalty.par.val)
+      
+      if (verbose && i == k) {
         cat("done!\n")
       }
+      
     }
   }
+  
+  ## Collect results:
   accuracy <- list()
+  sqrt_N <- sqrt(length(cvpreds) - sum(is.na(cvpreds)))
   if (object$family == "binomial") {
-    accuracy$SEL<- c(
-      mean((as.numeric(object$data[,object$y_names]) - 1 - cvpreds)^2),
-      sd((as.numeric(object$data[,object$y_names]) - 1 - cvpreds)^2)/sqrt(length(cvpreds)))
-    names(accuracy$SEL) <- c("SEL", "se")    
-    accuracy$AEL <- c(
-      mean(abs(as.numeric(object$data[,object$y_names]) - 1 - cvpreds)),
-      sd(abs(as.numeric(object$data[,object$y_names]) - 1 - cvpreds))/sqrt(length(cvpreds)))
-    names(accuracy$AEL) <- c("AEL", "se")     
-    cvpreds_d <- as.numeric(cvpreds > pclass)
-    accuracy$MCR <- 1 - sum(diag(prop.table(table(cvpreds_d, 
-                                                  object$data[,object$y_names]))))
-    accuracy$table <- prop.table(table(cvpreds_d, object$data[,object$y_names]))
+    observed <- object$data[ , object$y_names]
+    y_obs <- as.numeric(observed) - 1
+    accuracy$SEL<- c(SEL = mean((y_obs - cvpreds)^2, na.rm = TRUE),
+      se = sd((y_obs - cvpreds)^2, na.rm = TRUE) / sqrt_N)
+    accuracy$AEL <- c(AEL = mean(abs(y_obs - cvpreds), na.rm = TRUE),
+      se = sd(abs(y_obs - cvpreds), na.rm = TRUE) / sqrt_N)
+    predicted <- factor(cvpreds > pclass)
+    levels(predicted) <- levels(observed) 
+    accuracy$MCR <- 1 - sum(diag(prop.table(table(predicted, observed))))
+    accuracy$table <- prop.table(table(predicted, observed))
   } else if (object$family %in% c("gaussian", "poisson")) {
-    accuracy$MSE <- c(mean((object$data[,object$y_names] - cvpreds)^2),
-                      sd((object$data[,object$y_names] - cvpreds)^2)/sqrt(length(cvpreds)))
-    names(accuracy$MSE) <- c("MSE", "se")
-    accuracy$MAE <- c(mean(abs(object$data[,object$y_names] - cvpreds)),
-                      sd(abs(object$data[,object$y_names] - cvpreds))/sqrt(length(cvpreds)))
-    names(accuracy$MAE) <- c("MAE", "se")
-  } else {
-    ## TODO: Implement support for multinomial, multivariate, and survival responses 
-    stop("Function cvpre does not support response variable families other than binomial, gaussian and poisson yet.")  
+    y_obs <- object$data[ , object$y_names]
+    accuracy$MSE <- c(MSE = mean((y_obs - cvpreds)^2, na.rm = TRUE),
+                      se = sd((y_obs - cvpreds)^2, na.rm = TRUE) / sqrt_N)
+    accuracy$MAE <- c(MAE = mean(abs(y_obs - cvpreds), na.rm = TRUE),
+                      se = sd(abs(y_obs - cvpreds), na.rm = TRUE) / sqrt_N)
+  } else if (object$family == "cox") {
+    accuracy <- NULL
+  } else if (object$family == "mgaussian") {
+    y_obs <- object$data[ , object$y_names]
+    names(cvpreds) <- object$y_names
+    accuracy$MSE <- data.frame(MSE = colMeans((y_obs - cvpreds)^2, na.rm = TRUE),
+                               se = apply((y_obs - cvpreds)^2, 2, sd, na.rm = TRUE) / sqrt_N)
+    accuracy$MAE <- data.frame(MAE = colMeans(abs(y_obs - cvpreds), na.rm = TRUE),
+                               se = apply(abs(y_obs - cvpreds), 2, sd, na.rm = TRUE) / sqrt_N)
+  } else if (object$family == "multinomial") {
+    observed <- object$data[ , object$y_names]
+    names(cvpreds) <- levels(observed)
+    y_obs <- model.matrix( ~ observed + 0)
+    colnames(y_obs) <- levels(observed)
+    accuracy$SEL<- data.frame(SEL = colMeans((y_obs - cvpreds)^2, na.rm = TRUE),
+                              se = apply((y_obs - cvpreds)^2, 2, sd, na.rm = TRUE) / sqrt_N)
+    accuracy$AEL <- data.frame(AEL = colMeans(abs(y_obs - cvpreds), na.rm = TRUE),
+                               se = apply(abs(y_obs - cvpreds), 2, sd, na.rm = TRUE) / sqrt_N)
+    predicted <- factor(apply(cvpreds, 1, function(x) which(x == max(x))), levels = 1:ncol(cvpreds))
+    levels(predicted) <- levels(observed)
+    accuracy$MCR <- 1 - sum(diag(prop.table(table(predicted, observed))))
+    accuracy$table <- prop.table(table(predicted, observed))
   }
-  result <- list(cvpreds = cvpreds, fold_indicators = folds, accuracy = accuracy)
-  return(result)
+  print(accuracy)
+  return(invisible(list(accuracy = accuracy, cvpreds = cvpreds, fold_indicators = fold_ids)))
 }
 
 
@@ -1864,21 +1897,28 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   } else {
     replicates_in_variable_names <- FALSE
   }
-  if (object$type != "linear" & !is.null(object$rules)) {
+  if (object$type != "linear" && !is.null(object$rules)) {
     # We set sort to FALSE to get comparable results across platforms
     coefs <- base::merge.data.frame(coefs, object$rules, all.x = TRUE, sort = FALSE)
     coefs$description <- as.character(coefs$description)
   } else {
-    coefs <- data.frame(rule = coefs$rule, 
-                        description = rep(NA, times = nrow(coefs)), 
-                        coefficient = coefs[,1],
-                        stringsAsFactors = FALSE)
+    if (object$family %in% c("mgaussian", "multinomial")) {
+      coefs <- data.frame(rule = coefs$rule, 
+                          description = rep(NA, times = nrow(coefs)), 
+                          coefs[,which(names(coefs) != "rule")],
+                          stringsAsFactors = FALSE)      
+    } else {
+      coefs <- data.frame(rule = coefs$rule, 
+                          description = rep(NA, times = nrow(coefs)), 
+                          coefficient = coefs[,1],
+                          stringsAsFactors = FALSE)
+    }
   }
   
   ## Description of the intercept should be 1:
   coefs$description[which(coefs$rule == "(Intercept)")] <- "1"
   
-  ## Description of factor variables:
+  ## Description of input variables:
   coefs$description[is.na(coefs$description)] <- coefs$rule[is.na(coefs$description)]
 
   # include winsorizing points in the description if they were used in 
@@ -1893,7 +1933,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
     return(coefs[order(abs(coefs$coefficient), decreasing = TRUE),])
   } else if (object$family %in% c("mgaussian", "multinomial")) {
-    return(coefs[order(abs(coefs[,2]), decreasing = TRUE),])    
+    return(coefs[order(abs(coefs[,3]), decreasing = TRUE),])    
   }
 }
 
@@ -1992,7 +2032,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       type = object$type, 
       winsfrac = winsfrac,
       x_names = object$x_names, 
-      normalize = object$normalize)
+      normalize = object$normalize,
+      y_names = object$y_names)
     
     newdata <- tmp$x
   }
@@ -2371,6 +2412,13 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
   }
   
+  if (standardize) {
+    if (object$family == "multinomial") {
+      warning("Standardized importances cannot be calculated for multinomial outcomes. Unstandardized importances will be returned.")
+      standardize <- FALSE
+    }
+  }
+  
   ## Step 1: Calculate the importances of the base learners:
   
   # get base learner coefficients:
@@ -2447,19 +2495,28 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
     
     # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
+    
+    if (object$family %in% c("multinomial", "mgaussian")) {
+      baseimps <- data.frame(coefs, sd = sds)
+      baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) {x*sds}))
+    } else {
+      baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
+    }
+    
     if (standardize) {
       if (object$family %in% c("multinomial", "mgaussian")) {
-        # TODO: Implement this!!!
-        stop("Calculating standardized importances for multivariate and multinomial responses is not yet supported.")
+        for (i in gsub("coefficient", "importance", coef_inds)) {
+          baseimps[,i] <- baseimps[,i] / sd_y[gsub("importance.", "", i)]
+        }
+        # baseimps <- data.frame(coefs, sd = sds)
+        # baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) {x*sds}))
+        ## divide by sd_y:
+        # for (i in gsub("coefficient", "importance", coef_inds)) {
+        #   baseimps[,i] <- baseimps[,i] / sd_y[gsub("importance.", "", i)]
+        #}
       } else {
-        baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds/sd_y)
-      }
-    } else {
-      if (object$family %in% c("multinomial", "mgaussian")) {
-        baseimps <- data.frame(coefs, sd = sds)
-        baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) {x/sds}))
-      } else {
-        baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
+        baseimps$imp <- baseimps$imp / sd_y
+        # baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient) * sds / sd_y)
       }
     }
     
@@ -2533,8 +2590,14 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     # importances to the variable's importance:
     for(i in object$x_names) {
       if (sum(i == baseimps$modframename, na.rm = TRUE) > 1) {
-        varimps$imp[varimps$varname == i] <- sum(varimps$imp[varimps$varname == i],
-                                                 baseimps$imp[i == baseimps$modframename], na.rm = TRUE)
+        if (object$family %in% c("mgaussian", "multinomial")) {
+          
+          # TODO: Code this for multivariate outcomes!!!
+          
+        } else {
+          varimps$imp[varimps$varname == i] <- sum(varimps$imp[varimps$varname == i],
+                                                   baseimps$imp[i == baseimps$modframename], na.rm = TRUE)
+        }
       }
     }
     
@@ -2551,13 +2614,27 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     
     if (plot & nrow(varimps) > 0) {
       if (object$family %in% c("mgaussian", "multinomial")) {
-        plot_varimps <- reshape(data = varimps, direction = "long", 
-                                varying = gsub("coefficient", "importance", coef_inds))
-        print(ggplot(plot_varimps, aes(varname, importance, fill = time)) +
-              geom_bar(stat = "identity", position = "dodge") + 
-                xlab("") + ylab("Importance") + labs(fill = "") + 
-                theme(axis.text = element_text(size = 5*cex.axis),
-                      axis.title = element_text(size = 5*cex.axis)))
+        plot_varimps <- t(varimps[,gsub("coefficient", "importance" , coef_inds)])
+        colnames(plot_varimps) <- varimps$varname
+        rownames(plot_varimps) <- gsub("coefficient.", "" , coef_inds)
+        if (diag.xlab) {
+          xlab.pos <- barplot(plot_varimps, beside = TRUE, ylab = ylab, 
+                              names.arg = rep("", times = ncol(plot_varimps)), 
+                              main = main, cex.axis = cex.axis, legend.text = TRUE, ...)
+          xlab.pos <- xlab.pos[nrow(xlab.pos),]
+          ## add specified number of trailing spaces to variable names:
+          plotnames <- varimps$varname
+          if (diag.xlab.vert > 0) {
+            for (i in 1:diag.xlab.vert) {
+              plotnames <- paste0(plotnames, " ")
+            }
+          }
+          text(xlab.pos + diag.xlab.hor, par("usr")[3], srt = 45, adj = 1, xpd = TRUE, 
+               labels = plotnames, cex = cex.axis)
+        } else {
+          barplot(plot_varimps, beside = TRUE, main = main, ylab = ylab, 
+                  legend.text = TRUE, ...)
+        }
       } else {
         if (diag.xlab) {
           xlab.pos <- barplot(height = varimps$imp, xlab = "", ylab = ylab, 
@@ -2571,29 +2648,31 @@ importance <- function(object, standardize = FALSE, global = TRUE,
           }
           text(xlab.pos + diag.xlab.hor, par("usr")[3], srt = 45, adj = 1, xpd = TRUE, 
                labels = plotnames, cex = cex.axis)
-          } else {
+        } else {
           barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
-                  main = main, ...)
-          }
+                main = main, ...)
+        }
       }
     }
     if (!is.na(round)) {
       baseimps[,sapply(baseimps, is.numeric)] <- round(baseimps[,sapply(baseimps, is.numeric)], digits = round)
       varimps[,sapply(varimps, is.numeric)] <- round(varimps[,sapply(varimps, is.numeric)], digits = round)
     }
+    if (object$family %in% c("mgaussian","multinomial")) {
+      keep <- c("description", gsub("coefficient", "importance", coef_inds), coef_inds, "sd")
+    } else {
+      keep <- c("description", "imp", "coefficient", "sd")
+    }
+    baseimps <- data.frame(rule = baseimps$modmatname, baseimps[, keep],
+                           stringsAsFactors = FALSE)
+    if ("1" %in% baseimps$description) { # remove intercept if present
+      baseimps <- baseimps[-which(baseimps$description == "1"),]
+    }
     row.names(baseimps) <- NULL
     row.names(varimps) <- NULL
-    keep <- c("description",
-              names(baseimps)[-which(names(baseimps) %in% 
-                                       c("modmatname", "modframename", 
-                                         "nterms", "description", "sd"))],
-              "sd")
     return(invisible(list(
       varimps = varimps, 
-      baseimps = data.frame(
-        rule = baseimps$modmatname,
-        baseimps[baseimps$description != "1(Intercept) ", keep],
-        stringsAsFactors = FALSE))))
+      baseimps = baseimps)))
     } else {
       warning("No non-zero terms in the ensemble. All importances are zero.")
       return(invisible(NULL))
@@ -2993,6 +3072,8 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
                      exit.label = "0", standardize = FALSE, plot.dim = c(3, 3), 
                      ...) {
   
+  ## rpart uses < and >=, whereas partykit uses <= and > for splits. 
+  ## This should be supplied to partysplit for plotting:
   if (is.null(x$call$tree.unbiased)) {
     right <- TRUE
   } else if (x$call$tree.unbiased) {
@@ -3005,10 +3086,8 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
     warning("Plotting function not yet fully functional for multivariate and multinomial outcomes.")
   }
   
-  ## Preliminaries:
   if (!(requireNamespace("grid"))) {
-    stop("Function plot.pre requires package grid. Download and install package
-         grid from CRAN, and run again.")
+    stop("Function plot.pre requires package grid. Download and install package grid from CRAN, and run again.")
   }
 
   ## Get nonzero terms:
@@ -3067,10 +3146,15 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       grid::pushViewport(grid::viewport(layout.pos.col = nonzeroterms$colno[i],
                                         layout.pos.row = nonzeroterms$rowno[i]))
       ## Plot the linear term:
+
       if (x$family %in% c("mgaussian", "multinomial")) {
+        coef_names <- names(nonzeroterms)[grepl("coefficient.", names(nonzeroterms))]        
+        coef_names <- data.frame(name = coef_names,
+                         value = t(round(nonzeroterms[i,coef_names], digits = 3)))
+        coef_names <- paste0(apply(df, 1, paste0, collapse = " = "), collapse = "\n")
+
         grid::grid.text(paste0("Linear effect of ", nonzeroterms$rule[i], 
-                               "\n\n Coefficient = ", round(nonzeroterms[i, grep("coefficient", names(nonzeroterms))], digits = 3)),
-                        gp = grid::gpar(...))
+                               "\n\n", coef_names), gp = grid::gpar(...))
       } else {
         ## This seems to work for plotting but should be tested::
         #lattice::xyplot(y ~ x, 
@@ -3236,12 +3320,15 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       ## Plot the rule:
       fftree <- party(nodes[[ncond * 2 + 1]], data = treeplotdata)
       if (x$family %in% c("mgaussian", "multinomial")) {
+        if (x$family == "mgaussian") {
+          ht <- length(x$y_names)
+        } else {
+          ht <- nlevels(x$data[,x$y_names])
+        }
         plot(fftree, newpage = FALSE, main = nonzeroterms$rule[i],
              inner_panel = node_inner(fftree, id = FALSE),
              terminal_panel = node_terminal(fftree, id = FALSE, 
-                                            fill = ifelse(length(fill) > 1, 
-                                                          ifelse(nonzeroterms$coefficient[i] > 0, fill[1], fill[2]), 
-                                                          fill)), 
+                                            fill = "white", height = ht), 
              gp = grid::gpar(...))
       } else {
         plot(fftree, newpage = FALSE, 
@@ -3255,12 +3342,6 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
       grid::popViewport()
     }
   }
-  
-  if (length(fill) > 1) {
-    fill <- ifelse(nonzeroterms$coefficient[i] > 0, fill[1], fill[2])
-  }
-  
-  
   
   if (ask) {
     grDevices::devAskNewPage(ask = FALSE)

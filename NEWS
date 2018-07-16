@@ -1,21 +1,28 @@
 Changes in Version 0.... (....-..-..)
 
-  - Function cvpre() now returns accurate standard error for classification 
-      (before, SD was returned)
+  - pre() now supports survival responses (i.e., family = "cox")
 
-  - Bugs in coef.pre(), print.pre(), plot.pre() and importance() functions 
-      fixed when tree.unbiased = FALSE. 
+  - Functions importance() and cvpre() now support all types of response 
+      variables.
+ 
+  - plot.pre() now allows for specifying plotting colors for rules with
+      positive and negative coefficients.
 
   - coef() and print() methods now also return descriptions for intercept
-      factor variables
-
-  - pre() now supports survival responses (i.e., family = "cox")
+      and factor variables.
 
   - print.pre() allows for coloring terminal nodes based on sign of rule
       coefficient (by default, light blue and red colors are employed for
       negative and positive coefficient values, respectively)
 
-  - Bug fixed in cvpre(): pclass argument now functions correctly  
+  - Bug fix in cvpre(): pclass argument now functions correctly.
+
+  - Bug fix in cvpre(): previously, SDs insteas of SEs were returned for 
+      binary classification. Accurate standard errors are returned now.
+
+  - Bugs in coef.pre(), print.pre(), plot.pre() and importance() functions 
+      fixed when tree.unbiased = FALSE. 
+ 
 
 
 Changes in Version 0.5 (2018-05-07)

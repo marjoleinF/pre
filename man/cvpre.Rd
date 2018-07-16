@@ -4,20 +4,13 @@
 \alias{cvpre}
 \title{Full k-fold cross validation of a prediction rule ensemble (pre)}
 \usage{
-cvpre(object, k = 10, verbose = FALSE, pclass = 0.5,
-  penalty.par.val = "lambda.1se", parallel = FALSE)
+cvpre(object, k = 10, penalty.par.val = "lambda.1se", verbose = FALSE,
+  pclass = 0.5, parallel = FALSE)
 }
 \arguments{
 \item{object}{An object of class \code{\link{pre}}.}
 
 \item{k}{integer. The number of cross validation folds to be used.}
-
-\item{verbose}{logical. Should progress of the cross validation be printed 
-to the command line?}
-
-\item{pclass}{numeric. Only used for classification. Cut-off value for the 
-predicted probabilities that should be used to classify observations to the
-second class.}
 
 \item{penalty.par.val}{numeric or character. Calculate cross-validated error for 
 ensembles with penalty parameter criterion giving minimum cv error 
@@ -27,20 +20,27 @@ specified, corresponding to one of the values of lambda in the sequence used by
 glmnet, for which estimated cv error can be inspected by running 
 \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
+\item{verbose}{logical. Should progress of the cross validation be printed 
+to the command line?}
+
+\item{pclass}{numeric. Only used for binary classification. Cut-off value for the 
+predicted probabilities that should be used to classify observations to the
+second class.}
+
 \item{parallel}{logical. Should parallel foreach be used? Must register parallel 
 beforehand, such as doMC or others.}
 }
 \value{
-A list with three objects: \code{$cvpreds} (a vector with cross-validated
-predicted y values), \code{$ss} (a vector indicating the cross-validation subsample 
-each training observation was assigned to) and \code{$accuracy}. For continuous 
-outputs, accuracy is a list with elements \code{$MSE} (mean squared error on test 
-observations), \code{$MAE} (mean absolute error on test observations). For 
-classification, accuracy is a list with elements 
+Prints the accuracy estimates to the command line. Invisibly returns a list
+three object: \code{accuracy} (containing accuracy estimates), \code{cvpreds}
+(containing cross-validated predictions) and \code{fold_indicators} (a vector indicating
+the cross validation fold each observation was part of). For (multivariate) continuous 
+outcomes, accuracy is a list with elements \code{$MSE} (mean squared error on test 
+observations) and \code{$MAE} (mean absolute error on test observations). For 
+(binary and multiclass) classification, accuracy is a list with elements 
 \code{$SEL} (mean squared error on predicted probabilities), \code{$AEL} (mean absolute 
 error on predicted probabilities), \code{$MCR} (average misclassification error rate) 
-and \code{$table} (table with proportions of (in)correctly classified observations 
-per class).
+and \code{$table} (proportion table with (mis)classification rates).
 }
 \description{
 \code{cvpre} performs k-fold cross validation on the dataset used to create 
