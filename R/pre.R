@@ -2412,11 +2412,9 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
   }
   
-  if (standardize) {
-    if (object$family == "multinomial") {
-      warning("Standardized importances cannot be calculated for multinomial outcomes. Unstandardized importances will be returned.")
-      standardize <- FALSE
-    }
+  if (standardize && object$family %in% c("multinomial", "binomial")) {
+    warning("Standardized importances cannot be calculated for binary or multinomial outcomes. Unstandardized importances will be returned.")
+    standardize <- FALSE
   }
   
   ## Step 1: Calculate the importances of the base learners:
@@ -2451,10 +2449,14 @@ importance <- function(object, standardize = FALSE, global = TRUE,
         if (object$family == "cox") {
           warning("For survival responses, standardized importances cannot be calculated. Unstandardized importances will be returned")
           standardize <- FALSE
-        } else if (object$family %in% c("mgaussian", "multinomial")) {
+        } else if (object$family == "mgaussian") {
           sd_y <- sapply(object$data[,object$y_names], sd)
-        } else {
-          sd_y <- sd(object$data[,object$y_names])
+        } else if (object$family == "multinomial") {
+          sd_y <- apply(model.matrix(formula(paste0("~ 0 + ", object$y_names)), 
+                                     data = object$data), 
+                        2, sd)
+        } else if (object$family %in% c("binomial", "gaussian", "poisson")) { 
+          sd_y <- sd(as.numeric(object$data[,object$y_names]))
         }
       }
       if(object$normalize) {
@@ -2465,8 +2467,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
                            penalty.par.val = penalty.par.val)
       local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
                                       preds <= quantile(preds, probs = quantprobs[2]),]
-      if (nrow(local_modmat) < 2) {stop("Selected subregion contains less than 2
-                                        observations, importances cannot be calculated")}
+      if (nrow(local_modmat) < 2) {stop("Selected subregion contains less than 2 observations, importances cannot be calculated")}
       # object$x_scales should be used to get correct SDs for linear terms:
       if (object$family == "cox") {
         ## cox prop haz model has no intercept, so should be omitted
@@ -2490,8 +2491,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     sds <- sds[order(names(sds))]
     ## TODO: Are next four lines even helpful?
     if (all(names(sds) != coefs$rule)) {
-      warning("There seems to be a problem with the ordering or size of the
-              coefficient and sd vectors. Importances cannot be calculated.")
+      warning("There seems to be a problem with the ordering or size of the coefficient and sd vectors. Importances cannot be calculated.")
     }
     
     # baselearner importance is given by abs(coef*st.dev), see F&P section 6):
@@ -2504,19 +2504,16 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
     
     if (standardize) {
-      if (object$family %in% c("multinomial", "mgaussian")) {
+      if (object$family == "mgaussian") {
         for (i in gsub("coefficient", "importance", coef_inds)) {
           baseimps[,i] <- baseimps[,i] / sd_y[gsub("importance.", "", i)]
         }
-        # baseimps <- data.frame(coefs, sd = sds)
-        # baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) {x*sds}))
-        ## divide by sd_y:
-        # for (i in gsub("coefficient", "importance", coef_inds)) {
-        #   baseimps[,i] <- baseimps[,i] / sd_y[gsub("importance.", "", i)]
-        #}
-      } else {
+      #} else if (object$family == "multinomial"){
+      #  for (i in gsub("coefficient", "importance", coef_inds)) {
+      #    baseimps[,i] <- baseimps[,i] / sd_y[gsub("importance.", object$y_names, i)]
+      #  }
+      } else if (object$family %in% c("gaussian", "poisson")) {
         baseimps$imp <- baseimps$imp / sd_y
-        # baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient) * sds / sd_y)
       }
     }
     
@@ -2591,9 +2588,9 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     for(i in object$x_names) {
       if (sum(i == baseimps$modframename, na.rm = TRUE) > 1) {
         if (object$family %in% c("mgaussian", "multinomial")) {
-          
-          # TODO: Code this for multivariate outcomes!!!
-          
+          varimps[varimps$varname == i, gsub("coefficient", "importance", coef_inds)] <-
+            varimps[varimps$varname == i, gsub("coefficient", "importance", coef_inds)] +
+            colSums(baseimps$imp[i == baseimps$modframename, gsub("coefficient", "importance", coef_inds)])
         } else {
           varimps$imp[varimps$varname == i] <- sum(varimps$imp[varimps$varname == i],
                                                    baseimps$imp[i == baseimps$modframename], na.rm = TRUE)
@@ -2659,7 +2656,8 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       varimps[,sapply(varimps, is.numeric)] <- round(varimps[,sapply(varimps, is.numeric)], digits = round)
     }
     if (object$family %in% c("mgaussian","multinomial")) {
-      keep <- c("description", gsub("coefficient", "importance", coef_inds), coef_inds, "sd")
+      keep <- c("description", gsub("coefficient", "importance", coef_inds), 
+                coef_inds, "sd")
     } else {
       keep <- c("description", "imp", "coefficient", "sd")
     }
