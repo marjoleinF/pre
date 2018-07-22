@@ -174,10 +174,9 @@ gpe_trees <- function(
     rules <- base::sort.default(unname(rules), method = "radix")
 
     if(remove_duplicates_complements) {
-      rules <- delete_duplicates_complements(rules = rules, data = data, 
-                                    removecomplements = TRUE, 
-                                    removeduplicates = TRUE, 
-                                    return.dupl.compl = FALSE)
+      rules <- delete_duplicates_complements(
+        rules = rules, data = data, removecomplements = TRUE,
+        removeduplicates = TRUE, return.dupl.compl = FALSE)
     }
     rules <- paste0("rTerm(", rules, ")")
   }
