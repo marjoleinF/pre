@@ -1,5 +1,6 @@
 context("Tests the pre functions")
 
+
 test_that("Get previous results with airquality and pre function", {
   set.seed(42)
   #####
@@ -27,13 +28,23 @@ test_that("Get previous results with airquality and pre function", {
   # Works only with rules
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data = airquality, type="rules", ntrees = 10)
-  
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
     "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
   airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
   # save_to_test(airq.ens, "airquality_w_pre_without_linear_terms")
   expect_equal(airq.ens, read_to_test("airquality_w_pre_without_linear_terms"), tolerance = 1.49e-08)
+  
+  ####
+  # Works with multivariate responses
+  set.seed(42)
+  airq.ens <- pre(Ozone + Solar.R ~., data = airquality, family = "mgaussian", ntrees = 10)
+  airq.ens <- airq.ens[!names(airq.ens) %in%  c(
+    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
+  airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
+  # save_to_test(airq.ens, "airquality_w_pre_with_multivariate_response")
+  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_multivariate_response"), tolerance = 1.49e-08)
 })
+
 
 test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   #####
@@ -115,4 +126,18 @@ test_that("Get previous results with iris and pre function", {
   # save_to_test(fit, "iris_w_pre_no_learn_par")
   expect_equal(fit, fit2)
   expect_equal(fit2, read_to_test("iris_w_pre_no_learn_par"), tolerance = 1.490116e-06)
+})
+
+
+test_that("Get previous results with lung survival data", {
+  library("survival")
+  set.seed(42)
+  fit <- pre(Surv(time, status) ~ ., data = lung, ntrees = 10, family = "cox")
+  fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]
+  fit$call <- NULL
+  fit$glmnet.fit <- fit$glmnet.fit["glmnet.fit"]
+  fit$glmnet.fit$glmnet.fit <- fit$glmnet.fit$glmnet.fit["beta"]
+  fit$rules <- as.matrix(fit$rules)
+  # save_to_test(fit, "lung_w_pre_surv")
+  expect_equal(fit, read_to_test("lung_w_pre_surv"), tolerance = 1.490116e-06)
 })

@@ -5,7 +5,7 @@
 \title{Full k-fold cross validation of a prediction rule ensemble (pre)}
 \usage{
 cvpre(object, k = 10, penalty.par.val = "lambda.1se", verbose = FALSE,
-  pclass = 0.5, parallel = FALSE)
+  pclass = 0.5, parallel = FALSE, print = TRUE)
 }
 \arguments{
 \item{object}{An object of class \code{\link{pre}}.}
@@ -29,6 +29,8 @@ second class.}
 
 \item{parallel}{logical. Should parallel foreach be used? Must register parallel 
 beforehand, such as doMC or others.}
+
+\item{print}{logical. Should accuracy estimates be printed to the command line?}
 }
 \value{
 Prints the accuracy estimates to the command line. Invisibly returns a list

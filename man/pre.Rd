@@ -14,16 +14,15 @@ pre(formula, data, family = gaussian, use.grad = TRUE, weights,
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
 \code{y ~ x1 + x2 + ...+ xn}. Response (left-hand side of the formula) 
-should be of class numeric (for continuous outcomes), integer (for count 
-outcomes) or a factor. In addition, a multivariate continuous response may be
-specified as follows: \code{y1 + y2 + y3 ~ x1 + x2 + x3}. If the 
-response is a factor, an ensemble for classification will be derived. 
-Otherwise, an ensemble for prediction of a numeric response is created. If
-the outcome is a non-negative count, this should be specified by setting
-\code{family = "poisson"}. Note that input variables may not have 
+should be of class numeric (for \code{family = "gaussian"} of 
+\code{"mgaussian"}), integer (for \code{family = "poisson"}), factor (for 
+\code{family = "binomial"} or \code{"multinomial"}. Multivariate 
+continuous response should be specified like: \code{y1 + y2 + y3 ~ x1 + x2 + xn}. 
+Note that input variables may not have 
 'rule' as (part of) their name, and the formula may not exclude the intercept 
-(that is, \code{+ 0} or \code{- 1} may not be used in the right-hand side of 
-the formula).}
+(i.e., \code{+ 0} or \code{- 1} should not be used in the right-hand side of 
+the formula). To omit the intercept from the final ensemble, add 
+\code{intercep = FALSE} to the call.}
 
 \item{data}{data.frame containing the variables in the model. Response must
 be a factor for binary classification, numeric for (count) regression. Input
@@ -34,23 +33,20 @@ variables must be of class numeric, factor or ordered factor.}
 \code{"cox"} or \code{"mgaussian"}), or a corresponding family object 
 (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
 \code{\link[stats]{family}}). Specification of argument \code{family} is 
-not required, but advised, especially for count and multivariate responses. 
-Otherwise, the program will try to make an informed guess: 
-\code{family = "gaussian"} will be employed if a numeric,  
-\code{family = "binomial"} will be employed if a binary factor.
-\code{family ="multinomial"} will be employed if a factor with > 2 levels, 
-\code{family = "cox"} will be employed if a survival object (e.g., 
-\code{Surv(time, event)} was specified as the response variable. See Examples 
+strongly advised but not required. If \code{family} is not specified, 
+Otherwise, the program will try to make an informed guess, based on the 
+class of the response variable specified in \code{formula}. als see Examples 
 below.}
 
 \item{use.grad}{logical. Should gradient boosting with regression trees be
 employed when \code{learnrate > 0}? That is, use 
 \code{\link[partykit]{ctree}} as in Friedman (2001), but without the line 
-search. If \code{FALSE}. By default set to \code{TRUE}, as this yields shorter
-computation times. If set to \code{FALSE}, \code{\link[partykit]{glmtree}}
-with intercept only models in the nodes will be employed. This will yield
-longer computation times, but may increase accuracy. See details below for 
-possible combinations with \code{family}, \code{use.grad} and \code{learnrate}.}
+search. If \code{FALSE}. By default set to \code{TRUE}, as yielding shorter
+computation times and sparser ensembles. If \code{use.grad = FALSE}, 
+\code{\link[partykit]{glmtree}} instead of \code{\link[partykit]{ctree}} 
+will be employed for rule induction, yielding longer computation times, 
+higher complexity, but likely higher predictive accuracy. See details below for 
+possible combinations of \code{family}, \code{use.grad} and \code{learnrate}.}
 
 \item{weights}{an optional vector of observation weights to be used for 
 deriving the ensemble.}
@@ -137,13 +133,13 @@ such as doMC or others.}
 \code{\link[glmnet]{cv.glmnet}}.}
 }
 \value{
-An object of class \code{pre}, which contains the initial ensemble of 
+An object of class \code{pre}. It contains the initial ensemble of 
 rules and/or linear terms and the final ensembles for a wide range of penalty
-parameter values. By default, the final ensemble employed by all of the other
+parameter values. By default, the final ensemble employed by all other
 methods and functions in package \code{pre} is selected using the 'minimum
 cross validated error plus 1 standard error' criterion. All functions and 
 methods take a \code{penalty.parameter.value} argument, which can be
-used to select a more or less sparse final ensembles. Users can assess 
+used to select a different criterion. Users can assess 
 the trade-off between sparsity and accuracy provided by every possible value 
 of the penalty parameter (\eqn{\lambda}) by running \code{object$glmnet.fit} 
 and \code{plot(object$glmnet.fit)}.
@@ -247,6 +243,20 @@ set.seed(42)
 lung.ens <- pre(Surv(time, status) ~ . - sex, data = lung, family = "cox", 
                 verbose = TRUE)
 lung.ens
+
+## Fit pre to a count response:
+## Generate random data (partly based on Dobson (1990) Page 93: Randomized 
+## Controlled Trial):
+counts <- rep(as.integer(c(18, 17, 15, 20, 10, 20, 25, 13, 12)), times = 10)
+outcome <- rep(gl(3, 1, 9), times = 10)
+treatment <- rep(gl(3, 3), times = 10)
+noise1 <- 1:90
+set.seed(1)
+noise2 <- rnorm(90)
+countdata <- data.frame(treatment, outcome, counts, noise1, noise2)
+set.seed(42)
+count.ens <- pre(counts ~ ., data = countdata, family = "poisson")
+count.ens
 }
 }
 \references{

@@ -1,7 +1,6 @@
 context("Tests the pre functions with S3 methods and maxdepth sampler.")
 
 test_that("maxdepth.sampler gives previous results", {
-  
   func1 <- maxdepth_sampler()
   set.seed(42)
   maxdepths <- func1(100)
@@ -21,6 +20,32 @@ test_that("maxdepth.sampler gives previous results", {
   expect_equal(maxdepths3, read_to_test("maxdepths_tree_depth_7"), tolerance = 1.490116e-03)
 })
 
+# test_that("gpe_rules_pre gives previous results", {
+# 
+#   set.seed(42)
+#   rules <- gpe_rules_pre(ntrees = 10)(Ozone ~ ., data = airquality, 
+#                            weights = rep(1L, times = nrow(airquality)),
+#                            family = "gaussian",
+#                            sample_func = gpe_sample(),
+#                            verbose = FALSE)
+#   # save_to_test(rules, "gpe_rules_pre_ctree")
+#   expect_equal(rules, read_to_test("gpe_rules_pre_ctree"), tolerance = 1.490116e-03)
+#   
+#   set.seed(42)
+#   rules <- gpe_rules_pre(ntrees = 10, tree.unbiased = FALSE)(
+#     Ozone ~ ., data = airquality, weights = rep(1L, times = nrow(airquality)),
+#     family = "gaussian", sample_func = gpe_sample(), verbose = FALSE)
+#   # save_to_test(rules, "gpe_rules_pre_rpart")
+#   expect_equal(rules, read_to_test("gpe_rules_pre_rpart"), tolerance = 1.490116e-03)
+#   
+#   set.seed(42)
+#   rules <- gpe_rules_pre(ntrees = 10, use.grad = FALSE)(
+#     Ozone ~ ., data = airquality, weights = rep(1L, times = nrow(airquality)),
+#     family = "gaussian", sample_func = gpe_sample(), verbose = FALSE)
+#   # save_to_test(rules, "gpe_rules_pre_glmtree")
+#   expect_equal(rules, read_to_test("gpe_rules_pre_glmtree"), tolerance = 1.490116e-03)
+#   
+# })
 
 test_that("Importance gives previous results with airquality data",{
   set.seed(42)
@@ -29,14 +54,20 @@ test_that("Importance gives previous results with airquality data",{
   imp1 <- importance(airq.ens, plot = FALSE)
   # save_to_test(imp1, "airquality_w_importance1")
   expect_equal(imp1, read_to_test("airquality_w_importance1"), tolerance = 1.490116e-08)
+  ## Check whether variable and baselearner importances add up:
+  expect_equal(sum(imp1$varimps$imp), sum(imp1$baseimps$imp), tolerance = 1.490116e-08)
   
   imp2 <- importance(airq.ens, global = FALSE, plot = FALSE)
   # save_to_test(imp2, "airquality_w_importance2")
   expect_equal(imp2, read_to_test("airquality_w_importance2"), tolerance = 1.490116e-08)
+  ## Check whether variable and baselearner importances add up:
+  expect_equal(sum(imp2$varimps$imp), sum(imp2$baseimps$imp), tolerance = 1.490116e-08)
   
   imp3 <- importance(airq.ens, global = FALSE, quantprobs = c(0, .25), plot = FALSE)
   # save_to_test(imp3, "airquality_w_importance3")
   expect_equal(imp3, read_to_test("airquality_w_importance3"), tolerance = 1.490116e-08)
+  ## Check whether variable and baselearner importances add up:
+  expect_equal(sum(imp3$varimps$imp), sum(imp3$baseimps$imp), tolerance = 1.490116e-08)
 })
 
 test_that("Coef gives previous results with airquality data", {
@@ -54,7 +85,7 @@ test_that("cvpre gives previous results with airquality data", {
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   
   set.seed(7385056)
-  airq.cv <- cvpre(airq.ens, k = 2)
+  airq.cv <- cvpre(airq.ens, k = 2, print = FALSE)
   
   # save_to_test(airq.cv, "airquality_w_pre_cv")
   expect_equal(airq.cv, read_to_test("airquality_w_pre_cv"), tolerance = 1.490116e-08)
@@ -101,10 +132,6 @@ test_that("Predict gives previous results with airquality data", {
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   preds <- predict(airq.ens, airquality)
 
-  # plot(preds, airquality$Ozone)
-  # abline(a = 0, b = 1)
-  # mean((preds - airquality$Ozone)^2)
-  
   # save_to_test(preds, "airquality_preds")
   expect_equal(preds, read_to_test("airquality_preds"), tolerance = 1.490116e-08)
   

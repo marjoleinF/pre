@@ -5,7 +5,7 @@
 \title{Get rule learner for gpe which mimics behavior of pre}
 \usage{
 gpe_rules_pre(learnrate = 0.01, par.init = FALSE, mtry = Inf,
-  maxdepth = 3L, ntrees = 500, tree.control = ctree_control(),
+  maxdepth = 3L, ntrees = 500L, tree.control = ctree_control(),
   use.grad = TRUE, removeduplicates = TRUE, removecomplements = TRUE,
   tree.unbiased = TRUE)
 }
@@ -37,11 +37,12 @@ fitting function, generated using \code{\link[partykit]{ctree_control}},
 \item{use.grad}{logical. Should gradient boosting with regression trees be
 employed when \code{learnrate > 0}? That is, use 
 \code{\link[partykit]{ctree}} as in Friedman (2001), but without the line 
-search. If \code{FALSE}. By default set to \code{TRUE}, as this yields shorter
-computation times. If set to \code{FALSE}, \code{\link[partykit]{glmtree}}
-with intercept only models in the nodes will be employed. This will yield
-longer computation times, but may increase accuracy. See details below for 
-possible combinations with \code{family}, \code{use.grad} and \code{learnrate}.}
+search. If \code{FALSE}. By default set to \code{TRUE}, as yielding shorter
+computation times and sparser ensembles. If \code{use.grad = FALSE}, 
+\code{\link[partykit]{glmtree}} instead of \code{\link[partykit]{ctree}} 
+will be employed for rule induction, yielding longer computation times, 
+higher complexity, but likely higher predictive accuracy. See details below for 
+possible combinations of \code{family}, \code{use.grad} and \code{learnrate}.}
 
 \item{removeduplicates}{logical. Remove rules from the ensemble which are 
 identical to an earlier rule?}
