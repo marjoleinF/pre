@@ -5,7 +5,7 @@
 \title{Get rule learner for gpe which mimics behavior of pre}
 \usage{
 gpe_rules_pre(learnrate = 0.01, par.init = FALSE, mtry = Inf,
-  maxdepth = 3L, ntrees = 500L, tree.control = ctree_control(),
+  maxdepth = 3L, ntrees = 500, tree.control = ctree_control(),
   use.grad = TRUE, removeduplicates = TRUE, removecomplements = TRUE,
   tree.unbiased = TRUE)
 }

@@ -8,8 +8,9 @@ pre(formula, data, family = gaussian, use.grad = TRUE, weights,
   type = "both", sampfrac = 0.5, maxdepth = 3L, learnrate = 0.01,
   mtry = Inf, ntrees = 500, removecomplements = TRUE,
   removeduplicates = TRUE, winsfrac = 0.025, normalize = TRUE,
-  standardize = FALSE, nfolds = 10L, tree.control, tree.unbiased = TRUE,
-  verbose = FALSE, par.init = FALSE, par.final = FALSE, ...)
+  standardize = FALSE, ordinal = TRUE, nfolds = 10L, tree.control,
+  tree.unbiased = TRUE, verbose = FALSE, par.init = FALSE,
+  par.final = FALSE, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -18,11 +19,11 @@ should be of class numeric (for \code{family = "gaussian"} of
 \code{"mgaussian"}), integer (for \code{family = "poisson"}), factor (for 
 \code{family = "binomial"} or \code{"multinomial"}. Multivariate 
 continuous response should be specified like: \code{y1 + y2 + y3 ~ x1 + x2 + xn}. 
-Note that input variables may not have 
-'rule' as (part of) their name, and the formula may not exclude the intercept 
-(i.e., \code{+ 0} or \code{- 1} should not be used in the right-hand side of 
-the formula). To omit the intercept from the final ensemble, add 
-\code{intercep = FALSE} to the call.}
+Note that the minus sign (\code{-}) may not be used in the formula to omit
+variables in \code{data}, or the intercept, and neither should  \code{+ 0} 
+be used to omit the intercept. To omit the intercept from the final ensemble, 
+add \code{intercept = FALSE} to the call. To omit variables from the final
+ensemble, amke sure they are excluded from \code{data}.}
 
 \item{data}{data.frame containing the variables in the model. Response must
 be a factor for binary classification, numeric for (count) regression. Input
@@ -99,6 +100,11 @@ SD.}
 have SD equal to 1 before estimating the regression model? This will also 
 standardize the dummified factors, users are advised to use the default 
 \code{standardize = FALSE}.}
+
+\item{ordinal}{logical. Should ordinal variables (i.e., ordered factors) be
+treated as continuous for generating rules? If \code{TRUE} (the default), 
+this generally yields simpler rules, shorter computation times and better 
+generalizability of the final ensemble.}
 
 \item{nfolds}{positive integer. Number of cross-validation folds to be used for 
 selecting the optimal value of the penalty parameter \eqn{\lambda} in selecting

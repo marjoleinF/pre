@@ -9,7 +9,7 @@ test_that("Get previous results with airquality and pre function", {
   
   # We remove some of the data to decrease the size
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
-    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
+    "formula", "modmat_formula", "modmat", "data")]
   airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
   # save_to_test(airq.ens, "airquality_w_pre")
   expect_equal(airq.ens, read_to_test("airquality_w_pre"), tolerance = 1.490116e-08)
@@ -19,7 +19,7 @@ test_that("Get previous results with airquality and pre function", {
   airq.ens <- pre(Ozone ~ ., data=airquality, learnrate = 0, ntrees = 10)
   
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
-    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
+    "formula", "modmat_formula", "modmat", "data")]
   airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
   # save_to_test(airq.ens, "airquality_w_pre_without_LR")
   expect_equal(airq.ens, read_to_test("airquality_w_pre_without_LR"), tolerance = 1.490116e-08)
@@ -29,7 +29,7 @@ test_that("Get previous results with airquality and pre function", {
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data = airquality, type="rules", ntrees = 10)
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
-    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
+    "formula", "modmat_formula", "modmat", "data")]
   airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
   # save_to_test(airq.ens, "airquality_w_pre_without_linear_terms")
   expect_equal(airq.ens, read_to_test("airquality_w_pre_without_linear_terms"), tolerance = 1.49e-08)
@@ -39,7 +39,7 @@ test_that("Get previous results with airquality and pre function", {
   set.seed(42)
   airq.ens <- pre(Ozone + Solar.R ~., data = airquality, family = "mgaussian", ntrees = 10)
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
-    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
+    "formula", "modmat_formula", "modmat", "data")]
   airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
   # save_to_test(airq.ens, "airquality_w_pre_with_multivariate_response")
   expect_equal(airq.ens, read_to_test("airquality_w_pre_with_multivariate_response"), tolerance = 1.49e-08)
@@ -69,7 +69,7 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   
   # We remove some of the data to decrease the size
   fit <- fit[!names(fit) %in%  c(
-    "classify", "formula", "orig_data", "modmat_formula", "modmat", "data", "rulevars")]
+    "formula", "modmat_formula", "modmat", "data")]
   fit$glmnet.fit <- fit$glmnet.fit["glmnet.fit"]
   # save_to_test(fit, "PimaIndiansDiabetes_w_pre_LR")
   expect_equal(fit, read_to_test("PimaIndiansDiabetes_w_pre_LR"), tolerance = 1.490116e-08)

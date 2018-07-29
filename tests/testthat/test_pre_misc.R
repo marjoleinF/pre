@@ -87,6 +87,14 @@ test_that("cvpre gives previous results with airquality data", {
   set.seed(7385056)
   airq.cv <- cvpre(airq.ens, k = 2, print = FALSE)
   
+  library("doParallel")
+  cl <- makeCluster(2)
+  registerDoParallel(cl)
+  set.seed(7385056)
+  airq.cv.par <- cvpre(airq.ens, k = 2, print = FALSE, parallel = TRUE)
+  stopCluster(cl)
+  
+  expect_equal(airq.cv, airq.cv.par)
   # save_to_test(airq.cv, "airquality_w_pre_cv")
   expect_equal(airq.cv, read_to_test("airquality_w_pre_cv"), tolerance = 1.490116e-08)
 })
