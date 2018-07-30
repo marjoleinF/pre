@@ -765,7 +765,6 @@ pre <- function(formula, data, family = gaussian,
     normalize = normalize)
   
   x_scales <- modmat_data$x_scales
-  modmat_formula <- modmat_data$modmat_formula
   wins_points <- modmat_data$wins_points
   
   
@@ -830,9 +829,8 @@ pre <- function(formula, data, family = gaussian,
   result <- list(glmnet.fit = glmnet.fit, call = cl, weights = weights, 
                  data = data, normalize = normalize, x_scales = x_scales, 
                  type = type, x_names = x_names, y_names = y_names, 
-                 modmat = x, modmat_formula = modmat_formula, 
-                 wins_points = wins_points,
-                 family = family, formula = formula)
+                 modmat = x, wins_points = wins_points, family = family, 
+                 formula = formula)
   if (type != "linear" & length(rules) > 0) {
     result$complements.removed <- rule_object$complements.removed
     result$duplicates.removed <- rule_object$duplicates.removed
@@ -849,24 +847,18 @@ pre <- function(formula, data, family = gaussian,
 
 get_modmat <- function(
   # Pass these if you already have an object
-  modmat_formula = NULL, wins_points = NULL, x_scales = NULL,
+  wins_points = NULL, x_scales = NULL,
   # These should be passed in all calls
   formula, data, rules, type, x_names, winsfrac, normalize, 
-  # Response variable is optionsl:
+  # Response variable is optional:
   y_names = NULL) {
   
   ## Evaluate rules on data:
   if (type != "linear" && !is.null(rules)) {
-    if (is.null(modmat_formula)) {
-      #####
-      # Need to define modmat
-      str_terms <- paste0("I(", rules, ")")
-      modmat_formula <- formula(paste0(" ~  ", paste0(str_terms, collapse = " + ")))
-    }
-    x <- model.frame(modmat_formula, data)
-    x <- model.matrix(modmat_formula, data = x)
-    # TODO: could use sparse.model.matrix(modmat_formula, data = data) here?
-    colnames(x)[-1L] <- names(rules)
+    ## TODO: use sparse matrix here?
+    expr <- parse(text = paste0("cbind(", paste0(rules, collapse = ", "), ")"))
+    x <- eval(expr, data)
+    colnames(x) <- names(rules)
   }
 
   # convert ordered categorical predictor variables to linear terms:
@@ -939,12 +931,12 @@ get_modmat <- function(
   }
 
   ## Combine rules and variables:
-  if (type == "both" && !is.null(rules)) {
-    x <- cbind(model.matrix(Formula(formula), data = data), x)
-    # TODO: could use sparse.model.matrix() here?
-  } else if (type == "linear" || is.null(rules)) {
+  ## TODO: Use sparse matrices here?
+  #if (type == "rules") {do nothing}
+  if (type == "linear" || is.null(rules)) {
     x <- model.matrix(Formula(formula), data = data)
-    # TODO: could use sparse.model.matrix() here?
+  } else if (type == "both" && !is.null(rules)) {
+    x <- cbind(model.matrix(Formula(formula), data = data), x)
   }
   
   #####
@@ -963,8 +955,7 @@ get_modmat <- function(
   if (!exists("wins_points", inherits = FALSE)) { wins_points <- NULL }
   if (!exists("x_scales", inherits = FALSE)) { x_scales <- NULL }
   
-  list(x = x, y = y, modmat_formula = modmat_formula, 
-       x_scales = x_scales, wins_points = wins_points)
+  list(x = x, y = y, x_scales = x_scales, wins_points = wins_points)
 }
 
 
@@ -1303,8 +1294,9 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
 
 #' Get rule learner for gpe which mimics behavior of pre
 #'
-#' \code{gpe_rules_pre} generates a learner function which generates rules like 
-#' pre, which can be supplied to the gpe base_learner argument
+#' \code{gpe_rules_pre} generates a learner which generates rules like 
+#' \code{\link{pre}}, which can be supplied to the \code{\link{gpe}} 
+#' base_learner argument.
 #' 
 #' @inheritParams pre 
 #' @param maxdepth positive integer. Maximum number of conditions in a rule. 
@@ -1763,6 +1755,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
     } 
   }
   
+  library(pre)
   ## Set up fold-ids, seeds and object for collecting CV predictions:
   if (is.null(foldids)) {
     foldids <- sample(rep(1:k, length.out = nrow(object$data)), 
@@ -2116,14 +2109,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
         }
       }
     }
-      
-    ### Add temporary response variable to prevent errors using get_modmat():
-    #if (!(all(object$y_names %in% names(newdata)))) {
-    #  newdata[, object$y_names] <- 0
-    #}
     
     newdata <- get_modmat(
-      modmat_formula = object$modmat_formula, 
       wins_points = object$wins_points, 
       x_scales = object$x_scales, 
       formula = object$formula, 

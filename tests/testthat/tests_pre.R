@@ -130,9 +130,8 @@ test_that("Get previous results with iris and pre function", {
 
 
 test_that("Get previous results with lung survival data", {
-  library("survival")
   set.seed(42)
-  fit <- pre(Surv(time, status) ~ ., data = lung, ntrees = 10, family = "cox")
+  fit <- pre(Surv(time, status) ~ ., data = Lung, ntrees = 10, family = "cox")
   fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]
   fit$call <- NULL
   fit$glmnet.fit <- fit$glmnet.fit["glmnet.fit"]

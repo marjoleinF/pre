@@ -85,7 +85,7 @@ test_that("cvpre gives previous results with airquality data", {
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   
   set.seed(7385056)
-  airq.cv <- cvpre(airq.ens, k = 2, print = FALSE)
+  airq.cv <- cvpre(airq.ens, k = 2, print = FALSE, parallel = FALSE)
   
   library("doParallel")
   cl <- makeCluster(2)

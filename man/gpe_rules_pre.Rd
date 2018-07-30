@@ -58,8 +58,9 @@ be employed for rule generation? Defaults to \code{TRUE}, if set to
 with \code{family}, \code{use.grad} and \code{learnrate}.}
 }
 \description{
-\code{gpe_rules_pre} generates a learner function which generates rules like 
-pre, which can be supplied to the gpe base_learner argument
+\code{gpe_rules_pre} generates a learner which generates rules like 
+\code{\link{pre}}, which can be supplied to the \code{\link{gpe}} 
+base_learner argument.
 }
 \examples{
 \dontrun{

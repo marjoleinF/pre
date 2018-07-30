@@ -8,7 +8,8 @@ delete_duplicates_complements <- function(rules, data, removecomplements = TRUE,
   
   
   ## Generate rule variables:
-  rulevars <- sapply(rules, function(x) {with(data, eval(parse(text = x)))})
+  expr <- parse(text = paste0("cbind(", paste0(rules, collapse = ", "), ")"))
+  rulevars <- eval(expr, data)
   colnames(rulevars) <- names(rules) <- paste0("rule", 1:length(rules))
   
   ## Remove duplicate rules:
