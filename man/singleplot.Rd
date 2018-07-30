@@ -12,19 +12,14 @@ singleplot(object, varname, penalty.par.val = "lambda.1se", nvals = NULL,
 \item{object}{an object of class \code{\link{pre}}}
 
 \item{varname}{character vector of length one, specifying the variable for
-which the partial dependence plot should be created.
-penalty.par.val character. Penalty parameter criterion to be used for
+which the partial dependence plot should be created. Note that \code{varname}
+should correspond to the variable as described in the model formula used
+to generate the ensemble (i.e., including functions applied to the variable).}
+
+\item{penalty.par.val}{character. Penalty parameter criterion to be used for
 selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
 giving cv error that is within 1 standard error of minimum cv error
 ("lambda.1se"). Alternatively, a numeric value may be specified, 
-corresponding to one of the values of lambda in the sequence used by glmnet,
-for which estimated cv error can be inspected by running 
-\code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
-
-\item{penalty.par.val}{character. Penalty parameter criterion to be used for
-selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or
-lambda giving cv error that is within 1 standard error of minimum cv error
-("\code{lambda.1se}"). Alternatively, a numeric value may be specified, 
 corresponding to one of the values of lambda in the sequence used by glmnet,
 for which estimated cv error can be inspected by running 
 \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}

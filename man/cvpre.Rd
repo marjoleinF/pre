@@ -4,8 +4,8 @@
 \alias{cvpre}
 \title{Full k-fold cross validation of a prediction rule ensemble (pre)}
 \usage{
-cvpre(object, k = 10, penalty.par.val = "lambda.1se", verbose = FALSE,
-  pclass = 0.5, parallel = FALSE)
+cvpre(object, k = 10, penalty.par.val = "lambda.1se", pclass = 0.5,
+  foldids = NULL, verbose = FALSE, parallel = FALSE, print = TRUE)
 }
 \arguments{
 \item{object}{An object of class \code{\link{pre}}.}
@@ -20,19 +20,33 @@ specified, corresponding to one of the values of lambda in the sequence used by
 glmnet, for which estimated cv error can be inspected by running 
 \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
 
-\item{verbose}{logical. Should progress of the cross validation be printed 
-to the command line?}
-
 \item{pclass}{numeric. Only used for binary classification. Cut-off value for the 
 predicted probabilities that should be used to classify observations to the
 second class.}
 
+\item{foldids}{numeric vector of \code{length(nrow(object$data))} (the number of
+observations in the training data used to fit the original ensemble). Defaults to
+\code{NULL}, resulting in the original training observations being randomly 
+assigned to one of the \eqn{k} folds. Depending on sample size, the number of 
+factors in the data, the number of factor levels and their distributions, the
+default may yield errors. See 'Details'.}
+
+\item{verbose}{logical. Should progress of the cross validation be printed 
+to the command line?}
+
 \item{parallel}{logical. Should parallel foreach be used? Must register parallel 
 beforehand, such as doMC or others.}
+
+\item{print}{logical. Should accuracy estimates be printed to the command line?}
 }
 \value{
-Prints the accuracy estimates to the command line. Invisibly returns a list
-three object: \code{accuracy} (containing accuracy estimates), \code{cvpreds}
+Calculates cross-validated estimates of predictive accuracy and prints 
+these to the command line. For survival regression, accuracy is not calculated, 
+as there is currently no agreed-upon way to best quantify accuracy in survival 
+regression models. Users can compute their own accuracy estimates using the 
+(invisibly returned) cross-validated predictions (\code{$cvpreds}). 
+Invisibly, a list of three objects is returned: 
+\code{accuracy} (containing accuracy estimates), \code{cvpreds}
 (containing cross-validated predictions) and \code{fold_indicators} (a vector indicating
 the cross validation fold each observation was part of). For (multivariate) continuous 
 outcomes, accuracy is a list with elements \code{$MSE} (mean squared error on test 
@@ -46,6 +60,14 @@ and \code{$table} (proportion table with (mis)classification rates).
 \code{cvpre} performs k-fold cross validation on the dataset used to create 
 the prediction rule ensemble, providing an estimate of predictive accuracy 
 on future observations.
+}
+\details{
+The random sampling employed by default may yield folds including all 
+observations with a given level of a given factor. This results in an error, 
+as it requirea predictions for factor levels to be computed that were not 
+observed in the training data, which is impossible. By manually specifying the
+\code{foldids} argument, users can make sure all class levels are represented in
+each of the \eqn{k} training partitions.
 }
 \examples{
 \donttest{
