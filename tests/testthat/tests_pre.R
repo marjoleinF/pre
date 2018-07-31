@@ -37,7 +37,7 @@ test_that("Get previous results with airquality and pre function", {
   ####
   # Works with multivariate responses
   set.seed(42)
-  airq.ens <- pre(Ozone + Solar.R ~., data = airquality, family = "mgaussian", ntrees = 10)
+  airq.ens <- pre(Ozone + Solar.R ~ ., data = airquality, family = "mgaussian", ntrees = 10)
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
     "formula", "modmat_formula", "modmat", "data")]
   airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]

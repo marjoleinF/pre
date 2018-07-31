@@ -1538,15 +1538,15 @@ maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
 #' @param ... Additional arguments, currently not used.
 #' @return Prints information about the fitted prediction rule ensemble.
 #' @details Note that the cv error is estimated with data that was also used 
-#' for learning rules and may be too optimistic. Use cvpre() to obtain a 
-#' more realistic estimate of future prediction error.
+#' for learning rules and may be too optimistic. Use \code{\link{cvpre}} to 
+#' obtain a more realistic estimate of future prediction error.
 #' @examples \donttest{
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' print(airq.ens)}
 #' @export
 #' @method print pre
-#' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
+#' @seealso \code{\link{pre}}, \code{\link{summary.pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 print.pre <- function(x, penalty.par.val = "lambda.1se", 
@@ -1613,7 +1613,68 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
   invisible(coefs)
 }
 
-
+#'
+#' Summary method for objects of class pre
+#'
+#' \code{summary.pre} prints information about the generated prediction rule 
+#' ensemble to the command line
+#' 
+#' @param object An object of class \code{\link{pre}}.
+#' @param penalty.par.val character or numeric. Information for which final 
+#' prediction rule ensemble should be printed? The ensemble with penalty 
+#' parameter criterion yielding minimum cv error (\code{"lambda.min"}) 
+#' or penalty parameter yielding error within 1 standard error of minimum cv error 
+#' ("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
+#' corresponding to one of the values of lambda in the sequence used by glmnet,
+#' for which estimated cv error can be inspected by inspecting \code{x$glmnet.fit}
+#' and \code{plot(x$glmnet.fit)}.
+#' @param ... Additional arguments, currently not used.
+#' @return Prints information about the fitted prediction rule ensemble.
+#' @details Note that the cv error is estimated with data that was also used 
+#' for learning rules and may be too optimistic. Use \code{\link{cvpre}} to 
+#' obtain a more realistic estimate of future prediction error.
+#' @examples \donttest{
+#' set.seed(42)
+#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
+#' summary(airq.ens)}
+#' @export
+#' @method summary pre
+#' @seealso \code{\link{pre}}, \code{\link{print.pre}}, \code{\link{plot.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{interact}}, \code{\link{cvpre}} 
+summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
+  
+  if (!(class(object) == "pre" || class(object) == "gpe")) {
+    stop("Argument 'object' should be of class 'pre' or gpe.")
+  }
+  
+  if (!(length(penalty.par.val) == 1L)) {
+    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+  } else if (!penalty.par.val %in% c("lambda.min", "lambda.1se") && 
+               !(is.numeric(penalty.par.val) && penalty.par.val >= 0)) {
+    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0.")
+  }
+  
+  if (penalty.par.val == "lambda.1se") {
+    lambda_ind <- which(object$glmnet.fit$lambda == object$glmnet.fit$lambda.1se)
+    cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
+        object$glmnet.fit$lambda[lambda_ind])
+  }
+  if (penalty.par.val == "lambda.min") {
+    lambda_ind <- which(object$glmnet.fit$lambda == object$glmnet.fit$lambda.min)
+    cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
+        object$glmnet.fit$lambda[lambda_ind])
+  }
+  if (is.numeric(penalty.par.val)) {
+    lambda_ind <- which(abs(object$glmnet.fit$lambda - penalty.par.val) == min(abs(
+      object$glmnet.fit$lambda - penalty.par.val)))
+    cat("Final ensemble with lambda = ", object$glmnet.fit$lambda[lambda_ind])
+  }
+  cat("\n  number of terms = ", object$glmnet.fit$nzero[lambda_ind], 
+      "\n  mean cv error (se) = ", object$glmnet.fit$cvm[lambda_ind], 
+      " (", object$glmnet.fit$cvsd[lambda_ind], ")", "\n\n  cv error type : ",
+      object$glmnet.fit$name, "\n\n", sep = "")
+}
 
 
 #' Full k-fold cross validation of a prediction rule ensemble (pre)
