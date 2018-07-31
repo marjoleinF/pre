@@ -399,54 +399,6 @@ pre <- function(formula, data, family = gaussian,
     }
   }
   
-  ## Check if proper use.grad argument is specified:
-  #if (!(is.logical(use.grad) && length(use.grad) == 1L)) {
-  #  stop("Argument 'use.grad' should be TRUE or FALSE")
-  #} 
-  
-  ## Check if proper removeduplicates argument is specified:
-  #if (!(length(removeduplicates) == 1L && is.logical(removeduplicates))) {
-  #  stop("Argument 'removeduplicates' should be TRUE or FALSE")
-  #}
-  
-  ## Check if proper removecomplements argument is specified:
-  #if (!(length(removecomplements) == 1L && is.logical(removecomplements))) {
-  #  stop("Argument 'removecomplements' should be TRUE or FALSE")
-  #}
-  
-  ## Check if proper normalize argument is specified:
-  #if (!(is.logical(normalize) && length(normalize) == 1L)) {
-  #  stop("Argument 'normalize' should be TRUE or FALSE.")
-  #}  
-  
-  ## Check if proper standardize argument is specified:
-  #if (!(is.logical(standardize) && length(standardize) == 1L)) {
-  #  stop("Argument 'standardize' should be TRUE or FALSE.")
-  #}  
-  
-  ## Check if proper ordinal argument is specified:
-  #if (!(is.logical(ordinal) && length(ordinal) == 1L)) {
-  #  stop("Argument 'ordinal' should be TRUE or FALSE.")
-  #}  
-  
-  ## Check if proper verbose argument is specified:  
-  #if (!(is.logical(verbose) && length(verbose) == 1L)) {
-  #  stop("Argument 'verbose' should be TRUE or FALSE.")
-  #}  
-  
-  ## check if proper tree.unbiased argument is specified:
-  #if (!(is.logical(tree.unbiased) && length(tree.unbiased) == 1L)) {
-  #  stop("Argument 'tree.unbiased' should be TRUE or FALSE.")
-  #}
-  
-  ## Check if proper par.init and par.final arguments are specified:
-  #if (!(is.logical(par.init) && length(par.init) == 1L)) {
-  #  stop("Argument 'par.init' should be TRUE or FALSE.")
-  #}
-  #if (!(is.logical(par.final) && length(par.final) == 1L)) {
-  #  stop("Argument 'par.final' should be TRUE or FALSE.")
-  #}
-  
   if (par.final || par.init) {
     if(!requireNamespace("foreach")) {
       warning("Parallel computation requires package foreach. Arguments 'par.init' and 'par.final' are set to FALSE.")   
@@ -562,65 +514,79 @@ pre <- function(formula, data, family = gaussian,
   n <- nrow(data)
 
   ## check and set correct family:
-  if (length(y_names) == 1L) {
-    
-    if (is.factor(data[,y_names])) { # then family should be binomial or multinomial
-      if (is.ordered(data[,y_names])) {
-        warning("An ordered factor was specified as the response variable, but it will be treated as an unordered factor response.")
-        ## TODO: Test is the next line does not yield any trouble:
-        data[,y_names] <- factor(data[,y_names], ordered = FALSE)
-      } 
-      if (nlevels(data[,y_names]) == 2L) {
-        if (family[1L] != "binomial") {
-          if (!is.null(cl$family)) {
-            warning("A binary factor was specified as the response variable, but argument 'family' was not set to 'binomial', but to ", family)
-          }
-          family <- "binomial"
-        }
-      } else if (nlevels(data[,y_names]) > 2L) {
-        if (family[1L] != "multinomial") {
-          if (!is.null(cl$family)) {
-            warning("A factor with > 2 levels was specified as the response variable, but argument 'family' was not set to 'multinomial' but to ", family)
-          }
-          family <- "multinomial"
-        }
-      }
-    } else if (is.Surv(data[,y_names])) { # then family should be cox
-      if (family[1L] != "cox") {
-        if (!is.null(cl$family)) {
-          warning("A survival object was specified as the response variable, but argument 'family' was not set to 'cox', but to ", family)
-        }
-        family <- "cox"
-      }
-    } else if (is.numeric(data[,y_names])) { # then family should be poisson or gaussian
-      if (family[1L] %in% c("binomial", "multinomial", "cox")) {
-        if (isTRUE(all.equal(round(data[,y_names]), data[,y_names]))) { # then poisson
-          warning("Argument 'formula' specified an integer variable as the response, while 'family' was set to ", family, "; 'family' will be set to 'poisson'.")
-          family <- "poisson"
-        } else { # then gaussian
-          warning("Argument 'formula' specified a numeric variable as the response, while 'family' was set to ", family, "; 'family' will be set to 'gaussian'.")
-          family <- "gaussian"
-        }
-      } else if (family == "poisson") {
-        if (!isTRUE(all.equal(round(data[,y_names]), data[,y_names]))) {
-          warning("Argument 'formula' specified a non-integer variable as the response, while 'family' was set to ", family, ". The specified response will be coerced to integer.")
-          data[, y_names] <- as.integer(data[, y_names])
+  if (is.null(cl$family)) {
+    if (length(y_names) == 1L) {
+      if (is.factor(data[,y_names])) { # then family should be bi- or multinomial
+        if (is.ordered(data[,y_names])) {
+          warning("An ordered factor was specified as the response variable, which will be treated as an unordered factor response.")
+          data[,y_names] <- factor(data[,y_names], ordered = FALSE)
         } 
-      } 
-    } else { # response is not a factor and not numeric
-      warning("The response variable specified through argument 'formula' should be numeric or factor.")
-    }
-  } else { # response is multivariate and should be numeric
-    if (family[1L] != "mgaussian") {
-      if (!is.null(cl$family)) {
-        warning("Argument 'formula' specified a multiple response variables, while family was set to ", family, "; 'family' will be set to 'mgaussian'.")
+        if (nlevels(data[,y_names]) == 2L) {
+            family <- "binomial"
+        } else if (nlevels(data[,y_names]) > 2L) {
+            family <- "multinomial"
+          }
+      } else if (is.Surv(data[,y_names])) { # then family should be cox
+        family <- "cox"
+      } else if (!is.numeric(data[,y_names])) { # then response is not a factor, survival or numeric
+        warning("The response variable specified through argument 'formula' should be of class numeric, factor or Surv.")
       }
-      family <- "mgaussian"
+    } else if (length(y_names) > 1L) { # multiple responses specified, should be numeric
+      if (all(sapply(data[,y_names], is.numeric))) {
+        family <- "mgaussian"
+      } else {
+        warning("Multiple response variables were specified, but not all were (but should be) numeric.")
+      }
     }
-    if (!all(sapply(data[,y_names], is.numeric))) {
-      stop("Multiple response variables were specified, but not all were (but should be) numeric.")
+    
+  } else { # family was specified, check if correct;
+    
+    if (family[1L] == "gaussian") {
+      if (length(y_names) > 1L) {
+        warning("Argument 'family' was set to 'gaussian', but multiple response variables were specified in 'formula'.")        
+      }
+      if (!is.numeric(data[,y_names])) { # then family should be poisson or gaussian
+        warning("Argument 'family' was set to 'gaussian', but the response variable specified in 'formula' is not of class numeric.")
+      }
+    } else if (family[1L] == "poisson") {
+      if (length(y_names) > 1L) {
+        warning("Argument 'family' was set to 'poisson', but multiple response variables were specified, which is not supported.")
+      }
+      if (!isTRUE(all.equal(round(data[,y_names]), data[,y_names]))) {
+        warning("Argument 'family' was set to 'poisson', but the response variable specified in 'formula' is non-integer.")
+      }
+    } else if (family[1L] == "binomial") {
+      if (length(y_names) > 1L) {
+        warning("Argument 'family' was set to 'binomial', but multiple response variables were specified, which is not supported.")
+      } else if (!is.factor(data[,y_names])) {
+        warning("Argument 'family' was set to 'binomial', but the response variable specified is not a factor.")
+      } else if (nlevels(data[,y_names]) != 2L) {
+        warning("Argument 'family' was set to 'binomial', but the response variable has ", nlevels(data[,y_names]), " levels.")        
+      }
+    } else if (family[1L] == "multinomial") {
+      if (length(y_names) > 1L) {
+        warning("Argument 'family' was set to 'multinomial', but multiple response variables were specified, which is not supported.")
+      } else if (!is.factor(data[,y_names])) {
+        warning("Argument 'family' was set to 'multinomial', but the response variable specified is not a factor.")
+      } else if (nlevels(data[,y_names]) < 3L) {
+        warning("Argument 'family' was set to 'multinomial', but the response variable has ", nlevels(data[,y_names]), " levels.")
+      }
+    } else if (family[1L] == "cox") {
+      if (length(y_names) > 1L) {
+        warning("Argument 'family' was set to 'cox', but multiple response variables were specified, which is not supported.")
+      } else if (!is.Surv(data[ , y_names])) {
+        warning("Argument 'family' was set to 'cox', but the response variable specified is not of class Surv.")
+      }
+    } else if (family == "mgaussian") {
+      if (length(y_names) == 1L) {
+        warning("Argument 'family' was set to 'mgaussian', but only a single response variable was specified.")
+      } else if (!all(sapply(data[,y_names], is.numeric))) {
+        warning("Argument 'family' was set to 'mgaussian', but not all response variables specified are numeric.")
+      }
     }
   }
+
+
 
   ## Check specification of tree growing algorithms employed:
   if (!tree.unbiased) { # rpart is employed
