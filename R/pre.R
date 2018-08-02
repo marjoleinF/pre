@@ -165,18 +165,14 @@ utils::globalVariables("%dopar%")
 #' by Achim Zeileis and Torsten Hothorn.
 #' 
 #' @return An object of class \code{pre}. It contains the initial ensemble of 
-#' rules and/or linear terms and the final ensembles for a wide range of penalty
-#' parameter values. By default, the final ensemble employed by all other
+#' rules and/or linear terms and a whole range of possible final ensembles. 
+#' By default, the final ensemble employed by all other
 #' methods and functions in package \code{pre} is selected using the 'minimum
 #' cross validated error plus 1 standard error' criterion. All functions and 
-#' methods take a \code{penalty.parameter.value} argument, which can be
-#' used to select a different criterion. Users can assess 
-#' the trade-off between sparsity and accuracy provided by every possible value 
-#' of the penalty parameter (\eqn{\lambda}) by running \code{object$glmnet.fit} 
-#' and \code{plot(object$glmnet.fit)}.
+#' methods for objects of class pre take a \code{penalty.parameter.value} argument, 
+#' which can be used to select a different criterion.
 #' 
-#' @examples \donttest{
-#' ## Fit pre to a continuous response:
+#' @examples \donttest{## Fit pre to a continuous response:
 #' airq <- airquality[complete.cases(airquality), ]
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airq, verbose = TRUE)
@@ -223,8 +219,7 @@ utils::globalVariables("%dopar%")
 #' countdata <- data.frame(treatment, outcome, counts, noise1, noise2)
 #' set.seed(42)
 #' count.ens <- pre(counts ~ ., data = countdata, family = "poisson")
-#' count.ens
-#' }
+#' count.ens}
 #' @import glmnet partykit datasets
 #' @export
 #' @seealso \code{\link{print.pre}}, \code{\link{plot.pre}}, 
@@ -992,7 +987,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
         paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE)
         paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
         if (removecomplements) {
-          ## Omit first rule, as it is the complent of a later rule, by definition:
+          ## Omit first rule, as it is the complement of a later rule, by definition:
           paths <- paths[-1]
         }
         return(paths)
@@ -1265,19 +1260,15 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
 #' base_learner argument.
 #' 
 #' @inheritParams pre 
-#' @param maxdepth positive integer. Maximum number of conditions in a rule. 
-#' If length(maxdepth) == 1, it specifies the maximum depth of of each tree 
-#' grown. If length(maxdepth) == ntrees, it specifies the maximum depth of 
-#' every consecutive tree grown.
 #' @examples
-#' \dontrun{
-#' ## Obtain same fits with pre and gpe
+#' \donttest{## Obtain same fits with pre and gpe
 #' set.seed(42)
 #' gpe.mod <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),],  
 #'                base_learners = list(gpe_rules_pre(), gpe_linear()))
+#' gpe.mod                
 #' set.seed(42)
 #' pre.mod <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),],)
-#' }
+#' pre.mod}
 #' @export
 gpe_rules_pre <- function(learnrate = .01, par.init = FALSE, 
                           mtry = Inf, maxdepth = 3L, ntrees = 500, 
@@ -1285,14 +1276,15 @@ gpe_rules_pre <- function(learnrate = .01, par.init = FALSE,
                           removeduplicates = TRUE, removecomplements = TRUE,
                           tree.unbiased = TRUE) {
   
-  function(formula, data, weights, sample_func, verbose, family, ...) {
+  cl <- match.call()
+  
+  ret <- function(formula, data, weights, sample_func, verbose, family) {
     if (!family %in% c("gaussian", "binomial")) {
       warning("gpe_rules supports only gaussian and binomial family")
     }
     if (any(!complete.cases(data))) {
       warning("data contains missing values'")
     }
-    cl <- match.call()
     data <- model.frame(Formula::as.Formula(formula), data = data, 
                         na.action = NULL)
     pre_rules_args <- list(
@@ -1301,16 +1293,58 @@ gpe_rules_pre <- function(learnrate = .01, par.init = FALSE,
       y_names = names(data)[attr(attr(data, "terms"), "response")],
       formula = formula(data), # expands dots in formula
       sampfrac = sample_func,
-      weights = if (is.null(cl$weights)) {rep(1, times = nrow(data))} else {cl$weights},
+      weights = if (is.null(cl$weights)) {rep(1L, times = nrow(data))} else {cl$weights},
+      verbose = ifelse(is.null(cl$verbose), FALSE, cl$verbose), 
+      
       learnrate = ifelse(is.null(cl$learnrate), .01, cl$learnrate), 
       par.init = ifelse(is.null(cl$par.init), FALSE, cl$par.init), 
       mtry = ifelse(is.null(cl$mtry), Inf, cl$mtry), 
-      maxdepth = if (is.null(cl$maxdepth)) {3L} else {cl$maxdepth}, 
-      ntrees = ifelse(is.null(cl$ntrees), 500, cl$ntrees), 
-      tree.control = if (is.null(cl$tree.control)) {ctree_control()} else {cl$tree.control}, 
-      
-      use.grad = ifelse(is.null(cl$use.grad), TRUE, cl$use.grad), 
-      verbose = ifelse(is.null(cl$verbose), FALSE, cl$verbose), 
+      maxdepth = ifelse(is.null(cl$maxdepth), 3L, cl$maxdepth), 
+      ntrees = ifelse(is.null(cl$ntrees), 500L, cl$ntrees), 
+      tree.control = if (is.null(cl$tree.control)) {
+        if (is.null(cl$tree.unbiased)) {
+          if (is.null(cl$use.grad)) {
+            tree.control <- ctree_control()
+            tree.control$maxdepth <- ifelse(is.null(cl$maxdepth), 3L, cl$maxdepth)
+            tree.control$mtry <- ifelse(is.null(cl$mtry), Inf, cl$mtry)
+            tree.control
+          } else if (cl$use.grad) {
+            tree.control <- ctree_control()
+            tree.control$maxdepth <- ifelse(is.null(cl$maxdepth), 3L, cl$maxdepth)
+            tree.control$mtry <- ifelse(is.null(cl$mtry), Inf, cl$mtry)
+            tree.control
+          } else {
+            tree.control <- mob_control()
+            tree.control$maxdepth <- 1 + ifelse(is.null(cl$maxdepth), 3L, cl$maxdepth)
+            tree.control$mtry <- ifelse(is.null(cl$mtry), Inf, cl$mtry)
+            tree.control
+          }
+        } else if (cl$tree.unbiased) {
+          if (is.null(cl$use.grad)) {
+            tree.control <- ctree_control()
+            tree.control$maxdepth <- ifelse(is.null(cl$maxdepth), 3L, cl$maxdepth)
+            tree.control$mtry <- ifelse(is.null(cl$mtry), Inf, cl$mtry)
+            tree.control
+          } else if (cl$use.grad) {
+            tree.control <- ctree_control()
+            tree.control$maxdepth <- if (is.null(cl$maxdepth)) {3L} else {cl$maxdepth}
+            tree.control$mtry <- ifelse(is.null(cl$mtry), Inf, cl$mtry)
+            tree.control
+          } else {
+            tree.control <- mob_control()            
+            tree.control$maxdepth <- 1 + if (is.null(cl$maxdepth)) {3L} else {cl$maxdepth}
+            tree.control$mtry <- ifelse(is.null(cl$mtry), Inf, cl$mtry)
+            tree.control
+          }
+        } else {
+          tree.control <- rpart.control()
+          tree.control$maxdepth <- if (is.null(cl$maxdepth)) {3L} else {cl$maxdepth}
+          tree.control
+        }
+      } else {
+        cl$tree.control
+      }, 
+      use.grad = ifelse(is.null(cl$use.grad), TRUE, cl$use.grad),
       removeduplicates = ifelse(is.null(cl$removeduplicates), TRUE, cl$removeduplicates), 
       removecomplements = ifelse(is.null(cl$removecomplements), TRUE, cl$removecomplements),
       tree.unbiased = ifelse(is.null(cl$tree.unbiased), TRUE, cl$tree.unbiased), 
@@ -1319,6 +1353,8 @@ gpe_rules_pre <- function(learnrate = .01, par.init = FALSE,
     rules <- do.call(pre_rules, args = pre_rules_args)
     paste0("rTerm(", rules, ")")
   }
+  
+  return(ret)
   
 }
 
@@ -1502,13 +1538,11 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
 #' func4(10)
 #' mean(func4(1000))
 #' 
-#' \dontrun{
-#' ## Create rule ensemble with varying maxdepth:
+#' \donttest{## Create rule ensemble with varying maxdepth:
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),],
 #'                 maxdepth = func1)
-#' airq.ens  
-#' }
+#' airq.ens}
 maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
   function(ntrees, ...) {
     if (!is.null(av.tree.depth)) {
@@ -1526,22 +1560,22 @@ maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
 #' ensemble to the command line
 #' 
 #' @param x An object of class \code{\link{pre}}.
-#' @param penalty.par.val character or numeric. Information for which final 
-#' prediction rule ensemble should be printed? The ensemble with penalty 
-#' parameter criterion yielding minimum cv error (\code{"lambda.min"}) 
-#' or penalty parameter yielding error within 1 standard error of minimum cv error 
-#' ("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
-#' corresponding to one of the values of lambda in the sequence used by glmnet,
-#' for which estimated cv error can be inspected by inspecting \code{x$glmnet.fit}
-#' and \code{plot(x$glmnet.fit)}.
+#' @param penalty.par.val character or numeric. Value of the penalty parameter
+#' \eqn{\lambda} to be employed for selecting the final ensemble. The default
+#' \code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
+#' error of the minimum cross-validated error. Alternatively, 
+#' \code{"lambda.min"} may be specified, to employ the \eqn{\lambda} value
+#' with minimum cross-validated error, or a numeric value \eqn{>0} may be 
+#' specified, with higher values yielding a sparser ensemble. To evaluate the 
+#' trade-off between accuracy and sparsity of the final ensemble, inspect
+#' \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.
 #' @param digits Number of decimal places to print
 #' @param ... Additional arguments, currently not used.
 #' @return Prints information about the fitted prediction rule ensemble.
 #' @details Note that the cv error is estimated with data that was also used 
 #' for learning rules and may be too optimistic. Use \code{\link{cvpre}} to 
 #' obtain a more realistic estimate of future prediction error.
-#' @examples \donttest{
-#' set.seed(42)
+#' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' print(airq.ens)}
 #' @export
@@ -1613,28 +1647,21 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
   invisible(coefs)
 }
 
-#'
+
+
 #' Summary method for objects of class pre
 #'
 #' \code{summary.pre} prints information about the generated prediction rule 
 #' ensemble to the command line
 #' 
 #' @param object An object of class \code{\link{pre}}.
-#' @param penalty.par.val character or numeric. Information for which final 
-#' prediction rule ensemble should be printed? The ensemble with penalty 
-#' parameter criterion yielding minimum cv error (\code{"lambda.min"}) 
-#' or penalty parameter yielding error within 1 standard error of minimum cv error 
-#' ("\code{lambda.1se}")? Alternatively, a numeric value may be specified, 
-#' corresponding to one of the values of lambda in the sequence used by glmnet,
-#' for which estimated cv error can be inspected by inspecting \code{x$glmnet.fit}
-#' and \code{plot(x$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param ... Additional arguments, currently not used.
 #' @return Prints information about the fitted prediction rule ensemble.
 #' @details Note that the cv error is estimated with data that was also used 
 #' for learning rules and may be too optimistic. Use \code{\link{cvpre}} to 
 #' obtain a more realistic estimate of future prediction error.
-#' @examples \donttest{
-#' set.seed(42)
+#' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' summary(airq.ens)}
 #' @export
@@ -1644,8 +1671,8 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
   
-  if (!(class(object) == "pre" || class(object) == "gpe")) {
-    stop("Argument 'object' should be of class 'pre' or gpe.")
+  if (class(object) != "pre") {
+    stop("Argument 'object' should be of class 'pre'.")
   }
   
   if (!(length(penalty.par.val) == 1L)) {
@@ -1687,13 +1714,7 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' @param k integer. The number of cross validation folds to be used.
 #' @param verbose logical. Should progress of the cross validation be printed 
 #' to the command line?
-#' @param penalty.par.val numeric or character. Calculate cross-validated error for 
-#' ensembles with penalty parameter criterion giving minimum cv error 
-#' (\code{"lambda.min"}) or giving cv error that is within 1 standard error of 
-#' minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric value may be 
-#' specified, corresponding to one of the values of lambda in the sequence used by 
-#' glmnet, for which estimated cv error can be inspected by running 
-#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param pclass numeric. Only used for binary classification. Cut-off value for the 
 #' predicted probabilities that should be used to classify observations to the
 #' second class. 
@@ -1727,8 +1748,7 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' observed in the training data, which is impossible. By manually specifying the
 #' \code{foldids} argument, users can make sure all class levels are represented in
 #' each of the \eqn{k} training partitions. 
-#' @examples \donttest{
-#' set.seed(42)
+#' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' airq.cv <- cvpre(airq.ens)}
 #' @export
@@ -1889,13 +1909,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
 #' the final ensemble
 #' 
 #' @param object object of class \code{\link{pre}}
-#' @param penalty.par.val character. Penalty parameter criterion to be used for 
-#' selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or 
-#' lambda giving cv error that is within 1 standard error of minimum cv error 
-#' ("\code{lambda.1se}"). Alternatively, a numeric value may be specified, 
-#' corresponding to one of the values of lambda in the sequence used by glmnet,
-#' for which estimated cv error can be inspected by running 
-#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param ... additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.
 #' @return returns a dataframe with 3 columns: coefficient, rule (rule or 
 #' variable name) and description (\code{NA} for linear terms, conditions for 
@@ -1911,8 +1925,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
 #' by renaming factor variables with numbers in their name, prior to analysis.
 #' 
 #' 
-#' @examples \donttest{
-#' set.seed(42)
+#' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' coefs <- coef(airq.ens)}
 #' @export
@@ -2021,13 +2034,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' @param object object of class \code{\link{pre}}.
 #' @param newdata optional dataframe of new (test) observations, including all
 #' predictor variables used for deriving the prediction rule ensemble.
-#' @param penalty.par.val character or numeric. Penalty parameter criterion 
-#' to be used for selecting final model: lambda giving minimum cv error 
-#' (\code{"lambda.min"}) or lambda giving cv error that is within 1 standard 
-#' error of minimum cv error (\code{"lambda.1se"}). Alternatively, a numeric 
-#' value may be specified, corresponding to one of the values of lambda in the 
-#' sequence used by glmnet,for which estimated cv error can be inspected by running 
-#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param type character string. The type of prediction required; the default
 #' \code{type = "link"} is on the scale of the linear predictors. Alternatively,
 #' for count and factor outputs, \code{type = "response"} may be specified to obtain
@@ -2037,8 +2044,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' \code{\link[glmnet]{predict.cv.glmnet}}.
 #' @details If \code{newdata} is not provided, predictions for training data will be 
 #' returned.
-#' @examples \donttest{
-#' set.seed(1)
+#' @examples \donttest{set.seed(1)
 #' train <- sample(1:sum(complete.cases(airquality)), size = 100)
 #' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,])
@@ -2068,9 +2074,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   ## check if proper penalty.par.val argument is specified:
   if (!(length(penalty.par.val) == 1L)) {
     stop("Argument 'penalty.par.val' should be a vector of length 1.")
-  } else if (!(penalty.par.val == "lambda.min" || 
-               penalty.par.val == "lambda.1se" || 
-               (is.numeric(penalty.par.val) && penalty.par.val >= 0))) {
+  } else if (!(penalty.par.val%in% c("lambda.min", "lambda.1se")) && 
+               !(is.numeric(penalty.par.val) && penalty.par.val >= 0)) {
     stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
   }
 
@@ -2094,31 +2099,31 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     
     ## Check if variable names and classes are the same in newdata as in object$data:
     if (!all(object$x_names %in% names(newdata))) {
-      
-      ## Coerce character and logical variables to factors:
-      if (any(char_names <- sapply(newdata, is.character))) {
-        char_names <- names(newdata)[char_names]
-        data[ , char_names] <- sapply(newdata[ , char_names], factor)
-      }
-      if (any(logic_names <- sapply(newdata, is.logical))) {
-        logic_names <- names(newdata)[logic_names]
-        newdata[ , logic_names] <- sapply(newdata[ , logic_names], factor)
-      } 
-    
-      ## Coerce ordered categorical variables to numeric, if necessary:
-      if (if (is.null((object$call)$ordinal)) {
-          formals(pre)$ordinal
-        } else {
-          (object$call)$ordinal
-        }) {
-        if (any(ord_var_inds <- sapply(newdata, is.ordered))) {
-          newdata[ , ord_var_inds] <- sapply(newdata[ , ord_var_inds], as.numeric)
-        }
-      }
       newdata <- model.frame(as.Formula((object$call)$formula), data = newdata, 
                              rhs = NULL, lhs = 0, na.action = NULL)
     } else {
       newdata <- newdata[ , object$x_names]
+    }
+    
+    ## Coerce character and logical variables to factors:
+    if (any(char_names <- sapply(newdata, is.character))) {
+      char_names <- names(newdata)[char_names]
+      data[ , char_names] <- sapply(newdata[ , char_names], factor)
+    }
+    if (any(logic_names <- sapply(newdata, is.logical))) {
+      logic_names <- names(newdata)[logic_names]
+      newdata[ , logic_names] <- sapply(newdata[ , logic_names], factor)
+    } 
+    
+    ## Coerce ordered categorical variables to numeric, if necessary:
+    if (if (is.null((object$call)$ordinal)) {
+      formals(pre)$ordinal
+    } else {
+      (object$call)$ordinal
+    }) {
+      if (any(ord_var_inds <- sapply(newdata, is.ordered))) {
+        newdata[ , ord_var_inds] <- sapply(newdata[ , ord_var_inds], as.numeric)
+      }
     }
     
     if (any(is.na(newdata))) {
@@ -2184,13 +2189,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' which the partial dependence plot should be created. Note that \code{varname}
 #' should correspond to the variable as described in the model formula used
 #' to generate the ensemble (i.e., including functions applied to the variable).
-#' @param penalty.par.val character. Penalty parameter criterion to be used for
-#' selecting final model: lambda giving minimum cv error ("lambda.min") or lambda
-#' giving cv error that is within 1 standard error of minimum cv error
-#' ("lambda.1se"). Alternatively, a numeric value may be specified, 
-#' corresponding to one of the values of lambda in the sequence used by glmnet,
-#' for which estimated cv error can be inspected by running 
-#' \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param nvals optional numeric vector of length one. For how many values of x
 #' should the partial dependence plot be created?
 #' @param type character string. Type of prediction to be plotted on y-axis.
@@ -2208,8 +2207,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' can be specified only for numeric and ordered input variables. If the plot is
 #' requested for a nominal input variable, the \code{nvals} argument will be
 #' ignored and a warning is printed.
-#' @examples \donttest{
-#' set.seed(42)
+#' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' singleplot(airq.ens, "Temp")}
 #' @export
@@ -2298,12 +2296,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @param varnames character vector of length two. Currently, pairplots can only
 #' be requested for non-nominal variables. If varnames specifies the name(s) of
 #' variables of class \code{"factor"}, an error will be printed.
-#' @param penalty.par.val character. Should model be selected with lambda giving
-#' minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-#' standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
-#' value may be specified, corresponding to one of the values of lambda in the 
-#' sequence used by glmnet, for which estimated cv error can be inspected by 
-#' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param type character string. Type of plot to be generated. 
 #' \code{type = "heatmap"} yields a heatmap plot, \code{type = "contour"} yields 
 #' a contour plot, \code{type = "both"} yields a heatmap plot with added contours,
@@ -2338,8 +2331,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' usage, see 
 #' \url{https://www.acm.org/publications/policies/software-copyright-notice}
 #' Function \code{pairplot} prints a note referring to this ACM licence.
-#' @examples \donttest{
-#' set.seed(42)
+#' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
@@ -2475,11 +2467,7 @@ pairplot <- function(object, varnames, type = "both",
 #' \code{global = FALSE}. Probabilities for calculating sample quantiles of the 
 #' range of F(X), over which local importances are calculated. The default 
 #' provides variable importances calculated over the 25\% highest values of F(X).
-#' @param penalty.par.val character or numeric. Should model be selected with 
-#' lambda yielding minimum cv error ("lambda.min"), or lambda giving cv error 
-#' that is within 1 standard error of minimum cv error ("lambda.1se")? 
-#' Alternatively, a numeric value may be specified, corresponding to one of the 
-#' values of lambda in the sequence used by glmnet.
+#' @inheritParams print.pre
 #' @param round integer. Number of decimal places to round numeric results to.
 #' If \code{NA} (default), no rounding is performed.
 #' @param plot logical. Should variable importances be plotted?
@@ -2502,8 +2490,7 @@ pairplot <- function(object, varnames, type = "both",
 #' @return A list with two dataframes: \code{$baseimps}, giving the importances 
 #' for baselearners in the ensemble, and \code{$varimps}, giving the importances 
 #' for all predictor variables.
-#' @examples \donttest{
-#' set.seed(42)
+#' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' # calculate global importances:
 #' importance(airq.ens)
@@ -2796,14 +2783,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 #' @param object object of class \code{\link{pre}}.
 #' @param nsamp numeric. Number of bootstrapped null interaction models to be
 #' derived.
-#' @param penalty.par.val character or numeric. Which value of the penalty 
-#' parameter criterion should be used? The value yielding minimum cv error
-#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-#' error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
-#' value may be specified, corresponding to one of the values of lambda in the 
-#' sequence used by glmnet, for which estimated cv error can be inspected by 
-#' inspecting \code{object$glmnet.fit} and running 
-#' \code{plot(object$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param parallel logical. Should parallel foreach be used to generate initial
 #' ensemble? Must register parallel beforehand, such as doMC or others.
 #' @param verbose logical. should progress be printed to the command line?
@@ -2963,13 +2943,7 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' may take a long time).
 #' @param nullmods object with bootstrapped null interaction models, resulting
 #' from application of \code{bsnullinteract}.
-#' @param penalty.par.val character. Which value of the penalty parameter
-#' criterion should be used? The value yielding minimum cv error
-#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-#' error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
-#' value may be specified, corresponding to one of the values of lambda in the 
-#' sequence used by glmnet, for which estimated cv error can be inspected by 
-#' running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param quantprobs numeric vector of length two. Probabilities that should be
 #' used for plotting the range of bootstrapped null interaction model statistics.
 #' Only used when \code{nullmods} argument is specified and \code{plot = TRUE}.
@@ -2978,13 +2952,16 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' @param col character vector of length one or two. The first value specifies 
 #' the color to be used for plotting the interaction statistic from the training
 #' data, the second color is used for plotting the interaction statistic from 
-#' the bootstrapped null interaction models. Only used when \code{plot = TRUE} 
-#' and Only the first element is used if \code{nullmods = NULL}.
+#' the bootstrapped null interaction models. Only used when \code{plot = TRUE}. 
+#' Only the first element will be used if \code{nullmods = NULL}.
 #' @param ylab character string. Label to be used for plotting y-axis.
+#' @param legend.text character vector of length two to be used for plotting
+#' the legend. Only used when \code{nullmods} is specified. If \code{FALSE},
+#' no legend is plotted.
 #' @param main character. Main title for the bar plot.
 #' @param  se.linewidth numeric. Width of the whiskers of the plotted standard 
 #' error bars (in inches).
-#' @param k integer. Calculating interaction test statistics is a computationally
+#' @param k integer. Calculating interaction test statistics is computationally
 #' intensive, so  calculations are split up in several parts to prevent memory
 #' allocation errors. If a memory allocation error still occurs, increase k.
 #' @param verbose logical. Should progress information be printed to the
@@ -2993,8 +2970,7 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' parallel beforehand, such as doMC or others.
 #' @param ... Additional arguments to be passed to \code{barplot}.
 #' @examples
-#' \donttest{
-#'  set.seed(42)
+#' \donttest{set.seed(42)
 #'  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #'  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
 #' @details Can be computationally intensive, especially when nullmods is 
@@ -3027,10 +3003,11 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
 interact <- function(object, varnames = NULL, nullmods = NULL, 
                      penalty.par.val = "lambda.1se", quantprobs = c(.05, .95),
-                     plot = TRUE, col = c("#8CC876", "#7FBFF5"), 
+                     plot = TRUE, col = c("darkgrey", "lightgrey"), 
                      ylab = "Interaction strength", 
                      main = "Interaction test statistics", 
-                     se.linewidth = .05,
+                     se.linewidth = .05, 
+                     legend.text = c("observed", "null model median"),
                      parallel = FALSE, k = 10, verbose = FALSE, ...) {
   
   if (object$family %in% c("mgaussian", "multinomial")) {
@@ -3105,13 +3082,14 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
     if (is.null(nullmods)) {
       barplot(H, col = col[1], main = main, ...)
     } else {
-      medians <- rbind(H, apply(nullH, 2, mean))
+      observed <- rbind(H, apply(nullH, 2, mean))
       H0_medians <- apply(nullH, 2, median)
       lower_quant <- apply(nullH, 2, quantile, probs = quantprobs[1])
       upper_quant <- apply(nullH, 2, quantile, probs = quantprobs[2])
-      x_coords <- barplot(medians, beside = TRUE, 
-                          ylim = c(0, max(upper_quant, medians)), 
-                          las = 1, main = main, col = col, ...)
+      x_coords <- barplot(observed, beside = TRUE, 
+                          ylim = c(0, max(upper_quant, observed)), 
+                          las = 1, main = main, col = col, 
+                          legend.text = legend.text, ...)
       x_coords <- x_coords[!1:nrow(x_coords)%%2,] 
       segments(x_coords, lower_quant, x_coords, upper_quant)
       arrows(x_coords, lower_quant, x_coords, upper_quant, lwd = 1.5, angle = 90, 
@@ -3136,22 +3114,17 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' ensemble as simple decision trees.
 #'
 #' @param x an object of class \code{\link{pre}}.
-#' @param penalty.par.val character. Which value of the penalty parameter
-#' criterion should be used? The value yielding minimum cv error
-#' (\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-#' error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
-#' value may be specified, corresponding to one of the values of lambda in the 
-#' sequence used by glmnet, for which estimated cv error can be inspected by 
-#' running \code{x$glmnet.fit} and \code{plot(x$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param linear.terms logical. Should linear terms be included in the plot?
 #' @param nterms numeric. The total number of terms (or rules, if 
 #' \code{linear.terms = FALSE}) being plotted. Default is \code{NULL}, 
 #' resulting in all terms of the final ensemble to be plotted.
-#' @param fill character. Background color(s) for terminal panels. If one color
-#' is specified, all terminal panels will have the specified background color. 
-#' If two colors are specified (the default, the first color will be used as 
-#' the background color for rules with a positively valued coefficient; the 
-#' second color will be used for rules with a negatively valued coefficient.
+#' @param fill character of length 1 or 2. Background color(s) for terminal 
+#' panels. If one color is specified, all terminal panels will have the 
+#' specified background color. If two colors are specified (the default, the 
+#' first color will be used as the background color for rules with a positively 
+#' valued coefficient; the second color for rules with a negatively valued 
+#' coefficient.
 #' @param plot.dim integer vector of length two. Specifies the number of rows
 #' and columns in the plot. The default yields a plot with three rows and three 
 #' columns, depicting nine baselearners per plotting page.
@@ -3163,15 +3136,14 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' \code{\link{importance}}.
 #' @param ... Arguments to be passed to \code{\link[grid]{gpar}}.
 #' @examples
-#' \donttest{
-#'  set.seed(42)
+#' \donttest{set.seed(42)
 #'  airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #'  plot(airq.ens)}
 #' @export
 #' @seealso \code{\link{pre}}, \code{\link{print.pre}}
 #' @method plot pre
 plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
-                     nterms = NULL, fill = c("#D6BCC0", "#BEC1D4"), ask = FALSE, 
+                     nterms = NULL, fill = "white", ask = FALSE, 
                      exit.label = "0", standardize = FALSE, plot.dim = c(3, 3), 
                      ...) {
   
@@ -3534,15 +3506,7 @@ get_conditions <- function(object, penalty.par.val = "lambda.1se") {
 #' \code{corplot} plots correlations between baselearners in a prediction rule ensemble
 #'  
 #' @param object object of class pre
-#' @param penalty.par.val character or numeric. Value of the penalty parameter 
-#' \eqn{\lambda} to be used for selecting the final ensemble. The ensemble 
-#' with penalty parameter criterion yielding minimum cv error 
-#' (\code{"lambda.min"}) is taken, by default. Alternatively, the penalty 
-#' parameter yielding error within 1 standard error of minimum cv error 
-#' ("\code{lambda.1se}"), or a numeric value may be specified, corresponding 
-#' to one of the values of lambda in the sequence used by glmnet,
-#' for which estimated cv error can be inspected by running \code{x$glmnet.fit}
-#' and \code{plot(x$glmnet.fit)}.
+#' @inheritParams print.pre
 #' @param colors vector of contiguous colors to be used for plotting. If 
 #' \code{colors = NULL} (default), \code{colorRampPalette} is used to generate
 #' a sequence of 200 colors going from red to white to blue. A different set of 
@@ -3557,8 +3521,7 @@ get_conditions <- function(object, penalty.par.val = "lambda.1se") {
 #' plot's legend. Should be a sequence from -1 to 1.
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
-#' corplot(airq.ens)
-#' }
+#' corplot(airq.ens)}
 #' @seealso See
 #' \code{\link[colorspace]{rainbow_hcl}} and \code{\link[grDevices]{colorRampPalette}}.
 #' @export

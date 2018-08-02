@@ -6,6 +6,7 @@ S3method("print", "pre")
 S3method("print", "gpe")
 S3method("plot", "pre")
 S3method("summary", "pre")
+S3method("summary", "gpe")
 
 
 export("bsnullinteract")

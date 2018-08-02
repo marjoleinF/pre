@@ -16,14 +16,15 @@ derived.}
 \item{parallel}{logical. Should parallel foreach be used to generate initial
 ensemble? Must register parallel beforehand, such as doMC or others.}
 
-\item{penalty.par.val}{character or numeric. Which value of the penalty 
-parameter criterion should be used? The value yielding minimum cv error
-(\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
-value may be specified, corresponding to one of the values of lambda in the 
-sequence used by glmnet, for which estimated cv error can be inspected by 
-inspecting \code{object$glmnet.fit} and running 
-\code{plot(object$glmnet.fit)}.}
+\item{penalty.par.val}{character or numeric. Value of the penalty parameter
+\eqn{\lambda} to be employed for selecting the final ensemble. The default
+\code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
+error of the minimum cross-validated error. Alternatively, 
+\code{"lambda.min"} may be specified, to employ the \eqn{\lambda} value
+with minimum cross-validated error, or a numeric value \eqn{>0} may be 
+specified, with higher values yielding a sparser ensemble. To evaluate the 
+trade-off between accuracy and sparsity of the final ensemble, inspect
+\code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
 \item{verbose}{logical. should progress be printed to the command line?}
 }

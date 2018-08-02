@@ -2,7 +2,8 @@
 #' @export
 #' @method print gpe
 #' @inheritParams print.pre
-#' @seealso \code{\link{print.pre}}
+#' @param x An object of class \code{\link{gpe}}.
+#' @seealso \code{\link{gpe}} \code{\link{print.pre}}
 print.gpe <- function(
   x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...){
   out <- print.pre(x, penalty.par.val, digits, ...)
@@ -13,6 +14,57 @@ print.gpe <- function(
   
   invisible(out)
 }
+
+
+#' Summary method for a General Prediction Ensemble (gpe)
+#'
+#' \code{summary.gpe} prints information about the generated ensemble 
+#' to the command line
+#' 
+#' @param object An object of class \code{\link{gpe}}.
+#' @inheritParams print.pre
+#' @return Prints information about the fitted ensemble.
+#' @details Note that the cv error is estimated with data that was also used 
+#' for learning rules and may be too optimistic.
+#' @export
+#' @method summary gpe
+#' @seealso \code{\link{gpe}}, \code{\link{print.gpe}}, 
+#' \code{\link{coef.gpe}}, \code{\link{predict.gpe}}
+summary.gpe <- function(object, penalty.par.val = "lambda.1se", ...) {
+  
+  if (class(object) != "gpe") {
+    stop("Argument 'object' should be of class 'gpe'.")
+  }
+  
+  if (!(length(penalty.par.val) == 1L)) {
+    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+  } else if (!penalty.par.val %in% c("lambda.min", "lambda.1se") && 
+             !(is.numeric(penalty.par.val) && penalty.par.val >= 0)) {
+    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0.")
+  }
+  
+  if (penalty.par.val == "lambda.1se") {
+    lambda_ind <- which(object$glmnet.fit$lambda == object$glmnet.fit$lambda.1se)
+    cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
+        object$glmnet.fit$lambda[lambda_ind])
+  }
+  if (penalty.par.val == "lambda.min") {
+    lambda_ind <- which(object$glmnet.fit$lambda == object$glmnet.fit$lambda.min)
+    cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
+        object$glmnet.fit$lambda[lambda_ind])
+  }
+  if (is.numeric(penalty.par.val)) {
+    lambda_ind <- which(abs(object$glmnet.fit$lambda - penalty.par.val) == min(abs(
+      object$glmnet.fit$lambda - penalty.par.val)))
+    cat("Final ensemble with lambda = ", object$glmnet.fit$lambda[lambda_ind])
+  }
+  cat("\n  number of terms = ", object$glmnet.fit$nzero[lambda_ind], 
+      "\n  mean cv error (se) = ", object$glmnet.fit$cvm[lambda_ind], 
+      " (", object$glmnet.fit$cvsd[lambda_ind], ")", "\n\n  cv error type : ",
+      object$glmnet.fit$name, "\n\n", sep = "")
+}
+
+
 
 
 #' @title Coefficients for a General Prediction Ensemble (gpe)

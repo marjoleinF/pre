@@ -60,13 +60,11 @@ set.seed(42)
 func4(10)
 mean(func4(1000))
 
-\dontrun{
-## Create rule ensemble with varying maxdepth:
+\donttest{## Create rule ensemble with varying maxdepth:
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),],
                 maxdepth = func1)
-airq.ens  
-}
+airq.ens}
 }
 \references{
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 

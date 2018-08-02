@@ -28,11 +28,15 @@ of the predictions F(x) in \code{quantprobs}.}
 range of F(X), over which local importances are calculated. The default 
 provides variable importances calculated over the 25\% highest values of F(X).}
 
-\item{penalty.par.val}{character or numeric. Should model be selected with 
-lambda yielding minimum cv error ("lambda.min"), or lambda giving cv error 
-that is within 1 standard error of minimum cv error ("lambda.1se")? 
-Alternatively, a numeric value may be specified, corresponding to one of the 
-values of lambda in the sequence used by glmnet.}
+\item{penalty.par.val}{character or numeric. Value of the penalty parameter
+\eqn{\lambda} to be employed for selecting the final ensemble. The default
+\code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
+error of the minimum cross-validated error. Alternatively, 
+\code{"lambda.min"} may be specified, to employ the \eqn{\lambda} value
+with minimum cross-validated error, or a numeric value \eqn{>0} may be 
+specified, with higher values yielding a sparser ensemble. To evaluate the 
+trade-off between accuracy and sparsity of the final ensemble, inspect
+\code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
 \item{round}{integer. Number of decimal places to round numeric results to.
 If \code{NA} (default), no rounding is performed.}
@@ -73,8 +77,7 @@ variables in the prediction rule ensemble (pre), and creates a bar plot
 of variable importances.
 }
 \examples{
-\donttest{
-set.seed(42)
+\donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 # calculate global importances:
 importance(airq.ens)

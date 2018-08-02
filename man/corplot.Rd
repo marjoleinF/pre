@@ -11,15 +11,15 @@ corplot(object, penalty.par.val = "lambda.1se", colors = NULL,
 \arguments{
 \item{object}{object of class pre}
 
-\item{penalty.par.val}{character or numeric. Value of the penalty parameter 
-\eqn{\lambda} to be used for selecting the final ensemble. The ensemble 
-with penalty parameter criterion yielding minimum cv error 
-(\code{"lambda.min"}) is taken, by default. Alternatively, the penalty 
-parameter yielding error within 1 standard error of minimum cv error 
-("\code{lambda.1se}"), or a numeric value may be specified, corresponding 
-to one of the values of lambda in the sequence used by glmnet,
-for which estimated cv error can be inspected by running \code{x$glmnet.fit}
-and \code{plot(x$glmnet.fit)}.}
+\item{penalty.par.val}{character or numeric. Value of the penalty parameter
+\eqn{\lambda} to be employed for selecting the final ensemble. The default
+\code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
+error of the minimum cross-validated error. Alternatively, 
+\code{"lambda.min"} may be specified, to employ the \eqn{\lambda} value
+with minimum cross-validated error, or a numeric value \eqn{>0} may be 
+specified, with higher values yielding a sparser ensemble. To evaluate the 
+trade-off between accuracy and sparsity of the final ensemble, inspect
+\code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
 \item{colors}{vector of contiguous colors to be used for plotting. If 
 \code{colors = NULL} (default), \code{colorRampPalette} is used to generate
@@ -43,8 +43,7 @@ plot's legend. Should be a sequence from -1 to 1.}
 \examples{
 \donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
-corplot(airq.ens)
-}
+corplot(airq.ens)}
 }
 \seealso{
 See

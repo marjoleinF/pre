@@ -20,12 +20,15 @@ variables of class \code{"factor"}, an error will be printed.}
 a contour plot, \code{type = "both"} yields a heatmap plot with added contours,
 \code{type = "perspective"} yields a three dimensional plot.}
 
-\item{penalty.par.val}{character. Should model be selected with lambda giving
-minimum cv error ("lambda.min"), or lambda giving cv error that is within 1
-standard error of minimum cv error ("lambda.1se")? Alternatively, a numeric 
-value may be specified, corresponding to one of the values of lambda in the 
-sequence used by glmnet, for which estimated cv error can be inspected by 
-running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
+\item{penalty.par.val}{character or numeric. Value of the penalty parameter
+\eqn{\lambda} to be employed for selecting the final ensemble. The default
+\code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
+error of the minimum cross-validated error. Alternatively, 
+\code{"lambda.min"} may be specified, to employ the \eqn{\lambda} value
+with minimum cross-validated error, or a numeric value \eqn{>0} may be 
+specified, with higher values yielding a sparser ensemble. To evaluate the 
+trade-off between accuracy and sparsity of the final ensemble, inspect
+\code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
 \item{nvals}{optional numeric vector of length 2. For how many values of
 x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed
@@ -68,8 +71,7 @@ usage, see
 Function \code{pairplot} prints a note referring to this ACM licence.
 }
 \examples{
-\donttest{
-set.seed(42)
+\donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 pairplot(airq.ens, c("Temp", "Wind"))}
 }

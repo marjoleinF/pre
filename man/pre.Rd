@@ -140,15 +140,12 @@ such as doMC or others.}
 }
 \value{
 An object of class \code{pre}. It contains the initial ensemble of 
-rules and/or linear terms and the final ensembles for a wide range of penalty
-parameter values. By default, the final ensemble employed by all other
+rules and/or linear terms and a whole range of possible final ensembles. 
+By default, the final ensemble employed by all other
 methods and functions in package \code{pre} is selected using the 'minimum
 cross validated error plus 1 standard error' criterion. All functions and 
-methods take a \code{penalty.parameter.value} argument, which can be
-used to select a different criterion. Users can assess 
-the trade-off between sparsity and accuracy provided by every possible value 
-of the penalty parameter (\eqn{\lambda}) by running \code{object$glmnet.fit} 
-and \code{plot(object$glmnet.fit)}.
+methods for objects of class pre take a \code{penalty.parameter.value} argument, 
+which can be used to select a different criterion.
 }
 \description{
 \code{pre} derives a sparse ensemble of rules and/or linear functions for 
@@ -214,8 +211,7 @@ with permission from an internal function of the \code{partykit} package, writte
 by Achim Zeileis and Torsten Hothorn.
 }
 \examples{
-\donttest{
-## Fit pre to a continuous response:
+\donttest{## Fit pre to a continuous response:
 airq <- airquality[complete.cases(airquality), ]
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airq, verbose = TRUE)
@@ -262,8 +258,7 @@ noise2 <- rnorm(90)
 countdata <- data.frame(treatment, outcome, counts, noise1, noise2)
 set.seed(42)
 count.ens <- pre(counts ~ ., data = countdata, family = "poisson")
-count.ens
-}
+count.ens}
 }
 \references{
 Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
