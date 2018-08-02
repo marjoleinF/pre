@@ -95,7 +95,7 @@ We can assess the presence of input variable interactions using the ```interact(
 ```{r, fig.width=5, fig.height=5}
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
-int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R"))
+int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R", "Month"))
 ```
 
 We can check assess correlations between the baselearners using the ```corplot()``` function:

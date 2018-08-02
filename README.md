@@ -139,7 +139,7 @@ We can assess the presence of input variable interactions using the `interact()`
 ``` r
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
-int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R"))
+int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R", "Month"))
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-11-1.png)
