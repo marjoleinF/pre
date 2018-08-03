@@ -31,22 +31,17 @@ test_that("summary.pre gives previous results", {
 })
 
 
-test_that("gpe_rules_pre gives previous results with airquality data", {
-  
+test_that("gpe_rules_pre gives same results as pre with airquality data", {
   set.seed(42)
   gpe.mod <- gpe(Ozone ~ ., data = airquality,  
                  base_learners = list(gpe_rules_pre(ntrees = 25L, learnrate = .1, tree.unbiased = FALSE)))
-  
   set.seed(42)
   pre.mod <- pre(Ozone ~ ., data = airquality, ntrees = 25L, learnrate = .1, tree.unbiased = FALSE, 
                  type = "rules")
-  
   expect_equal(gpe.mod$glmnet.fit$nzero, pre.mod$glmnet.fit$nzero, tolerance = 1.490116e-08)
   expect_equal(gpe.mod$glmnet.fit$cvm, pre.mod$glmnet.fit$cvm, tolerance = 1.490116e-08)
-  # save_to_test(c(gpe.mod$glmnet.fit$nzero, gpe.mod$glmnet.fit$cvm), "gpe_rules_pre")
-  expect_equal(c(gpe.mod$glmnet.fit$nzero, gpe.mod$glmnet.fit$cvm), 
-               read_to_test("gpe_rules_pre"), tolerance = 1.490116e-08)
 })
+
 
 test_that("Importance gives previous results with airquality data",{
   set.seed(42)

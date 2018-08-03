@@ -5,8 +5,9 @@
 \title{Create partial dependence plot for a pair of predictor variables in a prediction 
 rule ensemble (pre)}
 \usage{
-pairplot(object, varnames, type = "both", penalty.par.val = "lambda.1se",
-  nvals = c(20, 20), pred.type = "response", ...)
+pairplot(object, varnames, type = "both",
+  penalty.par.val = "lambda.1se", nvals = c(20, 20),
+  pred.type = "response", ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -76,5 +77,6 @@ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 pairplot(airq.ens, c("Temp", "Wind"))}
 }
 \seealso{
-\code{\link{pre}}, \code{\link{singleplot}}
+\code{\link{pre}}, \code{\link{singleplot}} 
+#' @export
 }

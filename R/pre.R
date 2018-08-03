@@ -221,7 +221,6 @@ utils::globalVariables("%dopar%")
 #' count.ens <- pre(counts ~ ., data = countdata, family = "poisson")
 #' count.ens}
 #' @import glmnet partykit datasets
-#' @export
 #' @seealso \code{\link{print.pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
@@ -235,6 +234,7 @@ utils::globalVariables("%dopar%")
 #' Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive 
 #' partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
 #' 
+#' @export
 pre <- function(formula, data, family = gaussian,
                 use.grad = TRUE, weights, type = "both", sampfrac = .5, 
                 maxdepth = 3L, learnrate = .01, mtry = Inf, ntrees = 500, 
@@ -995,7 +995,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     }
     
     if (par.init) { # compute in parallel:
-      rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
+      rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = c("partykit", "pre")) %dopar% {
         
         if (length(maxdepth) > 1L) {
           if (use.grad) {
@@ -1402,7 +1402,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
   
   if (par.init) { # compute in parallel:
     
-    rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = "partykit") %dopar% {
+    rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = c("partykit", "pre")) %dopar% {
       
       # Prepare call:
       glmertree_args$data <- data[subsample[[i]], ]
@@ -1511,7 +1511,6 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
 #' Friedman & Popescu (2008, section 3.3).
 #' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
-#' @export
 #' @seealso \code{\link{pre}}
 #' @examples
 #' ## RuleFit default is max. 4 terminal nodes, on average:
@@ -1543,6 +1542,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),],
 #'                 maxdepth = func1)
 #' airq.ens}
+#' @export
 maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
   function(ntrees, ...) {
     if (!is.null(av.tree.depth)) {
@@ -1578,11 +1578,11 @@ maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' print(airq.ens)}
-#' @export
 #' @method print pre
 #' @seealso \code{\link{pre}}, \code{\link{summary.pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
+#' @export
 print.pre <- function(x, penalty.par.val = "lambda.1se", 
                       digits = getOption("digits"),
                       ...) {
@@ -1664,11 +1664,11 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' summary(airq.ens)}
-#' @export
 #' @method summary pre
 #' @seealso \code{\link{pre}}, \code{\link{print.pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
+#' @export
 summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
   
   if (class(object) != "pre") {
@@ -1751,10 +1751,10 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' airq.cv <- cvpre(airq.ens)}
-#' @export
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{print.pre}} 
+#' @export
 cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5, 
                   foldids = NULL, verbose = FALSE, parallel = FALSE,
                   print = TRUE) {
@@ -1817,7 +1817,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
   
   ## Perform the CV:
   if (parallel) {
-    cvpreds_unsorted <- foreach::foreach(i = 1:k) %dopar% {
+    cvpreds_unsorted <- foreach::foreach(i = 1:k, .packages = "pre") %dopar% {
       cl$data <- object$data[foldids != i,]
       set.seed(seeds[i])
       cvobject <- eval(cl)
@@ -1928,11 +1928,11 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' coefs <- coef(airq.ens)}
-#' @export
 #' @method coef pre
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{cvpre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{print.pre}} 
+#' @export
 coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 {
   
@@ -1959,7 +1959,6 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
     rownames(coefs) <- rownames(coef(object$glmnet.fit)[[1]])
   }
   
-  ## TODO: Omit `` from variable names
   rownames(coefs) <- gsub("`", "", rownames(coefs))
   
   # coefficients for normalized variables should be unnormalized: 
@@ -2051,13 +2050,12 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' predict(airq.ens)
 #' predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}
 #' @import Matrix
-#' @export
 #' @method predict pre
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}}, 
 #' \code{\link{interact}}, \code{\link{print.pre}}, 
 #' \code{\link[glmnet]{predict.cv.glmnet}}
-#' 
+#' @export
 predict.pre <- function(object, newdata = NULL, type = "link",
                         penalty.par.val = "lambda.1se", ...)
 {
@@ -2210,8 +2208,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' singleplot(airq.ens, "Temp")}
-#' @export
 #' @seealso \code{\link{pre}}, \code{\link{pairplot}}
+#' @export
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                        nvals = NULL, type = "response", ...)
 {
@@ -2336,8 +2334,8 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
 #' @import graphics
-#' @export
 #' @seealso \code{\link{pre}}, \code{\link{singleplot}} 
+#' #' @export
 pairplot <- function(object, varnames, type = "both", 
                      penalty.par.val = "lambda.1se", 
                      nvals = c(20, 20), pred.type = "response", ...)
@@ -2498,8 +2496,8 @@ pairplot <- function(object, varnames, type = "both",
 #' importance(airq.ens, global = FALSE)
 #' # calculate local importances (custom: over 25% lowest predicted values):
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
+#' @seealso \code{\link{pre}}
 #' @export
-#' #' @seealso \code{\link{pre}}
 importance <- function(object, standardize = FALSE, global = TRUE,
                        quantprobs = c(.75, 1), penalty.par.val = "lambda.1se", 
                        round = NA, plot = TRUE, ylab = "Importance",
@@ -2794,20 +2792,17 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 #' nullmods <- bsnullinteract(airq.ens)
 #' interact(airq.ens, nullmods = nullmods, col = c("#7FBFF5", "#8CC876"))}
 #' @details Computationally intensive.
-#' @export
 #' @seealso \code{\link{pre}}, \code{\link{interact}} 
+#' @export
 bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
                            penalty.par.val = "lambda.1se", verbose = FALSE)
 {
   
-  if (object$family %in% c("mgaussian", "multinomial", "binomial")) {
+  ## TODO: Implement for all types of response variables
+  if (object$family %in% c("mgaussian", "multinomial", "cox", "binomial")) {
     stop("Function bsnullinteract not implemented yet for binomial, multinomial and multivariate outcomes.")
   }
   
-  # Preliminaries:
-  if(object$family == "binomial") {
-    stop("bsnullinteract is not yet available for categorical outcomes.")
-  }
   if(parallel) {
     if (!(requireNamespace("foreach"))) {
       warning("Parallel computation of function bsnullinteract() requires package foreach,
@@ -2826,7 +2821,7 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
   # compute bootstrapped null datasets (i.e., datasets with no interactions):
   if (parallel) {
     if (verbose) cat("This may take a while.")
-    bs.ens <- foreach::foreach(i = 1:nsamp) %dopar% {
+    bs.ens <- foreach::foreach(i = 1:nsamp, .packages = "pre") %dopar% {
       # step 1: Take bootstrap sample {x_p, y_p}:
       bs_inds <- sample(1:nrow(object$data), nrow(object$data), replace = TRUE)
       bsdataset <- object$data[bs_inds,]
@@ -2999,8 +2994,8 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' the fitted ensembles. Users are therefore advised to test for the presence 
 #' of interaction effects by setting the \code{nsamp} argument of the function 
 #' \code{bsnullinteract} \eqn{\geq 100}.
-#' @export
 #' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
+#' @export
 interact <- function(object, varnames = NULL, nullmods = NULL, 
                      penalty.par.val = "lambda.1se", quantprobs = c(.05, .95),
                      plot = TRUE, col = c("darkgrey", "lightgrey"), 
@@ -3010,6 +3005,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
                      legend.text = c("observed", "null model median"),
                      parallel = FALSE, k = 10, verbose = FALSE, ...) {
   
+  ## TODO: Implement for all response variable types
   if (object$family %in% c("mgaussian", "multinomial")) {
     stop("Function interact not implemented yet for multivariate and multinomial outcomes.")
   }
@@ -3035,14 +3031,14 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
         k * (length(nullmods) + 1) * length(varnames), "dots ). ")
   }
   if (parallel) {
-    H <- foreach::foreach(i = 1:length(varnames), .combine = "c") %dopar% {
+    H <- foreach::foreach(i = 1:length(varnames), .combine = "c", .packages = "pre") %dopar% {
       # Calculate H_j for the original dataset:
       Hsquaredj(object = object, varname = varnames[i], k = k,
                 penalty.par.val = penalty.par.val, verbose = verbose)
     }
     names(H) <- varnames
     if (!is.null(nullmods)) {
-      nullH <- foreach::foreach(i = 1:length(varnames), .combine = "cbind") %dopar% {
+      nullH <- foreach::foreach(i = 1:length(varnames), .combine = "cbind", .packages = "pre") %dopar% {
         # Calculate H_j for the bootstrapped null models:
         nullH <- c()
         for(j in 1:length(nullmods)) {
@@ -3139,9 +3135,9 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' \donttest{set.seed(42)
 #'  airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #'  plot(airq.ens)}
-#' @export
 #' @seealso \code{\link{pre}}, \code{\link{print.pre}}
 #' @method plot pre
+#' @export
 plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
                      nterms = NULL, fill = "white", ask = FALSE, 
                      exit.label = "0", standardize = FALSE, plot.dim = c(3, 3), 

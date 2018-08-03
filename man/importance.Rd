@@ -6,10 +6,10 @@
 variables in a prediction rule ensemble (pre)}
 \usage{
 importance(object, standardize = FALSE, global = TRUE,
-  quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se", round = NA,
-  plot = TRUE, ylab = "Importance", main = "Variable importances",
-  diag.xlab = TRUE, diag.xlab.hor = 0, diag.xlab.vert = 2, cex.axis = 1,
-  ...)
+  quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se",
+  round = NA, plot = TRUE, ylab = "Importance",
+  main = "Variable importances", diag.xlab = TRUE, diag.xlab.hor = 0,
+  diag.xlab.vert = 2, cex.axis = 1, ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -85,4 +85,7 @@ importance(airq.ens)
 importance(airq.ens, global = FALSE)
 # calculate local importances (custom: over 25\% lowest predicted values):
 importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
+}
+\seealso{
+\code{\link{pre}}
 }

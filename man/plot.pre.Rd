@@ -4,9 +4,9 @@
 \alias{plot.pre}
 \title{Plot method for class pre}
 \usage{
-\method{plot}{pre}(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
-  nterms = NULL, fill = "white", ask = FALSE, exit.label = "0",
-  standardize = FALSE, plot.dim = c(3, 3), ...)
+\method{plot}{pre}(x, penalty.par.val = "lambda.1se",
+  linear.terms = TRUE, nterms = NULL, fill = "white", ask = FALSE,
+  exit.label = "0", standardize = FALSE, plot.dim = c(3, 3), ...)
 }
 \arguments{
 \item{x}{an object of class \code{\link{pre}}.}

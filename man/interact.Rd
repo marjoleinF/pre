@@ -6,11 +6,12 @@
 (pre)}
 \usage{
 interact(object, varnames = NULL, nullmods = NULL,
-  penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95), plot = TRUE,
-  col = c("darkgrey", "lightgrey"), ylab = "Interaction strength",
-  main = "Interaction test statistics", se.linewidth = 0.05,
-  legend.text = c("observed", "null model median"), parallel = FALSE,
-  k = 10, verbose = FALSE, ...)
+  penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95),
+  plot = TRUE, col = c("darkgrey", "lightgrey"),
+  ylab = "Interaction strength", main = "Interaction test statistics",
+  se.linewidth = 0.05, legend.text = c("observed",
+  "null model median"), parallel = FALSE, k = 10, verbose = FALSE,
+  ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
