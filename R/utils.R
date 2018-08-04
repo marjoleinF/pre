@@ -4,7 +4,7 @@
 ##
 delete_duplicates_complements <- function(
   rules, data, removecomplements = TRUE, removeduplicates = TRUE,
-  return.dupl.compl = FALSE, sparse = FALSE) {
+  return.dupl.compl = FALSE, sparse = FALSE, keep_rulevars = FALSE) {
   ## Generate rule variables:
   rulevars <- if(sparse)
     .get_rules_mat_sparse(data, rules) else
@@ -109,15 +109,18 @@ delete_duplicates_complements <- function(
   } else 
     complements.removed <- NULL
   
+  rulevars = if(keep_rulevars && length(rules) > 0)
+    rulevars[, names(rules)] else NULL
+  
   ## Return results:
   if (return.dupl.compl) {
-    return(list(rules = rules, 
-                duplicates.removed = duplicates.removed,
-                complements.removed = complements.removed))
-  } else {
-    return(rules)
+    return(list(
+      rules = rules, rulevars = rulevars,
+      duplicates.removed = duplicates.removed,
+      complements.removed = complements.removed))
   }
   
+  list(rules = rules, rulevars = rulevars)
 }
 
 # see https://stackoverflow.com/a/51457395/5861244
