@@ -172,3 +172,13 @@ test_that("`delete_duplicates_complements` gives the same regardless of `sparse`
           rules = rules, data = X))))
   }
 })
+
+test_that("`.get_most_sparse_rule` gives the spares of rules", {
+  dat <- data.frame(x = 1:5)
+  rules <- paste("x >", 1:4)
+  
+  expect_equal(
+    .get_most_sparse_rule(rules, dat),
+    c(`x > 1` = "!(x > 1)", `x > 2` = "!(x > 2)", `x > 3` = "x > 3", 
+      `x > 4` = "x > 4"))
+})

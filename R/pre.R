@@ -906,8 +906,7 @@ get_modmat <- function(
       x <- .get_rules_mat_sparse(data_org, rules)
       if(type == "both"){
         mf <- model.frame(Formula(formula), data)
-        x <- cbind(
-          model.Matrix(terms(mf), mf, sparse = TRUE), x)
+        x <- cbind(model.Matrix(terms(mf), mf, sparse = TRUE), x)
         rm(mf)
         
       }
@@ -1215,6 +1214,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
   
   # Keep unique, non-empty rules only:
   rules <- unique(rules[!rules==""])
+  if(sparse)
+    rules <- .get_most_sparse_rule(rules, data)
   
   ## Adjust rule format of rpart rules:
   if (!tree.unbiased) {

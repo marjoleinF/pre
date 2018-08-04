@@ -148,7 +148,7 @@ test_that("Get previous results with lung survival data", {
   expect_equal(fit, read_to_test("lung_w_pre_surv"), tolerance = 1.490116e-06)
 })
 
-test_that("pre gives the same rules with `sparse` set to `TRUE` and `FALSE`", {
+test_that("pre gives almost the same rules with `sparse` set to `TRUE` and `FALSE`", {
   #####
   # With learning rate
   set.seed(seed <- 42)
@@ -156,8 +156,19 @@ test_that("pre gives the same rules with `sparse` set to `TRUE` and `FALSE`", {
   set.seed(seed)
   airq.ens.sparse <- pre(Ozone ~ ., data=airquality, ntrees = 10, sparse = TRUE)
   
-  expect_equal(airq.ens$glmnet.fit$glmnet.fit$beta, 
-               airq.ens.sparse$glmnet.fit$glmnet.fit$beta)
+  # will differ because sparse complements are used
+  expect_false(isTRUE(all.equal(
+    airq.ens$glmnet.fit$glmnet.fit$beta, 
+    airq.ens.sparse$glmnet.fit$glmnet.fit$beta)))
+  
+  expect_false(all(
+    airq.ens$rules$description == 
+      airq.ens.sparse$rules$description))
+  
+  # but the prediction are identical 
+  expect_equal(predict(airq.ens), predict(airq.ens.sparse))
+  
+  # check the classes of their model matrices
   expect_equal(class(airq.ens$modmat), "matrix")
   expect_s4_class(airq.ens.sparse$modmat, "dgCMatrix")
 })

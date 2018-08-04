@@ -417,3 +417,20 @@ get_y_learn_multinomial <- function(eta, y) {
   p <- 1 / (1 + exp(-eta))
   (y - p) / sqrt(p * (1 - p))
 }
+
+
+
+.get_most_sparse_rule <- function(rules, data){
+  #####
+  # we could do this faster by evaluating all the rules at once but we do not
+  # to reduce the memory usage
+  n <- nrow(data)
+  sapply(rules, function(r){
+    x <- eval(parse(text = r), data)
+    if(!is.logical(x))
+      stop("non-rulle is passed")
+    if(sum(x) > n / 2)
+      return(paste0("!(", r, ")"))
+    r
+  })
+}
