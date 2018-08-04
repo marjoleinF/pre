@@ -9,13 +9,15 @@
 \arguments{
 \item{object}{object of class \code{\link{pre}}}
 
-\item{penalty.par.val}{character. Penalty parameter criterion to be used for 
-selecting final model: lambda giving minimum cv error (\code{"lambda.min"}) or 
-lambda giving cv error that is within 1 standard error of minimum cv error 
-("\code{lambda.1se}"). Alternatively, a numeric value may be specified, 
-corresponding to one of the values of lambda in the sequence used by glmnet,
-for which estimated cv error can be inspected by running 
-\code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
+\item{penalty.par.val}{character or numeric. Value of the penalty parameter
+\eqn{\lambda} to be employed for selecting the final ensemble. The default
+\code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
+error of the minimum cross-validated error. Alternatively, 
+\code{"lambda.min"} may be specified, to employ the \eqn{\lambda} value
+with minimum cross-validated error, or a numeric value \eqn{>0} may be 
+specified, with higher values yielding a sparser ensemble. To evaluate the 
+trade-off between accuracy and sparsity of the final ensemble, inspect
+\code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
 \item{...}{additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.}
 }
@@ -39,8 +41,7 @@ calculation of predictions and importances, later on. This can be prevented
 by renaming factor variables with numbers in their name, prior to analysis.
 }
 \examples{
-\donttest{
-set.seed(42)
+\donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 coefs <- coef(airq.ens)}
 }

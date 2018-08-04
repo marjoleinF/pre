@@ -1,51 +1,47 @@
 context("Tests the pre functions with S3 methods and maxdepth sampler.")
 
+
 test_that("maxdepth.sampler gives previous results", {
   func1 <- maxdepth_sampler()
   set.seed(42)
   maxdepths <- func1(100)
   # save_to_test(maxdepths, "maxdepths_default")
-  expect_equal(maxdepths, read_to_test("maxdepths_default"), tolerance = 1.490116e-03)
+  expect_equal(maxdepths, read_to_test("maxdepths_default"), tolerance = 1.490116e-08)
   
   func2 <- maxdepth_sampler(av.no.term.nodes = 16L)
   set.seed(42)
   maxdepths2 <- func2(100)
   # save_to_test(maxdepths2, "maxdepths_16_term_nodes")
-  expect_equal(maxdepths2, read_to_test("maxdepths_16_term_nodes"), tolerance = 1.490116e-03)
+  expect_equal(maxdepths2, read_to_test("maxdepths_16_term_nodes"), tolerance = 1.490116e-08)
   
   func3 <- maxdepth_sampler(av.tree.depth = 7)
   set.seed(42)
   maxdepths3 <- func3(100)
   # save_to_test(maxdepths3, "maxdepths_tree_depth_7")
-  expect_equal(maxdepths3, read_to_test("maxdepths_tree_depth_7"), tolerance = 1.490116e-03)
+  expect_equal(maxdepths3, read_to_test("maxdepths_tree_depth_7"), tolerance = 1.490116e-08)
 })
 
-# test_that("gpe_rules_pre gives previous results", {
-# 
-#   set.seed(42)
-#   rules <- gpe_rules_pre(ntrees = 10)(Ozone ~ ., data = airquality, 
-#                            weights = rep(1L, times = nrow(airquality)),
-#                            family = "gaussian",
-#                            sample_func = gpe_sample(),
-#                            verbose = FALSE)
-#   # save_to_test(rules, "gpe_rules_pre_ctree")
-#   expect_equal(rules, read_to_test("gpe_rules_pre_ctree"), tolerance = 1.490116e-03)
-#   
-#   set.seed(42)
-#   rules <- gpe_rules_pre(ntrees = 10, tree.unbiased = FALSE)(
-#     Ozone ~ ., data = airquality, weights = rep(1L, times = nrow(airquality)),
-#     family = "gaussian", sample_func = gpe_sample(), verbose = FALSE)
-#   # save_to_test(rules, "gpe_rules_pre_rpart")
-#   expect_equal(rules, read_to_test("gpe_rules_pre_rpart"), tolerance = 1.490116e-03)
-#   
-#   set.seed(42)
-#   rules <- gpe_rules_pre(ntrees = 10, use.grad = FALSE)(
-#     Ozone ~ ., data = airquality, weights = rep(1L, times = nrow(airquality)),
-#     family = "gaussian", sample_func = gpe_sample(), verbose = FALSE)
-#   # save_to_test(rules, "gpe_rules_pre_glmtree")
-#   expect_equal(rules, read_to_test("gpe_rules_pre_glmtree"), tolerance = 1.490116e-03)
-#   
-# })
+
+test_that("summary.pre gives previous results", {
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
+  summar <- capture.output(summary(airq.ens))
+  # save_to_test(summar, "pre_summary")
+  expect_equal(summar, read_to_test("pre_summary"), tolerance = 1.490116e-08)
+})
+
+
+test_that("gpe_rules_pre gives same results as pre with airquality data", {
+  set.seed(42)
+  gpe.mod <- gpe(Ozone ~ ., data = airquality,  
+                 base_learners = list(gpe_rules_pre(ntrees = 25L, learnrate = .1, tree.unbiased = FALSE)))
+  set.seed(42)
+  pre.mod <- pre(Ozone ~ ., data = airquality, ntrees = 25L, learnrate = .1, tree.unbiased = FALSE, 
+                 type = "rules")
+  expect_equal(gpe.mod$glmnet.fit$nzero, pre.mod$glmnet.fit$nzero, tolerance = 1.490116e-08)
+  expect_equal(gpe.mod$glmnet.fit$cvm, pre.mod$glmnet.fit$cvm, tolerance = 1.490116e-08)
+})
+
 
 test_that("Importance gives previous results with airquality data",{
   set.seed(42)
@@ -73,9 +69,7 @@ test_that("Importance gives previous results with airquality data",{
 test_that("Coef gives previous results with airquality data", {
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
-  
   coefs <- coef(airq.ens)
-  
   # save_to_test(coefs, "airquality_w_pre_coef")
   expect_equal(coefs, read_to_test("airquality_w_pre_coef"), tolerance = 1.490116e-08)
 })
@@ -85,7 +79,7 @@ test_that("cvpre gives previous results with airquality data", {
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   
   set.seed(7385056)
-  airq.cv <- cvpre(airq.ens, k = 2, print = FALSE)
+  airq.cv <- cvpre(airq.ens, k = 2, print = FALSE, parallel = FALSE)
   
   library("doParallel")
   cl <- makeCluster(2)

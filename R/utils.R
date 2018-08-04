@@ -21,7 +21,6 @@ delete_duplicates_complements <- function(
     rulevars <- eval(expr, data)
     
   }
-
   colnames(rulevars) <- names(rules) <- paste0("rule", 1:length(rules))
   
   ## Remove duplicate rules

@@ -22,9 +22,11 @@ datasets.}
 creating each split in each tree. Ignored when \code{tree.unbiased=FALSE}.}
 
 \item{maxdepth}{positive integer. Maximum number of conditions in a rule. 
-If length(maxdepth) == 1, it specifies the maximum depth of of each tree 
-grown. If length(maxdepth) == ntrees, it specifies the maximum depth of 
-every consecutive tree grown.}
+If \code{length(maxdepth) == 1}, it specifies the maximum depth of 
+of each tree grown. If \code{length(maxdepth) == ntrees}, it specifies the
+maximum depth of every consecutive tree grown. Alternatively, a random
+sampling function may be supplied, which takes argument \code{ntrees} and 
+returns integer values. See also \code{\link{maxdepth_sampler}}.}
 
 \item{ntrees}{positive integer value. Number of trees to generate for the 
 initial ensemble.}
@@ -58,16 +60,17 @@ be employed for rule generation? Defaults to \code{TRUE}, if set to
 with \code{family}, \code{use.grad} and \code{learnrate}.}
 }
 \description{
-\code{gpe_rules_pre} generates a learner function which generates rules like 
-pre, which can be supplied to the gpe base_learner argument
+\code{gpe_rules_pre} generates a learner which generates rules like 
+\code{\link{pre}}, which can be supplied to the \code{\link{gpe}} 
+base_learner argument.
 }
 \examples{
-\dontrun{
-## Obtain same fits with pre and gpe
+\donttest{## Obtain same fits with pre and gpe
 set.seed(42)
 gpe.mod <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),],  
                base_learners = list(gpe_rules_pre(), gpe_linear()))
+gpe.mod                
 set.seed(42)
 pre.mod <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),],)
-}
+pre.mod}
 }

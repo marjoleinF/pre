@@ -6,10 +6,12 @@
 (pre)}
 \usage{
 interact(object, varnames = NULL, nullmods = NULL,
-  penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95), plot = TRUE,
-  col = c("#8CC876", "#7FBFF5"), ylab = "Interaction strength",
-  main = "Interaction test statistics", se.linewidth = 0.05,
-  parallel = FALSE, k = 10, verbose = FALSE, ...)
+  penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95),
+  plot = TRUE, col = c("darkgrey", "lightgrey"),
+  ylab = "Interaction strength", main = "Interaction test statistics",
+  se.linewidth = 0.05, legend.text = c("observed",
+  "null model median"), parallel = FALSE, k = 10, verbose = FALSE,
+  ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
@@ -22,13 +24,15 @@ may take a long time).}
 \item{nullmods}{object with bootstrapped null interaction models, resulting
 from application of \code{bsnullinteract}.}
 
-\item{penalty.par.val}{character. Which value of the penalty parameter
-criterion should be used? The value yielding minimum cv error
-(\code{"lambda.min"}) or penalty parameter yielding error within 1 standard
-error of minimum cv error ("\code{lambda.1se}")? Alternatively, a numeric 
-value may be specified, corresponding to one of the values of lambda in the 
-sequence used by glmnet, for which estimated cv error can be inspected by 
-running \code{object$glmnet.fit} and \code{plot(object$glmnet.fit)}.}
+\item{penalty.par.val}{character or numeric. Value of the penalty parameter
+\eqn{\lambda} to be employed for selecting the final ensemble. The default
+\code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
+error of the minimum cross-validated error. Alternatively, 
+\code{"lambda.min"} may be specified, to employ the \eqn{\lambda} value
+with minimum cross-validated error, or a numeric value \eqn{>0} may be 
+specified, with higher values yielding a sparser ensemble. To evaluate the 
+trade-off between accuracy and sparsity of the final ensemble, inspect
+\code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
 \item{quantprobs}{numeric vector of length two. Probabilities that should be
 used for plotting the range of bootstrapped null interaction model statistics.
@@ -40,8 +44,8 @@ The default yields sample quantiles corresponding to .05 and .95 probabilities.}
 \item{col}{character vector of length one or two. The first value specifies 
 the color to be used for plotting the interaction statistic from the training
 data, the second color is used for plotting the interaction statistic from 
-the bootstrapped null interaction models. Only used when \code{plot = TRUE} 
-and Only the first element is used if \code{nullmods = NULL}.}
+the bootstrapped null interaction models. Only used when \code{plot = TRUE}. 
+Only the first element will be used if \code{nullmods = NULL}.}
 
 \item{ylab}{character string. Label to be used for plotting y-axis.}
 
@@ -50,10 +54,14 @@ and Only the first element is used if \code{nullmods = NULL}.}
 \item{se.linewidth}{numeric. Width of the whiskers of the plotted standard 
 error bars (in inches).}
 
+\item{legend.text}{character vector of length two to be used for plotting
+the legend. Only used when \code{nullmods} is specified. If \code{FALSE},
+no legend is plotted.}
+
 \item{parallel}{logical. Should parallel foreach be used? Must register
 parallel beforehand, such as doMC or others.}
 
-\item{k}{integer. Calculating interaction test statistics is a computationally
+\item{k}{integer. Calculating interaction test statistics is computationally
 intensive, so  calculations are split up in several parts to prevent memory
 allocation errors. If a memory allocation error still occurs, increase k.}
 
@@ -98,8 +106,7 @@ Can be computationally intensive, especially when nullmods is
 specified, in which case setting \verb{parallel = TRUE} may improve speed.
 }
 \examples{
-\donttest{
- set.seed(42)
+\donttest{set.seed(42)
  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
 }
