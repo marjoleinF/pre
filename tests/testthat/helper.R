@@ -82,6 +82,7 @@ BostonHousing <- BostonHousing[
   sample.int(nrow(BostonHousing), 200, replace = FALSE), ]
 
 library("survival")
+data(lung, package = "survival", envir = environment())
 Lung <- lung
 Lung$sex <- factor(Lung$sex)
 Lung <- Lung[complete.cases(Lung), ]
