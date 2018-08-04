@@ -6,21 +6,9 @@ delete_duplicates_complements <- function(
   rules, data, removecomplements = TRUE, removeduplicates = TRUE,
   return.dupl.compl = FALSE, sparse = FALSE) {
   ## Generate rule variables:
-  if(sparse){
-    # See https://stackoverflow.com/a/8844057/5861244. 
-    #
-    # if all rules where binary then we could use the `lsparseMatrix-classes`
-    # this would though require that we either check that they are all binary 
-    # or we pass an argument which states that this is the case
-    expr <- paste0("cbind_sparse_vec(", paste0(
-      'as(as.numeric(', rules, '), "sparseVector")', collapse = ", "), ")")
-    rulevars <- eval(parse(text = expr), data)
-    
-  } else {
-    expr <- parse(text = paste0("cbind(", paste0(rules, collapse = ", "), ")"))
-    rulevars <- eval(expr, data)
-    
-  }
+  rulevars <- if(sparse)
+    .get_rules_mat_sparse(data, rules) else
+      .get_rules_mat_dense(data, rules)
   colnames(rulevars) <- names(rules) <- paste0("rule", 1:length(rules))
   
   ## Remove duplicate rules

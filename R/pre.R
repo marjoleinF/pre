@@ -104,7 +104,8 @@ utils::globalVariables("%dopar%")
 #' (which suffers from biased variable selection) as implemented in 
 #' \code{\link[rpart]{rpart}}. See details below for possible combinations 
 #' with \code{family}, \code{use.grad} and \code{learnrate}.
-#' @param ... Additional arguments to be passed to 
+#' @param sparse logical for whether sparse design matrices should be used.
+#' @param ... Additional arguments to be passed to
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' @details Obervations with missing values will be removed prior to analysis.
 #' 
@@ -241,7 +242,8 @@ pre <- function(formula, data, family = gaussian,
                 removecomplements = TRUE, removeduplicates = TRUE, 
                 winsfrac = .025, normalize = TRUE, standardize = FALSE,
                 ordinal = TRUE, nfolds = 10L, tree.control, tree.unbiased = TRUE, 
-                verbose = FALSE, par.init = FALSE, par.final = FALSE, ...) { 
+                verbose = FALSE, par.init = FALSE, par.final = FALSE, 
+                sparse = FALSE, ...) { 
   
   
   #####################
@@ -691,7 +693,8 @@ pre <- function(formula, data, family = gaussian,
                                removeduplicates = removeduplicates, 
                                removecomplements = removecomplements,
                                tree.unbiased = tree.unbiased,
-                               return.dupl.compl = TRUE)
+                               return.dupl.compl = TRUE, 
+                               sparse = sparse)
     }
     rules <- rule_object$rules
   }
@@ -723,7 +726,8 @@ pre <- function(formula, data, family = gaussian,
     winsfrac = winsfrac, 
     x_names = x_names,
     y_names = y_names,
-    normalize = normalize)
+    normalize = normalize, 
+    sparse = sparse)
   
   x_scales <- modmat_data$x_scales
   wins_points <- modmat_data$wins_points
@@ -812,18 +816,12 @@ get_modmat <- function(
   # These should be passed in all calls
   formula, data, rules, type, x_names, winsfrac, normalize, 
   # Response variable is optional:
-  y_names = NULL) {
+  y_names = NULL, sparse = FALSE) {
+  data_org <- data # needed to evaluate rules later
   
-  ## Evaluate rules on data:
-  if (type != "linear" && !is.null(rules)) {
-    ## TODO: use sparse matrix here?
-    expr <- parse(text = paste0("cbind(", paste0(rules, collapse = ", "), ")"))
-    x <- eval(expr, data)
-    colnames(x) <- names(rules)
-  }
-
   # convert ordered categorical predictor variables to linear terms:
-  data[,sapply(data, is.ordered)] <- as.numeric(data[,sapply(data, is.ordered)])
+  data[,sapply(data, is.ordered)] <- 
+    as.numeric(data[,sapply(data, is.ordered)])
 
   #####
   # Perform winsorizing and normalizing
@@ -895,10 +893,34 @@ get_modmat <- function(
   ## TODO: Use sparse matrices here?
   #if (type == "rules") {do nothing}
   if (type == "linear" || is.null(rules)) {
-    x <- model.matrix(Formula(formula), data = data)
-  } else if (type == "both" && !is.null(rules)) {
-    x <- cbind(model.matrix(Formula(formula), data = data), x)
-  }
+    if(sparse){
+      mf <- model.frame(Formula(formula), data)
+      x <- model.Matrix(terms(mf), mf, sparse = TRUE)
+      rm(mf)
+      
+    } else 
+      x <- model.matrix(Formula(formula), data = data)
+    
+  } else if (type %in% c("both", "rules") && !is.null(rules)) {
+    if(sparse){
+      x <- .get_rules_mat_sparse(data_org, rules)
+      if(type == "both"){
+        mf <- model.frame(Formula(formula), data)
+        x <- cbind(
+          model.Matrix(terms(mf), mf, sparse = TRUE), x)
+        rm(mf)
+        
+      }
+      
+    } else { 
+      x <- .get_rules_mat_dense(data_org, rules)
+      if(type == "both")
+        x <- cbind(model.matrix(Formula(formula), data = data), x)
+    }
+    
+  } else 
+    stop("not implemented with type ", sQuote(type), " and is.null(rules) is ", 
+         sQuote(is.null(rules)))
   
   #####
   # Remove intercept
@@ -919,6 +941,27 @@ get_modmat <- function(
   list(x = x, y = y, x_scales = x_scales, wins_points = wins_points)
 }
 
+.get_rules_mat_dense <- function(data, rules){
+  expr <- parse(text = paste0("cbind(", paste0(rules, collapse = ", "), ")"))
+  x <- eval(expr, data)
+  colnames(x) <- names(rules)
+  x
+}
+
+.get_rules_mat_sparse <- function(data, rules){
+  # See https://stackoverflow.com/a/8844057/5861244. 
+  #
+  # if all rules where binary then we could use the `lsparseMatrix-classes`
+  # this would though require that we either check that they are all binary 
+  # or we pass an argument which states that this is the case
+  expr <- paste0("cbind_sparse_vec(", paste0(
+    'as(as.numeric(', rules, '), "sparseVector")', collapse = ", "), ")")
+  x <- eval(parse(text = expr), data)
+  colnames(x) <- names(rules)
+  x
+}
+
+
 
 
 
@@ -930,7 +973,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                       tree.control = ctree_control(), use.grad = TRUE, 
                       family = "gaussian", verbose = FALSE, 
                       removeduplicates = TRUE, removecomplements = TRUE,
-                      tree.unbiased = TRUE, return.dupl.compl = FALSE) {
+                      tree.unbiased = TRUE, return.dupl.compl = FALSE, 
+                      sparse = FALSE) {
   
   n <- nrow(data)
   
@@ -1205,11 +1249,11 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
   
   if (length(rules) > 0) {
     if (removeduplicates || removecomplements) {
-      rules <- delete_duplicates_complements(rules = rules, 
-                                                data = data, 
-                                                removecomplements = removecomplements, 
-                                                removeduplicates = removeduplicates, 
-                                                return.dupl.compl = TRUE)
+      rules <- delete_duplicates_complements(
+        rules = rules, data = data, 
+        removecomplements = removecomplements, 
+        removeduplicates = removeduplicates, 
+        return.dupl.compl = TRUE, sparse = sparse)
       complements.removed <- rules$complements.removed
       duplicates.removed <- rules$duplicates.removed
       rules <- rules$rules
@@ -1373,7 +1417,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
                                     use.grad = TRUE, verbose = FALSE, 
                                     removeduplicates = TRUE, 
                                     removecomplements = TRUE, 
-                                    par.init = FALSE) {
+                                    par.init = FALSE, sparse = FALSE) {
   
   n <- nrow(data)
   
@@ -1450,11 +1494,11 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
   if (length(rules) > 0) {
     
     if (removeduplicates || removecomplements) {
-      rules <- delete_duplicates_complements(rules = rules, 
-                                             data = data, 
-                                             removecomplements = removecomplements, 
-                                             removeduplicates = removeduplicates, 
-                                             return.dupl.compl = TRUE)
+      rules <- delete_duplicates_complements(
+        rules = rules, data = data, 
+        removecomplements = removecomplements, 
+        removeduplicates = removeduplicates, 
+        return.dupl.compl = TRUE, sparse = sparse)
       complements.removed <- rules$complements.removed
       duplicates.removed <- rules$duplicates.removed
       rules <- rules$rules

@@ -28,7 +28,8 @@ Imports:
     rpart,
     stringr,
     survival, 
-    Matrix
+    Matrix, 
+    MatrixModels
 Suggests:
     akima,
     datasets,
