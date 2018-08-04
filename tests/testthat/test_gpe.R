@@ -106,8 +106,7 @@ test_that("gpe_trees gives previous results for continous outcomes", {
   set.seed(seed <- 6772769)
   out <- do.call(func, c(args))
   
-  # save_to_test(out, "gpe_tree_1")
-  expect_true(setequal(out, read_to_test("gpe_tree_1")))
+  expect_known_value(out, "previous_results/gpe_tree_1.RDS", update = FALSE)
 
   #####  
   # Only use stumps
@@ -128,8 +127,7 @@ test_that("gpe_trees gives previous results for continous outcomes", {
   set.seed(seed)
   out3 <- do.call(func, args)
   
-  # save_to_test(out3, "gpe_tree_3")
-  expect_equal(out3, read_to_test("gpe_tree_3"))
+  expect_known_value(out3, "previous_results/gpe_tree_3.RDS", update = FALSE)
   
   #####
   # Without removal of duplicates and complements
@@ -408,9 +406,7 @@ test_that("gpe_linear returns terms for factor levels", {
   expect_length(out, 3)
 })
 
-test_that("eTerm works for logicals", {
-  eTerm(c(F, T, T, T))
-})
+test_that("eTerm works for logicals", expect_length(eTerm(c(F, T, T, T)), 4))
 
 test_that("get_cv.glmnet_args works", {
   #####
