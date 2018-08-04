@@ -73,32 +73,18 @@ delete_duplicates_complements <- function(
       }
         
     } else {
-      if(is.logical(rulevars)){
-        tmp1 <- rulevars
-        tmp2 <- !rulevars
-        
-      } else {
-        is_binary <- which(apply(rulevars, 2, function(x) all(x %in% 0:1)))
-        tmp1 <- rulevars
-        
-        # turn into -1 and 1 so tmp1 == -tmp2 for the binary columns
-        tmp1[, is_binary] <- 
-          ifelse(tmp1[, is_binary] == 0, -1, tmp1[, is_binary])
-        
-        tmp2 <- -tmp1
-        
-      }
+      if(!is.logical(rulevars))
+        stop("method not implemented for non-binary rules")
       
-      # want to remove columns which have flipped sign or have FALSE instead of 
-      # TRUE. These columns will have equal variance
-      vars <- apply(tmp1, 2, var)
+      # find columns will equal variance to reduce the number of comparisons
+      vars <- apply(rulevars, 2, var)
       vars_distinct <- lapply(
         unique(vars), function(x){ 
           idx <- which(is_almost_eq(x, vars))
           list(var = x, n = length(idx), idx = idx)
         })
       
-      complements <- logical(ncol(tmp1))
+      complements <- logical(ncol(rulevars))
       for (va in vars_distinct) {
         if(va$n < 2L)
           next
@@ -114,11 +100,11 @@ delete_duplicates_complements <- function(
           if(complements[idx[j]])
             next
           
-          this_val <- tmp1[, idx[j]]
+          this_val <- rulevars[, idx[j]]
           is_compl <- 
             which(apply(
-              tmp2[, idx[(j + 1):n_idx], drop = FALSE], 2, 
-              function(x) isTRUE(all.equal.numeric(this_val, x)))) + j
+              rulevars[, idx[(j + 1):n_idx], drop = FALSE], 2, 
+              function(x) all(x != this_val))) + j
           
           if(length(is_compl) > 0)
             complements[idx[is_compl]] <- TRUE
