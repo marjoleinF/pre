@@ -2335,7 +2335,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @export
 #' @import graphics
 #' @seealso \code{\link{pre}}, \code{\link{singleplot}} 
-#' #' @export
+#' @export
 pairplot <- function(object, varnames, type = "both", 
                      penalty.par.val = "lambda.1se", 
                      nvals = c(20, 20), pred.type = "response", ...)
@@ -2483,6 +2483,12 @@ pairplot <- function(object, varnames, type = "both",
 #' character spaces added after variable names. 
 #' @param cex.axis numeric. The magnification to be used for axis annotation
 #' relative to the current setting of \code{cex}.
+#' @param legend logical or character. Should legend be plotted for multinomial
+#' or multivariate responses and if so, where? Defaults to \code{"topright"}, 
+#' which puts the legend in the top-right corner of the plot. Alternatively, 
+#' \code{"bottomright"}, \code{"bottom"}, \code{"bottomleft"}, \code{"left"}, 
+#' \code{"topleft"}, \code{"top"}, \code{"topright"}, \code{"right"}, 
+#' \code{"center"} and \code{FALSE} (which omits the legend) can be specified.
 #' @param ... further arguments to be passed to \code{barplot} (only used
 #' when \code{plot = TRUE}).
 #' @return A list with two dataframes: \code{$baseimps}, giving the importances 
@@ -2503,7 +2509,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
                        round = NA, plot = TRUE, ylab = "Importance",
                        main = "Variable importances", diag.xlab = TRUE, 
                        diag.xlab.hor = 0, diag.xlab.vert = 2,
-                       cex.axis = 1, ...)
+                       cex.axis = 1, legend = "topright", ...)
 {
 
   if (!inherits(object, what = "pre")) {
@@ -2614,9 +2620,6 @@ importance <- function(object, standardize = FALSE, global = TRUE,
         baseimps$imp <- baseimps$imp / sd_y
       }
     }
-    
-    
-    ## Step 2: Calculate variable importances:
 
     ## Remove nonzero terms:
     if (object$family %in% c("mgaussian", "multinomial")) {
@@ -2641,7 +2644,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
     
     
-    ## Step 3: Calculate variable importances:
+    ## Step 2: Calculate variable importances:
     
     if (object$family %in% c("mgaussian", "multinomial")) {
       varimps <- data.frame(varname = object$x_names, stringsAsFactors = FALSE)
@@ -2691,7 +2694,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
     
     
-    ## Step 4: Return (and plot) importances:
+    ## Step 3: Return (and plot) importances:
     
     if (object$family %in% c("mgaussian", "multinomial")) {
       varimps <- varimps[rowSums(varimps[ , gsub("coefficient", "importance", coef_inds)]) != 0, ]   
@@ -2702,6 +2705,13 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
     
     if (plot & nrow(varimps) > 0) {
+      if (is.character(legend)) {
+        args.legend <- list(x = legend)
+        legend.text <- TRUE
+      } else {
+        legend.text <- NULL
+        args.legend <- NULL
+      }
       if (object$family %in% c("mgaussian", "multinomial")) {
         plot_varimps <- t(varimps[ , gsub("coefficient", "importance" , coef_inds)])
         colnames(plot_varimps) <- varimps$varname
@@ -2709,7 +2719,9 @@ importance <- function(object, standardize = FALSE, global = TRUE,
         if (diag.xlab) {
           xlab.pos <- barplot(plot_varimps, beside = TRUE, ylab = ylab, 
                               names.arg = rep("", times = ncol(plot_varimps)), 
-                              main = main, cex.axis = cex.axis, legend.text = TRUE, ...)
+                              main = main, cex.axis = cex.axis, 
+                              legend.text = legend.text, 
+                              args.legend = args.legend, ...)
           xlab.pos <- xlab.pos[nrow(xlab.pos),]
           ## add specified number of trailing spaces to variable names:
           plotnames <- varimps$varname
@@ -2722,7 +2734,8 @@ importance <- function(object, standardize = FALSE, global = TRUE,
                labels = plotnames, cex = cex.axis)
         } else {
           barplot(plot_varimps, beside = TRUE, main = main, ylab = ylab, 
-                  legend.text = TRUE, ...)
+                  legend.text = legend.text, args.legend = args.legend,
+                  ...)
         }
       } else {
         if (diag.xlab) {
@@ -2766,7 +2779,6 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     return(invisible(NULL))
   }
 }
-
 
 
 

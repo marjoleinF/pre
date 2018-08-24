@@ -7,11 +7,11 @@ Changes in Version 0.6 (2018-08-03)
   - Extended support to all response variable types available in pre() for 
       functions plot(), importance() and cvpre().
  
-  - plot method for pre now allows for specifying separate plotting colors 
-      for rules with positive and negative coefficients.
+  - plot.pre now allows for specifying separate plotting colors for rules 
+      with positive and negative coefficients.
 
   - coef and print methods for pre now return descriptions for the intercept 
-      and factor variables.
+      (and factor variables), thanks to suggestion by Stephen Milborrow.
 
   - Bug fix in pre(): ordered factors no longer yield error. Implemented 
       new argument 'ordinal' in pre(), which specifies how ordered factors 
@@ -23,7 +23,8 @@ Changes in Version 0.6 (2018-08-03)
       binary classification. Accurate standard errors are returned now.
 
   - Bugs fixed in coef.pre(), print.pre(), plot.pre() and importance() 
-      when tree.unbiased = FALSE. 
+      when tree.unbiased = FALSE, thanks to a bug report by Stephen 
+      Milborrow. 
  
 
 

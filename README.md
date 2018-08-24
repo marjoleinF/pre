@@ -5,7 +5,7 @@ pre is an R package for deriving prediction rule ensembles for binary, multinomi
 
 1.  The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2.  The unbiased tree induction algorithms of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of Zeileis, Hothorn, & Hornik (2008) can be employed, or the classification and regression tree (CART) algorithm of Breiman, Friedman, Olshen, & Stone (1984).
-3.  The package supports a wider range of response variables.
+3.  The package supports a wider range of response variable types.
 4.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 5.  The initial ensembles may be generated as in bagging, boosting and/or random forests.
 6.  Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of Friedman (1991), using the gpe() function.
@@ -51,6 +51,8 @@ airq.ens
 #>       rule200   -0.4479854                       Solar.R <= 201
 #>       rule166   -0.1202175              Wind > 6.9 & Temp <= 82
 ```
+
+Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function `cvpre()` later on.
 
 We can plot the baselarners in the ensemble using the `plot` method (note that only the nine most important baselearners are requested here):
 
