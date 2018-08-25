@@ -44,3 +44,7 @@ importFrom("methods", "as")
 importFrom("utils", "head", "tail", "object.size")
 importFrom("earth", "earth")
 importFrom("stringr", "str_match", "str_replace_all")
+importFrom("Matrix", "sparseMatrix")
+importFrom("MatrixModels", "model.Matrix")
+
+importClassesFrom("Matrix", "sparseMatrix")

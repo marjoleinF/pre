@@ -143,3 +143,42 @@ test_that("Predict gives previous results with airquality data", {
   
   expect_equal(other_preds, preds)
 })
+
+test_that("`delete_duplicates_complements` gives the same regardless of `sparse` argument", {
+  set.seed(25106787)
+  X <- data.frame(
+    matrix(runif(10 * 20), 10, dimnames = list(NULL, paste0("X", 1:20))))
+  rules <- paste0(
+    "X", sample.int(20, 100, replace = TRUE), 
+    ifelse(runif(100) > .5, ">", "<="), runif(100))
+  
+  confs <- expand.grid(
+    removecomplements = c(T, F), removeduplicates = c(T, F), 
+    return.dupl.compl = c(T, F))
+  
+  for(i in 1:nrow(confs)) { 
+    v <- confs[i, ]
+    eval(bquote(
+      expect_equal(
+        delete_duplicates_complements(
+          removecomplements = .(v$removecomplements), 
+          removeduplicates  = .(v$removeduplicates), 
+          return.dupl.compl = .(v$return.dupl.compl),
+          rules = rules, data = X, sparse = TRUE),
+        delete_duplicates_complements(
+          removecomplements = .(v$removecomplements), 
+          removeduplicates  = .(v$removeduplicates), 
+          return.dupl.compl = .(v$return.dupl.compl),
+          rules = rules, data = X))))
+  }
+})
+
+test_that("`.get_most_sparse_rule` gives the spares of rules", {
+  dat <- data.frame(x = 1:5)
+  rules <- paste("x >", 1:4)
+  
+  expect_equal(
+    .get_most_sparse_rule(rules, dat),
+    c(`x > 1` = "!(x > 1)", `x > 2` = "!(x > 2)", `x > 3` = "x > 3", 
+      `x > 4` = "x > 4"))
+})

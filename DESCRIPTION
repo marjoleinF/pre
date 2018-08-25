@@ -27,7 +27,9 @@ Imports:
     partykit,
     rpart,
     stringr,
-    survival
+    survival, 
+    Matrix, 
+    MatrixModels
 Suggests:
     akima,
     datasets,

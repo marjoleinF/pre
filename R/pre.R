@@ -104,7 +104,8 @@ utils::globalVariables("%dopar%")
 #' (which suffers from biased variable selection) as implemented in 
 #' \code{\link[rpart]{rpart}}. See details below for possible combinations 
 #' with \code{family}, \code{use.grad} and \code{learnrate}.
-#' @param ... Additional arguments to be passed to 
+#' @param sparse logical for whether sparse design matrices should be used.
+#' @param ... Additional arguments to be passed to
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' @details Obervations with missing values will be removed prior to analysis.
 #' 
@@ -241,7 +242,8 @@ pre <- function(formula, data, family = gaussian,
                 removecomplements = TRUE, removeduplicates = TRUE, 
                 winsfrac = .025, normalize = TRUE, standardize = FALSE,
                 ordinal = TRUE, nfolds = 10L, tree.control, tree.unbiased = TRUE, 
-                verbose = FALSE, par.init = FALSE, par.final = FALSE, ...) { 
+                verbose = FALSE, par.init = FALSE, par.final = FALSE, 
+                sparse = FALSE, ...) { 
   
   
   #####################
@@ -653,6 +655,8 @@ pre <- function(formula, data, family = gaussian,
   
   if (type == "linear") {
     rules <- NULL
+    rulevars <- NULL
+    
   } else {
     if (use_glmertree) {
       rule_object <- pre_rules_mixed_effects(formula = formula, 
@@ -691,9 +695,12 @@ pre <- function(formula, data, family = gaussian,
                                removeduplicates = removeduplicates, 
                                removecomplements = removecomplements,
                                tree.unbiased = tree.unbiased,
-                               return.dupl.compl = TRUE)
+                               return.dupl.compl = TRUE, 
+                               sparse = sparse)
     }
     rules <- rule_object$rules
+    rulevars <- rule_object$rulevars
+    
   }
 
   #########################################################################
@@ -723,7 +730,10 @@ pre <- function(formula, data, family = gaussian,
     winsfrac = winsfrac, 
     x_names = x_names,
     y_names = y_names,
-    normalize = normalize)
+    normalize = normalize, 
+    sparse = sparse, 
+    rulevars = rulevars)
+  rm(rulevars)
   
   x_scales <- modmat_data$x_scales
   wins_points <- modmat_data$wins_points
@@ -812,18 +822,12 @@ get_modmat <- function(
   # These should be passed in all calls
   formula, data, rules, type, x_names, winsfrac, normalize, 
   # Response variable is optional:
-  y_names = NULL) {
+  y_names = NULL, sparse = FALSE, rulevars = NULL) {
+  data_org <- data # needed to evaluate rules later
   
-  ## Evaluate rules on data:
-  if (type != "linear" && !is.null(rules)) {
-    ## TODO: use sparse matrix here?
-    expr <- parse(text = paste0("cbind(", paste0(rules, collapse = ", "), ")"))
-    x <- eval(expr, data)
-    colnames(x) <- names(rules)
-  }
-
   # convert ordered categorical predictor variables to linear terms:
-  data[,sapply(data, is.ordered)] <- as.numeric(data[,sapply(data, is.ordered)])
+  data[,sapply(data, is.ordered)] <- 
+    as.numeric(data[,sapply(data, is.ordered)])
 
   #####
   # Perform winsorizing and normalizing
@@ -892,13 +896,40 @@ get_modmat <- function(
   }
 
   ## Combine rules and variables:
-  ## TODO: Use sparse matrices here?
-  #if (type == "rules") {do nothing}
+  if(length(rules) == 0)
+    rules <- NULL
   if (type == "linear" || is.null(rules)) {
-    x <- model.matrix(Formula(formula), data = data)
-  } else if (type == "both" && !is.null(rules)) {
-    x <- cbind(model.matrix(Formula(formula), data = data), x)
-  }
+    if(sparse){
+      mf <- model.frame(Formula(formula), data)
+      x <- model.Matrix(terms(mf), mf, sparse = TRUE)
+      rm(mf)
+      
+    } else 
+      x <- model.matrix(Formula(formula), data = data)
+    
+  } else if (type %in% c("both", "rules") && !is.null(rules)) {
+    if(sparse){
+      x <- if(is.null(rulevars)) 
+        .get_rules_mat_sparse(data_org, rules) else
+          rulevars
+      if(type == "both"){
+        mf <- model.frame(Formula(formula), data)
+        x <- cbind(model.Matrix(terms(mf), mf, sparse = TRUE), x)
+        rm(mf)
+        
+      }
+      
+    } else { 
+      x <- if(is.null(rulevars)) 
+        .get_rules_mat_dense(data_org, rules) else 
+          rulevars
+      if(type == "both")
+        x <- cbind(model.matrix(Formula(formula), data = data), x)
+    }
+    
+  } else 
+    stop("not implemented with type ", sQuote(type), " and is.null(rules) is ", 
+         sQuote(is.null(rules)))
   
   #####
   # Remove intercept
@@ -919,6 +950,33 @@ get_modmat <- function(
   list(x = x, y = y, x_scales = x_scales, wins_points = wins_points)
 }
 
+.get_rules_mat_dense <- function(data, rules){
+  if(length(rules) == 0)
+    return(NULL)
+  
+  expr <- parse(text = paste0("cbind(", paste0(rules, collapse = ", "), ")"))
+  x <- eval(expr, data)
+  colnames(x) <- names(rules)
+  x
+}
+
+.get_rules_mat_sparse <- function(data, rules){
+  if(length(rules) == 0)
+    return(NULL)
+  
+  # See https://stackoverflow.com/a/8844057/5861244. 
+  #
+  # if all rules where binary then we could use the `lsparseMatrix-classes`. 
+  # However, this will not work when we call `glmnet` as it requires a double
+  # matrix`
+  expr <- paste0("cbind_sparse_vec(", paste0(
+    'as(as.numeric(', rules, '), "sparseVector")', collapse = ", "), ")")
+  x <- eval(parse(text = expr), data)
+  colnames(x) <- names(rules)
+  x
+}
+
+
 
 
 
@@ -930,7 +988,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                       tree.control = ctree_control(), use.grad = TRUE, 
                       family = "gaussian", verbose = FALSE, 
                       removeduplicates = TRUE, removecomplements = TRUE,
-                      tree.unbiased = TRUE, return.dupl.compl = FALSE) {
+                      tree.unbiased = TRUE, return.dupl.compl = FALSE, 
+                      sparse = FALSE) {
   
   n <- nrow(data)
   
@@ -1171,6 +1230,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
   
   # Keep unique, non-empty rules only:
   rules <- unique(rules[!rules==""])
+  if(sparse)
+    rules <- .get_most_sparse_rule(rules, data)
   
   ## Adjust rule format of rpart rules:
   if (!tree.unbiased) {
@@ -1203,47 +1264,28 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
   }
   
-  if (length(rules) > 0) {
-    if (removeduplicates || removecomplements) {
-      rules <- delete_duplicates_complements(rules = rules, 
-                                                data = data, 
-                                                removecomplements = removecomplements, 
-                                                removeduplicates = removeduplicates, 
-                                                return.dupl.compl = TRUE)
-      complements.removed <- rules$complements.removed
-      duplicates.removed <- rules$duplicates.removed
-      rules <- rules$rules
-    }
-  }
-    
-  if (!exists("complements.removed", inherits = FALSE)) { 
-    complements.removed <- NULL
-  }
-  if (!exists("duplicates.removed", inherits = FALSE)) {
-    duplicates.removed <- NULL
-  }
+  rules_obj <- delete_duplicates_complements(
+    rules = rules, data = data, 
+    removecomplements = removecomplements, 
+    removeduplicates = removeduplicates, 
+    return.dupl.compl = TRUE, sparse = sparse, keep_rulevars = TRUE)
+  
+  complements.removed <- rules_obj$complements.removed
+  duplicates.removed <- rules_obj$duplicates.removed
+  rules <- rules_obj$rules
+  rulevars <- rules_obj$rulevars
       
-  if (verbose && (removeduplicates || removecomplements)) {
+  if (verbose && (removeduplicates || removecomplements)) 
     cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
-  }
     
-  if (verbose) {
+  if (verbose)
     cat("\n\nAn initial ensemble consisting of", length(rules), "rules was successfully created.")  
-  }
   
   # Check if any rules were generated at all:
-  if (length(rules) == 0L) {
+  if (length(rules) == 0L) 
     warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
-    rules <- NULL
-  }
   
-  if (return.dupl.compl) {
-    return(list(rules = rules, 
-                duplicates.removed = duplicates.removed, 
-                complements.removed = complements.removed))
-  } else {
-    return(rules)
-  }
+  rules_obj
 }
 
 
@@ -1350,8 +1392,8 @@ gpe_rules_pre <- function(learnrate = .01, par.init = FALSE,
       tree.unbiased = ifelse(is.null(cl$tree.unbiased), TRUE, cl$tree.unbiased), 
       return.dupl.compl = FALSE
     )
-    rules <- do.call(pre_rules, args = pre_rules_args)
-    paste0("rTerm(", rules, ")")
+    rules_obj <- do.call(pre_rules, args = pre_rules_args)
+    paste0("rTerm(", rules_obj$rules, ")")
   }
   
   return(ret)
@@ -1373,7 +1415,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
                                     use.grad = TRUE, verbose = FALSE, 
                                     removeduplicates = TRUE, 
                                     removecomplements = TRUE, 
-                                    par.init = FALSE) {
+                                    par.init = FALSE, sparse = FALSE) {
   
   n <- nrow(data)
   
@@ -1447,42 +1489,28 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
     cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
   }
   
-  if (length(rules) > 0) {
-    
-    if (removeduplicates || removecomplements) {
-      rules <- delete_duplicates_complements(rules = rules, 
-                                             data = data, 
-                                             removecomplements = removecomplements, 
-                                             removeduplicates = removeduplicates, 
-                                             return.dupl.compl = TRUE)
-      complements.removed <- rules$complements.removed
-      duplicates.removed <- rules$duplicates.removed
-      rules <- rules$rules
-    }
-
-    if(!exists("complements.removed", inherits = FALSE))
-      complements.removed <- NULL
-    if(!exists("duplicates.removed", inherits = FALSE))
-      duplicates.removed <- NULL
-    
-    if (verbose && (removeduplicates || removecomplements)) {
-      cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
-    }
-    
-    if (verbose) {
-      cat("\n\nAn initial ensemble consisting of", length(rules), "rules was succesfully created.")  
-    }
-  }
-  # check if any rules were generated:
-  if (length(rules) == 0) {
-    warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
-    rules <- NULL
-  }
+  rules_obj <- delete_duplicates_complements(
+    rules = rules, data = data, 
+    removecomplements = removecomplements, 
+    removeduplicates = removeduplicates, 
+    return.dupl.compl = TRUE, sparse = sparse, keep_rulevars = TRUE)
   
-  result <- list(rules = rules,
-                 duplicates.removed = duplicates.removed, 
-                 complements.removed = complements.removed)
-  return(result)
+  complements.removed <- rules_obj$complements.removed
+  duplicates.removed <- rules_obj$duplicates.removed
+  rules <- rules_obj$rules
+  rulevars <- rules_obj$rulevars
+  
+  if (verbose && (removeduplicates || removecomplements)) 
+    cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
+  
+  if (verbose) 
+    cat("\n\nAn initial ensemble consisting of", length(rules), "rules was succesfully created.")  
+
+  # check if any rules were generated:
+  if (length(rules) == 0)
+    warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
+  
+  rules_obj
 }
 
 

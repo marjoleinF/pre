@@ -174,11 +174,13 @@ gpe_trees <- function(
     rules <- base::sort.default(unname(rules), method = "radix")
 
     if(remove_duplicates_complements) {
-      rules <- delete_duplicates_complements(rules = rules, data = data, 
-                                    removecomplements = TRUE, 
-                                    removeduplicates = TRUE, 
-                                    return.dupl.compl = FALSE)
+      rules_obj <- delete_duplicates_complements(
+        rules = rules, data = data, removecomplements = TRUE,
+        removeduplicates = TRUE, return.dupl.compl = FALSE)
+      
+      rules <- rules_obj$rules
     }
+    
     rules <- paste0("rTerm(", rules, ")")
   }
   
@@ -193,7 +195,7 @@ gpe_trees <- function(
 #' @param x Input symbol. 
 #' @param lb Lower quantile when winsorizing. \code{-Inf} yields no winsorizing in the lower tail.
 #' @param ub Lower quantile when winsorizing. \code{Inf} yields no winsorizing in the upper tail.
-#' @param scale Inverse value to time \code{x} by. Usually the standard deviation is used. \eqn{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008) and gives each linear term the same a-priori influence as a typical rule.
+#' @param scale Inverse value to time \code{x} by. Usually the standard deviation is used. \code{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008) and gives each linear term the same a-priori influence as a typical rule.
 #' 
 #' @details 
 #' The motivation to use wrappers is to ease getting the different terms as shown in the examples and to simplify the formula passed to \code{\link{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescales and/or winsorizes \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
