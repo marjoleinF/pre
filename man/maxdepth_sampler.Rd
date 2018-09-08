@@ -31,7 +31,7 @@ maximum tree size in terms of a (constant) tree depth. Function
 \code{maxdepth_sampler} allows for mimicing the behavior of the
 orignal RuleFit implementation. In effect, the maximum tree depth is 
 sampled from an exponential distribution with learning rate 
-\eqn{\frac{1}{\bar{L}-2}}, where \eqn{(\bar{L}) \geq 2} represents the
+\eqn{1/(\bar{L}-2)}, where \eqn{\bar{L} \ge 2} represents the
 average number of terminal nodes for trees in the ensemble. See
 Friedman & Popescu (2008, section 3.3).
 }

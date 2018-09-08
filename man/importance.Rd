@@ -8,8 +8,9 @@ variables in a prediction rule ensemble (pre)}
 importance(object, standardize = FALSE, global = TRUE,
   quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se",
   round = NA, plot = TRUE, ylab = "Importance",
-  main = "Variable importances", diag.xlab = TRUE, diag.xlab.hor = 0,
-  diag.xlab.vert = 2, cex.axis = 1, ...)
+  main = "Variable importances", abbreviate = 10L, diag.xlab = TRUE,
+  diag.xlab.hor = 0, diag.xlab.vert = 2, cex.axis = 1,
+  legend = "topright", ...)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -49,9 +50,12 @@ If \code{NA} (default), no rounding is performed.}
 \item{main}{character string. Main title of the plot. Only used when
 \code{plot = TRUE}.}
 
+\item{abbreviate}{integer or logical. Number of characters to abbreviate 
+x axis names to. If \code{FALSE}, no abbreviation is performed.}
+
 \item{diag.xlab}{logical. Should variable names be printed diagonally (that
 is, in a 45 degree angle)? Alternatively, variable names may be printed 
-vertically by specifying \code{diag.xlab = FALSE, las = 2}.}
+vertically by specifying \code{diag.xlab = FALSE} and \code{las = 2}.}
 
 \item{diag.xlab.hor}{numeric. Horizontal adjustment for lining up variable
 names with bars in the plot if variable names are printed diagonally.}
@@ -62,6 +66,13 @@ character spaces added after variable names.}
 
 \item{cex.axis}{numeric. The magnification to be used for axis annotation
 relative to the current setting of \code{cex}.}
+
+\item{legend}{logical or character. Should legend be plotted for multinomial
+or multivariate responses and if so, where? Defaults to \code{"topright"}, 
+which puts the legend in the top-right corner of the plot. Alternatively, 
+\code{"bottomright"}, \code{"bottom"}, \code{"bottomleft"}, \code{"left"}, 
+\code{"topleft"}, \code{"top"}, \code{"topright"}, \code{"right"}, 
+\code{"center"} and \code{FALSE} (which omits the legend) can be specified.}
 
 \item{...}{further arguments to be passed to \code{barplot} (only used
 when \code{plot = TRUE}).}
@@ -76,6 +87,9 @@ for all predictor variables.
 variables in the prediction rule ensemble (pre), and creates a bar plot 
 of variable importances.
 }
+\details{
+See also sections 6 and 7 of Friedman & Popecus (2008).
+}
 \examples{
 \donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
@@ -85,6 +99,10 @@ importance(airq.ens)
 importance(airq.ens, global = FALSE)
 # calculate local importances (custom: over 25\% lowest predicted values):
 importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
+}
+\references{
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }
 \seealso{
 \code{\link{pre}}

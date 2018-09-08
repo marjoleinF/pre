@@ -43,7 +43,7 @@ utils::globalVariables("%dopar%")
 #' ensemble. Defaults to \code{"both"} (initial ensemble will include both rules 
 #' and linear functions). Other option are \code{"rules"} (prediction 
 #' rules only) or \code{"linear"} (linear functions only).
-#' @param sampfrac numeric value \eqn{> 0} and \eqn{\leq 1}. Specifies  
+#' @param sampfrac numeric value \eqn{> 0} and \eqn{\le 1}. Specifies  
 #' the fraction of randomly selected training observations used to produce each 
 #' tree. Values \eqn{< 1} will result in sampling without replacement (i.e., 
 #' subsampling), a value of 1 will result in sampling with replacement 
@@ -60,6 +60,12 @@ utils::globalVariables("%dopar%")
 #' creating each split in each tree. Ignored when \code{tree.unbiased=FALSE}.
 #' @param ntrees positive integer value. Number of trees to generate for the 
 #' initial ensemble.
+#' @param confirmatory character vector. Specifies one or more confirmatory terms 
+#' to be included in the final ensemble. Linear terms can be specified as the 
+#' name of a predictor variable included in \code{data}, rules can be specified
+#' as, for example, \code{"x1 > 6 & x2 <= 8"}, where x1 and x2 should be names
+#' of variables in \code{data}. Terms thus specified will be included in the
+#' final ensemble and their coefficient will not be penalized in the estimation.
 #' @param removeduplicates logical. Remove rules from the ensemble which are 
 #' identical to an earlier rule?
 #' @param removecomplements logical. Remove rules from the ensemble which are
@@ -238,7 +244,8 @@ utils::globalVariables("%dopar%")
 #' @export
 pre <- function(formula, data, family = gaussian,
                 use.grad = TRUE, weights, type = "both", sampfrac = .5, 
-                maxdepth = 3L, learnrate = .01, mtry = Inf, ntrees = 500, 
+                maxdepth = 3L, learnrate = .01, mtry = Inf, ntrees = 500,
+                confirmatory = NULL,
                 removecomplements = TRUE, removeduplicates = TRUE, 
                 winsfrac = .025, normalize = TRUE, standardize = FALSE,
                 ordinal = TRUE, nfolds = 10L, tree.control, tree.unbiased = TRUE, 
@@ -384,6 +391,13 @@ pre <- function(formula, data, family = gaussian,
   ## Check if proper nfolds argument is specified:
   if (!(length(nfolds) == 1L && nfolds > 0 && nfolds == as.integer(nfolds))) {
     stop("Argument 'nfolds' should be a positive integer.")
+  }
+  
+  ## Check if proper confirmatory argument is specified:
+  if (!is.null(confirmatory)) {
+    if (!is.character(confirmatory)) {
+      stop("Argument 'confirmatory' should specify a character vector.")
+    }
   }
   
   ## Check if logical arguments of length 1 are properly specified:
@@ -732,7 +746,8 @@ pre <- function(formula, data, family = gaussian,
     y_names = y_names,
     normalize = normalize, 
     sparse = sparse, 
-    rulevars = rulevars)
+    rulevars = rulevars,
+    confirmatory = confirmatory)
   rm(rulevars)
   
   x_scales <- modmat_data$x_scales
@@ -743,7 +758,7 @@ pre <- function(formula, data, family = gaussian,
   ### Fit regression model ###
   ############################
   
-  ### To allow for forward selection:
+  ### TODO: allow for forward selection:
   ## Include additional argument regression = "glmnet"
   ## which also takes argument "stepAIC"
   ## then number of terms (i.e., steps argument) should be specified
@@ -769,6 +784,13 @@ pre <- function(formula, data, family = gaussian,
   
   y <- modmat_data$y
   x <- modmat_data$x  
+
+  if (is.null(cl$penalty.factor)) {
+    penalty.factor <- rep(1L, times = ncol(x))
+  } 
+  if (!is.null(confirmatory)) {
+    penalty.factor[which(colnames(x) %in% confirmatory)] <- 0L
+  }
   
   # check whether there's duplicates in the variable names:
   # (can happen, for example, due to labeling of dummy indicators for factors)
@@ -777,7 +799,9 @@ pre <- function(formula, data, family = gaussian,
   } 
   glmnet.fit <- cv.glmnet(x, y, nfolds = nfolds, weights = weights, 
                           family = family, parallel = par.final, 
-                          standardize = standardize, ...)
+                          standardize = standardize, 
+                          penalty.factor = penalty.factor,
+                          ...)
   lmin_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.min)
   l1se_ind <- which(glmnet.fit$lambda == glmnet.fit$lambda.1se)
   if (verbose) {
@@ -821,14 +845,34 @@ get_modmat <- function(
   wins_points = NULL, x_scales = NULL,
   # These should be passed in all calls
   formula, data, rules, type, x_names, winsfrac, normalize, 
-  # Response variable is optional:
-  y_names = NULL, sparse = FALSE, rulevars = NULL) {
+  # Response variable names is optional:
+  y_names = NULL, sparse = FALSE, rulevars = NULL,
+  confirmatory = NULL) {
+  
+  ## TODO: is next line necessary? Only for converting ordered categorical vars to linear terms?
+  ## Is only used twice, in get_rulemat function below.
+  ## Perhaps should be conditional on ordinal argument of pre()?
   data_org <- data # needed to evaluate rules later
   
   # convert ordered categorical predictor variables to linear terms:
   data[,sapply(data, is.ordered)] <- 
     as.numeric(data[,sapply(data, is.ordered)])
-
+  
+  ## Add confirmatory terms:
+  if (!is.null(confirmatory)) {
+    ## Get confirmatory rules and variables:
+    conf_vars <- confirmatory[confirmatory %in% x_names]
+    conf_rules <- confirmatory[!(confirmatory %in% conf_vars)]
+    if (length(conf_rules) > 0L) {
+      ## Evaluate rules (add to model matrix later):
+      eval_rules <- function(data, rule_descr) {
+        1L * with(data, eval(parse(text = rule_descr)))
+      }
+      conf_rules <- mapply(FUN = eval_rules, rule_descr = conf_rules, 
+                           MoreArgs = list(data = data))
+    }
+  }
+  
   #####
   # Perform winsorizing and normalizing
   if (type != "rules" && any(sapply(data[,x_names], is.numeric))) {
@@ -896,45 +940,69 @@ get_modmat <- function(
   }
 
   ## Combine rules and variables:
-  if(length(rules) == 0)
-    rules <- NULL
+  if (length(rules) == 0L) rules <- NULL
   if (type == "linear" || is.null(rules)) {
-    if(sparse){
+    if (sparse) {
       mf <- model.frame(Formula(formula), data)
       x <- model.Matrix(terms(mf), mf, sparse = TRUE)
       rm(mf)
       
-    } else 
+    } else {
       x <- model.matrix(Formula(formula), data = data)
-    
+    }
   } else if (type %in% c("both", "rules") && !is.null(rules)) {
-    if(sparse){
-      x <- if(is.null(rulevars)) 
-        .get_rules_mat_sparse(data_org, rules) else
+    if (sparse) {
+      x <- if (is.null(rulevars)) { 
+        .get_rules_mat_sparse(data_org, rules) 
+        } else {
           rulevars
-      if(type == "both"){
+        }
+      if (type == "both") {
         mf <- model.frame(Formula(formula), data)
         x <- cbind(model.Matrix(terms(mf), mf, sparse = TRUE), x)
         rm(mf)
-        
       }
-      
     } else { 
-      x <- if(is.null(rulevars)) 
-        .get_rules_mat_dense(data_org, rules) else 
+      x <- if (is.null(rulevars)) {
+        .get_rules_mat_dense(data_org, rules)
+        } else { 
           rulevars
-      if(type == "both")
+        }
+      if (type == "both") {
         x <- cbind(model.matrix(Formula(formula), data = data), x)
+      }
     }
     
-  } else 
+  } else { 
     stop("not implemented with type ", sQuote(type), " and is.null(rules) is ", 
          sQuote(is.null(rules)))
+  }
   
   #####
   # Remove intercept
   x <- x[, colnames(x) != "(Intercept)", drop = FALSE]
 
+  ## Add confirmatory terms:
+  if (!is.null(confirmatory)) {
+    ## Get confirmatory rules and variables:
+    #conf_vars <- confirmatory[confirmatory %in% x_names]
+    #conf_rules <- confirmatory[!(confirmatory %in% conf_vars)]
+    if (length(conf_vars) > 0L) {
+      ## If type == "rules", add variables to model matrix:
+      if (type == "rules") {
+        x <- cbind(x, as.matrix(data[conf_vars], rownames.force = FALSE))
+        ## TODO: Then check if it should be winsorized or normalized, or issue warning if not
+      }
+    }
+    if (is.matrix(conf_rules)) {
+      if (!sparse) {
+        x <- cbind(x, conf_rules)
+      } else {
+        ## TODO: implement something for sparse matrices.
+      }
+    }
+  }
+  
   if (is.null(y_names)) {
     y <- NULL
   } else {
@@ -975,7 +1043,6 @@ get_modmat <- function(
   colnames(x) <- names(rules)
   x
 }
-
 
 
 
@@ -1230,9 +1297,10 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
   
   # Keep unique, non-empty rules only:
   rules <- unique(rules[!rules==""])
-  if(sparse)
+  if (sparse) {
     rules <- .get_most_sparse_rule(rules, data)
-  
+  }
+    
   ## Adjust rule format of rpart rules:
   if (!tree.unbiased) {
     if (any(sapply(data, is.factor))) {
@@ -1268,13 +1336,14 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     rules = rules, data = data, 
     removecomplements = removecomplements, 
     removeduplicates = removeduplicates, 
-    return.dupl.compl = TRUE, sparse = sparse, keep_rulevars = TRUE)
+    return.dupl.compl = TRUE, sparse = sparse, 
+    keep_rulevars = TRUE)
   
   complements.removed <- rules_obj$complements.removed
   duplicates.removed <- rules_obj$duplicates.removed
   rules <- rules_obj$rules
   rulevars <- rules_obj$rulevars
-      
+  
   if (verbose && (removeduplicates || removecomplements)) 
     cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
     
@@ -1534,9 +1603,9 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
 #' \code{maxdepth_sampler} allows for mimicing the behavior of the
 #' orignal RuleFit implementation. In effect, the maximum tree depth is 
 #' sampled from an exponential distribution with learning rate 
-#' \eqn{\frac{1}{\bar{L}-2}}, where \eqn{(\bar{L}) \geq 2} represents the
+#' \eqn{1/(\bar{L}-2)}, where \eqn{\bar{L} \ge 2} represents the
 #' average number of terminal nodes for trees in the ensemble. See
-#' Friedman & Popescu (2008, section 3.3).
+#' Friedman & Popescu (2008, section 3.3). 
 #' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @seealso \code{\link{pre}}
@@ -1903,14 +1972,14 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
     accuracy <- NULL
   } else if (object$family == "mgaussian") {
     y_obs <- object$data[ , object$y_names]
-    names(cvpreds) <- object$y_names
+    colnames(cvpreds) <- object$y_names
     accuracy$MSE <- data.frame(MSE = colMeans((y_obs - cvpreds)^2, na.rm = TRUE),
                                se = apply((y_obs - cvpreds)^2, 2, sd, na.rm = TRUE) / sqrt_N)
     accuracy$MAE <- data.frame(MAE = colMeans(abs(y_obs - cvpreds), na.rm = TRUE),
                                se = apply(abs(y_obs - cvpreds), 2, sd, na.rm = TRUE) / sqrt_N)
   } else if (object$family == "multinomial") {
     observed <- object$data[ , object$y_names]
-    names(cvpreds) <- levels(observed)
+    colnames(cvpreds) <- levels(observed)
     y_obs <- model.matrix( ~ observed + 0)
     colnames(y_obs) <- levels(observed)
     accuracy$SEL<- data.frame(SEL = colMeans((y_obs - cvpreds)^2, na.rm = TRUE),
@@ -2179,7 +2248,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       winsfrac = winsfrac,
       x_names = object$x_names, 
       normalize = object$normalize,
-      y_names = NULL)
+      y_names = NULL,
+      confirmatory = object$call$confirmatory)
     
     newdata <- newdata$x
   }
@@ -2233,6 +2303,11 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' can be specified only for numeric and ordered input variables. If the plot is
 #' requested for a nominal input variable, the \code{nvals} argument will be
 #' ignored and a warning is printed.
+#' 
+#' See also section 8.1 of Friedman & Popescu (2008).
+#' 
+#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' singleplot(airq.ens, "Temp")}
@@ -2352,6 +2427,8 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' will be plotted. Furthermore, if none of the variables specified appears in
 #' the final prediction rule ensemble, an error will occur.
 #' 
+#' See also section 8.1 of Friedman & Popescu (2008).
+#' 
 #' @note Function \code{pairplot} uses package akima to construct interpolated 
 #' surfaces and  has an ACM license that restricts applications to non-commercial 
 #' usage, see 
@@ -2361,6 +2438,8 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
+#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @import graphics
 #' @seealso \code{\link{pre}}, \code{\link{singleplot}} 
 #' @export
@@ -2503,7 +2582,9 @@ pairplot <- function(object, varnames, type = "both",
 #' \code{plot = TRUE}.
 #' @param diag.xlab logical. Should variable names be printed diagonally (that
 #' is, in a 45 degree angle)? Alternatively, variable names may be printed 
-#' vertically by specifying \code{diag.xlab = FALSE, las = 2}.
+#' vertically by specifying \code{diag.xlab = FALSE} and \code{las = 2}.
+#' @param abbreviate integer or logical. Number of characters to abbreviate 
+#' x axis names to. If \code{FALSE}, no abbreviation is performed. 
 #' @param diag.xlab.hor numeric. Horizontal adjustment for lining up variable
 #' names with bars in the plot if variable names are printed diagonally.
 #' @param diag.xlab.vert positive integer. Vertical adjustment for position
@@ -2522,6 +2603,7 @@ pairplot <- function(object, varnames, type = "both",
 #' @return A list with two dataframes: \code{$baseimps}, giving the importances 
 #' for baselearners in the ensemble, and \code{$varimps}, giving the importances 
 #' for all predictor variables.
+#' @details See also sections 6 and 7 of Friedman & Popecus (2008).
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' # calculate global importances:
@@ -2530,13 +2612,15 @@ pairplot <- function(object, varnames, type = "both",
 #' importance(airq.ens, global = FALSE)
 #' # calculate local importances (custom: over 25% lowest predicted values):
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
+#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @seealso \code{\link{pre}}
 #' @export
 importance <- function(object, standardize = FALSE, global = TRUE,
                        quantprobs = c(.75, 1), penalty.par.val = "lambda.1se", 
                        round = NA, plot = TRUE, ylab = "Importance",
-                       main = "Variable importances", diag.xlab = TRUE, 
-                       diag.xlab.hor = 0, diag.xlab.vert = 2,
+                       main = "Variable importances", abbreviate = 10L,
+                       diag.xlab = TRUE, diag.xlab.hor = 0, diag.xlab.vert = 2,
                        cex.axis = 1, legend = "topright", ...)
 {
 
@@ -2742,7 +2826,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       }
       if (object$family %in% c("mgaussian", "multinomial")) {
         plot_varimps <- t(varimps[ , gsub("coefficient", "importance" , coef_inds)])
-        colnames(plot_varimps) <- varimps$varname
+        colnames(plot_varimps) <- abbreviate(varimps$varname, minlength = abbreviate)
         rownames(plot_varimps) <- gsub("coefficient.", "" , coef_inds)
         if (diag.xlab) {
           xlab.pos <- barplot(plot_varimps, beside = TRUE, ylab = ylab, 
@@ -2753,6 +2837,9 @@ importance <- function(object, standardize = FALSE, global = TRUE,
           xlab.pos <- xlab.pos[nrow(xlab.pos),]
           ## add specified number of trailing spaces to variable names:
           plotnames <- varimps$varname
+          if (is.numeric(abbreviate) && abbreviate > 0) {
+            plotnames <- abbreviate(plotnames, minlength = abbreviate)
+          }
           if (diag.xlab.vert > 0) {
             for (i in 1:diag.xlab.vert) {
               plotnames <- paste0(plotnames, " ")
@@ -2771,6 +2858,9 @@ importance <- function(object, standardize = FALSE, global = TRUE,
                               main = main, cex.axis = cex.axis, ...)
           ## add specified number of trailing spaces to variable names:
           plotnames <- varimps$varname
+          if (is.numeric(abbreviate) && abbreviate > 0) {
+            plotnames <- abbreviate(plotnames, minlength = abbreviate)
+          }
           if (diag.xlab.vert > 0) {
             for (i in 1:diag.xlab.vert) {
               plotnames <- paste0(plotnames, " ")
@@ -2779,7 +2869,11 @@ importance <- function(object, standardize = FALSE, global = TRUE,
           text(xlab.pos + diag.xlab.hor, par("usr")[3], srt = 45, adj = 1, xpd = TRUE, 
                labels = plotnames, cex = cex.axis)
         } else {
-          barplot(height = varimps$imp, names.arg = varimps$varname, ylab = ylab,
+          plotnames <- varimps$varname
+          if (is.numeric(abbreviate) && abbreviate > 0) {
+            plotnames <- abbreviate(plotnames, minlength = abbreviate)
+          }
+          barplot(height = varimps$imp, names.arg = plotnames, ylab = ylab,
                 main = main, ...)
         }
       }
@@ -2831,7 +2925,15 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 #' airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 #' nullmods <- bsnullinteract(airq.ens)
 #' interact(airq.ens, nullmods = nullmods, col = c("#7FBFF5", "#8CC876"))}
-#' @details Computationally intensive.
+#' @details Note that computation of bootstrapped null interaction models is 
+#' computationally intensive. The default number of samples is set to 10,
+#' but for reliable results argument \code{nsamp} should be set to a higher
+#' value (e.g., \eqn{\ge 100}). 
+#' 
+#' See also section 8.3 of Friedman & Popescu (2008).
+#' 
+#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @seealso \code{\link{pre}}, \code{\link{interact}} 
 #' @export
 bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
@@ -3029,11 +3131,17 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' interaction effect for each of the input variables. 
 #' 
 #' Note that the error rates of null hypothesis tests of interaction effects 
-#' have not yet been studied in detail, but likely depend on the number of 
-#' generated bootstrapped null interaction models as well as the complexity of 
-#' the fitted ensembles. Users are therefore advised to test for the presence 
-#' of interaction effects by setting the \code{nsamp} argument of the function 
-#' \code{bsnullinteract} \eqn{\geq 100}.
+#' have not yet been studied in detail, but results are likely to get more 
+#' reliable when the number of bootstrapped null interaction models is larger.
+#' The default of the \code{bsnullinteract} function is to generate 10 
+#' bootstrapped null interaction datasets, to yield shorter computation times.
+#' To obtain a more reliable result, however, users are advised to
+#' set the \code{nsamp} argument \eqn{\ge 100}.
+#' 
+#' See also section 8 of Friedman & Popescu (2008).
+#' 
+#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
 #' @export
 interact <- function(object, varnames = NULL, nullmods = NULL, 

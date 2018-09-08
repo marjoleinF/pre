@@ -63,6 +63,8 @@ memory allocation errors. When the nvals argument is supplied, values for the
 minimum, maximum, and nvals - 2 intermediate values of the predictor variable
 will be plotted. Furthermore, if none of the variables specified appears in
 the final prediction rule ensemble, an error will occur.
+
+See also section 8.1 of Friedman & Popescu (2008).
 }
 \note{
 Function \code{pairplot} uses package akima to construct interpolated 
@@ -76,7 +78,10 @@ Function \code{pairplot} prints a note referring to this ACM licence.
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 pairplot(airq.ens, c("Temp", "Wind"))}
 }
+\references{
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+}
 \seealso{
-\code{\link{pre}}, \code{\link{singleplot}} 
-#' @export
+\code{\link{pre}}, \code{\link{singleplot}}
 }

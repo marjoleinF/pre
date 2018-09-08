@@ -51,11 +51,17 @@ intermediate values of the predictor variable will be plotted. Note that nvals
 can be specified only for numeric and ordered input variables. If the plot is
 requested for a nominal input variable, the \code{nvals} argument will be
 ignored and a warning is printed.
+
+See also section 8.1 of Friedman & Popescu (2008).
 }
 \examples{
 \donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 singleplot(airq.ens, "Temp")}
+}
+\references{
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }
 \seealso{
 \code{\link{pre}}, \code{\link{pairplot}}

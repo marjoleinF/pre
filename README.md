@@ -69,12 +69,12 @@ coefs <- coef(airq.ens)
 coefs[1:10,]
 #>            rule coefficient                         description
 #> 201 (Intercept)   72.968070                                   1
-#> 166     rule191  -15.640149             Wind > 5.7 & Temp <= 87
-#> 149     rule173   -8.664592             Wind > 5.7 & Temp <= 82
-#> 178     rule204    8.171556        Wind <= 10.3 & Solar.R > 148
+#> 167     rule191  -15.640149             Wind > 5.7 & Temp <= 87
+#> 150     rule173   -8.664592             Wind > 5.7 & Temp <= 82
+#> 179     rule204    8.171556        Wind <= 10.3 & Solar.R > 148
 #> 39       rule42   -7.692859             Wind > 6.3 & Temp <= 84
 #> 10       rule10   -6.803289             Temp <= 84 & Temp <= 77
-#> 167     rule192   -4.692662 Wind > 5.7 & Temp <= 87 & Day <= 23
+#> 168     rule192   -4.692662 Wind > 5.7 & Temp <= 87 & Day <= 23
 #> 84       rule93    3.146876             Temp > 77 & Wind <= 8.6
 #> 48       rule51   -2.698157             Wind > 5.7 & Temp <= 84
 #> 23       rule25   -2.448119             Wind > 6.3 & Temp <= 82
@@ -83,10 +83,12 @@ coefs[1:10,]
 We can assess the importance of input variables as well as baselearners using the `importance()` function:
 
 ``` r
-importance(airq.ens, round = 4)
+imps <- importance(airq.ens, round = 4)
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-6-1.png)
+
+The resulting plot reveals that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that is not predictive of Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
 
 We can generate predictions for new observations using the `predict` method:
 
@@ -136,15 +138,19 @@ airq.cv$accuracy
 #> 13.186533  1.200747
 ```
 
+The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`.
+
 We can assess the presence of input variable interactions using the `interact()` and `bsnullinteract()` funtions:
 
 ``` r
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
-int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R", "Month"))
+int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R"))
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-11-1.png)
+
+The plot indicates that Temperature and wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval of the test statistics in the null interaction models (lighter grey with error bars). The plot indicates that Solar.R is not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
 
 We can check assess correlations between the baselearners using the `corplot()` function:
 

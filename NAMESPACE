@@ -46,5 +46,7 @@ importFrom("earth", "earth")
 importFrom("stringr", "str_match", "str_replace_all")
 importFrom("Matrix", "sparseMatrix")
 importFrom("MatrixModels", "model.Matrix")
+importFrom("methods", "slot")
+
 
 importClassesFrom("Matrix", "sparseMatrix")

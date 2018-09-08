@@ -6,11 +6,12 @@
 \usage{
 pre(formula, data, family = gaussian, use.grad = TRUE, weights,
   type = "both", sampfrac = 0.5, maxdepth = 3L, learnrate = 0.01,
-  mtry = Inf, ntrees = 500, removecomplements = TRUE,
-  removeduplicates = TRUE, winsfrac = 0.025, normalize = TRUE,
-  standardize = FALSE, ordinal = TRUE, nfolds = 10L, tree.control,
-  tree.unbiased = TRUE, verbose = FALSE, par.init = FALSE,
-  par.final = FALSE, ...)
+  mtry = Inf, ntrees = 500, confirmatory = NULL,
+  removecomplements = TRUE, removeduplicates = TRUE,
+  winsfrac = 0.025, normalize = TRUE, standardize = FALSE,
+  ordinal = TRUE, nfolds = 10L, tree.control, tree.unbiased = TRUE,
+  verbose = FALSE, par.init = FALSE, par.final = FALSE,
+  sparse = FALSE, ...)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -57,7 +58,7 @@ ensemble. Defaults to \code{"both"} (initial ensemble will include both rules
 and linear functions). Other option are \code{"rules"} (prediction 
 rules only) or \code{"linear"} (linear functions only).}
 
-\item{sampfrac}{numeric value \eqn{> 0} and \eqn{\leq 1}. Specifies
+\item{sampfrac}{numeric value \eqn{> 0} and \eqn{\le 1}. Specifies
 the fraction of randomly selected training observations used to produce each 
 tree. Values \eqn{< 1} will result in sampling without replacement (i.e., 
 subsampling), a value of 1 will result in sampling with replacement 
@@ -78,6 +79,13 @@ creating each split in each tree. Ignored when \code{tree.unbiased=FALSE}.}
 
 \item{ntrees}{positive integer value. Number of trees to generate for the 
 initial ensemble.}
+
+\item{confirmatory}{character vector. Specifies one or more confirmatory terms 
+to be included in the final ensemble. Linear terms can be specified as the 
+name of a predictor variable included in \code{data}, rules can be specified
+as, for example, \code{"x1 > 6 & x2 <= 8"}, where x1 and x2 should be names
+of variables in \code{data}. Terms thus specified will be included in the
+final ensemble and their coefficient will not be penalized in the estimation.}
 
 \item{removecomplements}{logical. Remove rules from the ensemble which are
 identical to (1 - an earlier rule)?}
@@ -135,7 +143,9 @@ datasets.}
 validation for selecting the final ensemble? Must register parallel beforehand, 
 such as doMC or others.}
 
-\item{...}{Additional arguments to be passed to 
+\item{sparse}{logical for whether sparse design matrices should be used.}
+
+\item{...}{Additional arguments to be passed to
 \code{\link[glmnet]{cv.glmnet}}.}
 }
 \value{

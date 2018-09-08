@@ -1,3 +1,10 @@
+Changes in Version 0.7 (....-..-..)
+
+  - Added support for sparse rule matrix, which can be invoked through sparse 
+      argument in pre(). If sparse = TRUE, memory usage will be reduced and 
+      computation speed may be improved for large datasets.
+
+
 Changes in Version 0.6 (2018-08-03)
 
   - Added support for survival responses (i.e., family = "cox") in pre() 

@@ -19,7 +19,7 @@ eTerm(x, scale = 1/0.4)
 
 \item{ub}{Lower quantile when winsorizing. \code{Inf} yields no winsorizing in the upper tail.}
 
-\item{scale}{Inverse value to time \code{x} by. Usually the standard deviation is used. \eqn{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008) and gives each linear term the same a-priori influence as a typical rule.}
+\item{scale}{Inverse value to time \code{x} by. Usually the standard deviation is used. \code{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008) and gives each linear term the same a-priori influence as a typical rule.}
 }
 \value{
 \code{x} potentially transformed with additional information provided in the attributes.

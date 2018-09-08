@@ -38,13 +38,22 @@ which can be used to derive a reference distribution of the test statistic
 calculated with \code{\link{interact}}.
 }
 \details{
-Computationally intensive.
+Note that computation of bootstrapped null interaction models is 
+computationally intensive. The default number of samples is set to 10,
+but for reliable results argument \code{nsamp} should be set to a higher
+value (e.g., \eqn{\ge 100}). 
+
+See also section 8.3 of Friedman & Popescu (2008).
 }
 \examples{
 \donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
 nullmods <- bsnullinteract(airq.ens)
 interact(airq.ens, nullmods = nullmods, col = c("#7FBFF5", "#8CC876"))}
+}
+\references{
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }
 \seealso{
 \code{\link{pre}}, \code{\link{interact}}

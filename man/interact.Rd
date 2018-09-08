@@ -90,11 +90,14 @@ argument) are plotted. These allow for testing the null hypothesis of no
 interaction effect for each of the input variables. 
 
 Note that the error rates of null hypothesis tests of interaction effects 
-have not yet been studied in detail, but likely depend on the number of 
-generated bootstrapped null interaction models as well as the complexity of 
-the fitted ensembles. Users are therefore advised to test for the presence 
-of interaction effects by setting the \code{nsamp} argument of the function 
-\code{bsnullinteract} \eqn{\geq 100}.
+have not yet been studied in detail, but results are likely to get more 
+reliable when the number of bootstrapped null interaction models is larger.
+The default of the \code{bsnullinteract} function is to generate 10 
+bootstrapped null interaction datasets, to yield shorter computation times.
+To obtain a more reliable result, however, users are advised to
+set the \code{nsamp} argument \eqn{\ge 100}.
+
+See also section 8 of Friedman & Popescu (2008).
 }
 \description{
 \code{interact} calculates test statistics for assessing the strength of
@@ -109,6 +112,10 @@ specified, in which case setting \verb{parallel = TRUE} may improve speed.
 \donttest{set.seed(42)
  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
+}
+\references{
+Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }
 \seealso{
 \code{\link{pre}}, \code{\link{bsnullinteract}}

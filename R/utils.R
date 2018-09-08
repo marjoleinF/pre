@@ -24,11 +24,9 @@ delete_duplicates_complements <- function(
   
   ## Remove complement rules
   if (removecomplements) {
-    if(sparse){
+    if (sparse) {
       is_all_binary <- all(rulevars@x %in% 0:1)
-      if(!is_all_binary)
-        stop("method not implemented for non-binary rules")
-      
+      if (!is_all_binary) stop("method not implemented for non-binary rules")
       # find columns which length of non-zero entries are equal to the number 
       # of rows. The latter are complements if the union of the row indices are
       # equal to the number of rows
@@ -41,14 +39,14 @@ delete_duplicates_complements <- function(
       row_indices <- split(is, Jfac)
       lengths <- table(Jfac)
       complements <- logical(p)
-      for(i in 1:(p - 1)){
-        if(complements[i])
+      for(i in 1:(p - 1)) {
+        if (complements[i])
           next
         
         is_potential <- which(lengths[i] + lengths[(i + 1):p] == n) + i
         is_potential <- is_potential[!complements[is_potential]]
         
-        if(length(is_potential) == 0)
+        if (length(is_potential) == 0)
           next
         
         union_len <- sapply(
@@ -56,18 +54,20 @@ delete_duplicates_complements <- function(
                  y = row_indices[is_potential], SIMPLIFY = FALSE), 
           length)
         is_compl <- which(union_len == n) 
-        if(length(is_compl) > 0)
+        if (length(is_compl) > 0) {
           complements[is_potential[is_compl]] <- TRUE
+        }
       }
         
-    } else {
-      if(!is.logical(rulevars))
+    } else { # sparse = FALSE
+      if (!is.logical(rulevars)) {
         stop("method not implemented for non-binary rules")
+      }
       
       # find columns will equal variance to reduce the number of comparisons
-      vars <- apply(rulevars, 2, var)
+      vars <- apply(rulevars, 2, var_bin)
       vars_distinct <- lapply(
-        unique(vars), function(x){ 
+        unique(vars), function(x) { 
           idx <- which(is_almost_eq(x, vars))
           list(var = x, n = length(idx), idx = idx)
         })
@@ -85,7 +85,7 @@ delete_duplicates_complements <- function(
         
         n_idx <- length(idx)
         for(j in 1:(n_idx - 1)){
-          if(complements[idx[j]])
+          if (complements[idx[j]])
             next
           
           this_val <- rulevars[, idx[j]]
@@ -94,7 +94,7 @@ delete_duplicates_complements <- function(
               rulevars[, idx[(j + 1):n_idx], drop = FALSE], 2, 
               function(x) all(x != this_val))) + j
           
-          if(length(is_compl) > 0)
+          if (length(is_compl) > 0)
             complements[idx[is_compl]] <- TRUE
         }
       }
@@ -106,10 +106,11 @@ delete_duplicates_complements <- function(
     if (length(complements) > 0)
       rules <- rules[-complements]
     
-  } else 
+  } else {
     complements.removed <- NULL
+  }
   
-  rulevars = if(keep_rulevars && length(rules) > 0)
+  rulevars = if (keep_rulevars && length(rules) > 0)
     rulevars[, names(rules)] else NULL
   
   ## Return results:
