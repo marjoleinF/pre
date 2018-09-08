@@ -88,7 +88,7 @@ imps <- importance(airq.ens, round = 4)
 
 ![](inst/README-figures/README-unnamed-chunk-6-1.png)
 
-The resulting plot reveals that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that is not predictive of Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
+The resulting plot shows that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that is not associate with Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
 
 We can generate predictions for new observations using the `predict` method:
 
@@ -128,29 +128,21 @@ airq.cv <- cvpre(airq.ens)
 #> $MAE
 #>       MAE        se 
 #> 13.186533  1.200747
-airq.cv$accuracy
-#> $MSE
-#>       MSE        se 
-#> 332.48191  72.23573 
-#> 
-#> $MAE
-#>       MAE        se 
-#> 13.186533  1.200747
 ```
 
-The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`.
+The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`.
 
 We can assess the presence of input variable interactions using the `interact()` and `bsnullinteract()` funtions:
 
 ``` r
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
-int <- interact(airq.ens, nullmods = nullmods, c("Temp", "Wind", "Solar.R"))
+int <- interact(airq.ens, nullmods = nullmods)
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-11-1.png)
 
-The plot indicates that Temperature and wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval of the test statistics in the null interaction models (lighter grey with error bars). The plot indicates that Solar.R is not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
+The plot with variable interaction strengths indicates that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval of interaction stengths in the null interaction models (lighter grey with error bars). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
 
 We can check assess correlations between the baselearners using the `corplot()` function:
 
@@ -163,7 +155,7 @@ corplot(airq.ens)
 Including hinge functions (multivariate adaptive regression splines)
 --------------------------------------------------------------------
 
-More complex prediction ensembles can be obtained using the `gpe()` function. The abbreviation gpe stands for generalized prediction ensembles, which may also include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of such hinge functions may further improve predictive accuracy. See the following example:
+More complex prediction ensembles can be obtained using the `gpe()` function. Abbreviation gpe stands for generalized prediction ensembles, which can also include hinge functions of the predictor variables as described in Friedman (1991), in addition to rules and/or linear terms. Addition of hinge functions may further improve predictive accuracy. See the following example:
 
 ``` r
 set.seed(42)
