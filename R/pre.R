@@ -439,15 +439,15 @@ pre <- function(formula, data, family = gaussian,
     }
     if (use.grad && tree.unbiased && !use_glmertree) {
       if (!setequal(names(ctree_control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing named elements", paste(names(ctree_control()), collapse = ', '))
+        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(ctree_control()), collapse = ', '))
       }
     } else if (!use.grad && tree.unbiased) { 
       if (!setequal(names(mob_control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing named elements", paste(names(mob_control()), collapse = ', '))
+        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(mob_control()), collapse = ', '))
       }
     } else if (!tree.unbiased) {
       if (!setequal(names(rpart.control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing names elements", paste(names(rpart.control()), collapse = ', '))
+        stop("Argument 'tree.control' should be a list containing names elements ", paste(names(rpart.control()), collapse = ', '))
       }
     }
     if (use.grad) { ## if ctree or rpart are employed:
