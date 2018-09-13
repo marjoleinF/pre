@@ -9,10 +9,13 @@ delete_duplicates_complements <- function(
   rulevars <- if(sparse)
     .get_rules_mat_sparse(data, rules) else
       .get_rules_mat_dense(data, rules)
-  colnames(rulevars) <- names(rules) <- paste0("rule", 1:length(rules))
+  rules_to_process <- length(rules) > 0
+  if (rules_to_process) {
+    colnames(rulevars) <- names(rules) <- paste0("rule", 1:length(rules))
+  }
   
   ## Remove duplicate rules
-  if (removeduplicates) {
+  if (removeduplicates && rules_to_process) {
     # Remove rules with identical support
     duplicates <- duplicated(rulevars, MARGIN = 2)
     duplicates.removed <- rules[duplicates]
@@ -23,7 +26,7 @@ delete_duplicates_complements <- function(
     duplicates.removed <- NULL
   
   ## Remove complement rules
-  if (removecomplements) {
+  if (removecomplements && rules_to_process) {
     if (sparse) {
       is_all_binary <- all(rulevars@x %in% 0:1)
       if (!is_all_binary) stop("method not implemented for non-binary rules")
@@ -110,7 +113,7 @@ delete_duplicates_complements <- function(
     complements.removed <- NULL
   }
   
-  rulevars = if (keep_rulevars && length(rules) > 0)
+  rulevars = if (keep_rulevars && rules_to_process)
     rulevars[, names(rules)] else NULL
   
   ## Return results:

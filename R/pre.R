@@ -1313,7 +1313,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       rules <- gsub(pattern = ",", replacement = "\", \"", x = rules, fixed = TRUE)
       ## add "')" at the end of the string
       rules <- strsplit(x = rules, split = " & ", fixed = TRUE)
-      for (i in 1:length(rules)) {
+      for (i in seq_along(rules)) {
         for (j in names(data)[sapply(data, is.factor)]) {
           if (any(grepl(j, rules[[i]], fixed = TRUE))) {
             rules[[i]][grepl(j, rules[[i]], fixed = TRUE)] <- paste0(
