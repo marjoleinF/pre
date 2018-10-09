@@ -1295,64 +1295,69 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     }
   }
   
-  # Keep unique, non-empty rules only:
-  rules <- unique(rules[!rules==""])
-  if (sparse) {
-    rules <- .get_most_sparse_rule(rules, data)
-  }
+  if (length(rules) > 0) {
+    # Keep unique, non-empty rules only:
+    rules <- unique(rules[!rules==""])
+    if (sparse) {
+      rules <- .get_most_sparse_rule(rules, data)
+    }
     
-  ## Adjust rule format of rpart rules:
-  if (!tree.unbiased) {
-    if (any(sapply(data, is.factor))) {
-      # replace "=" by " %in% c('"
-      for (i in names(data)[sapply(data, is.factor)]) { 
-        rules <- gsub(pattern = paste0(i, "="), replacement = paste0(i, " %in% c(\""), 
-                     x = rules, fixed = TRUE)
-      }
-      # replace all "," by "','"
-      rules <- gsub(pattern = ",", replacement = "\", \"", x = rules, fixed = TRUE)
-      ## add "')" at the end of the string
-      rules <- strsplit(x = rules, split = " & ", fixed = TRUE)
-      for (i in 1:length(rules)) {
-        for (j in names(data)[sapply(data, is.factor)]) {
-          if (any(grepl(j, rules[[i]], fixed = TRUE))) {
-            rules[[i]][grepl(j, rules[[i]], fixed = TRUE)] <- paste0(
-              rules[[i]][grepl(j, rules[[i]], fixed = TRUE)], "\")")
-          }        
+    ## Adjust rule format of rpart rules:
+    if (!tree.unbiased) {
+      if (any(sapply(data, is.factor))) {
+        # replace "=" by " %in% c('"
+        for (i in names(data)[sapply(data, is.factor)]) { 
+          rules <- gsub(pattern = paste0(i, "="), replacement = paste0(i, " %in% c(\""), 
+                       x = rules, fixed = TRUE)
+        }
+        # replace all "," by "','"
+        rules <- gsub(pattern = ",", replacement = "\", \"", x = rules, fixed = TRUE)
+        ## add "')" at the end of the string
+        rules <- strsplit(x = rules, split = " & ", fixed = TRUE)
+        for (i in 1:length(rules)) {
+          for (j in names(data)[sapply(data, is.factor)]) {
+            if (any(grepl(j, rules[[i]], fixed = TRUE))) {
+              rules[[i]][grepl(j, rules[[i]], fixed = TRUE)] <- paste0(
+                rules[[i]][grepl(j, rules[[i]], fixed = TRUE)], "\")")
+            }        
+          }
         }
       }
+      rules <- sapply(rules, paste0, collapse = " & ")
+      # "<" should be " <" and ">=" should be " >= "
+      rules <- gsub(pattern = ">=", replacement = " >= ", fixed = TRUE,
+                    x = gsub(pattern = "<", replacement = " <", x = rules, fixed = TRUE))
     }
-    rules <- sapply(rules, paste0, collapse = " & ")
-    # "<" should be " <" and ">=" should be " >= "
-    rules <- gsub(pattern = ">=", replacement = " >= ", fixed = TRUE,
-                  x = gsub(pattern = "<", replacement = " <", x = rules, fixed = TRUE))
-  }
+
+    if (verbose) {
+      cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
+    }
   
-  if (verbose) {
-    cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
-  }
+    rules_obj <- delete_duplicates_complements(
+      rules = rules, data = data, 
+      removecomplements = removecomplements, 
+      removeduplicates = removeduplicates, 
+      return.dupl.compl = TRUE, sparse = sparse, 
+      keep_rulevars = TRUE)
   
-  rules_obj <- delete_duplicates_complements(
-    rules = rules, data = data, 
-    removecomplements = removecomplements, 
-    removeduplicates = removeduplicates, 
-    return.dupl.compl = TRUE, sparse = sparse, 
-    keep_rulevars = TRUE)
+    #complements.removed <- rules_obj$complements.removed
+    #duplicates.removed <- rules_obj$duplicates.removed
+    #rules <- rules_obj$rules
+    #rulevars <- rules_obj$rulevars
   
-  complements.removed <- rules_obj$complements.removed
-  duplicates.removed <- rules_obj$duplicates.removed
-  rules <- rules_obj$rules
-  rulevars <- rules_obj$rulevars
-  
-  if (verbose && (removeduplicates || removecomplements)) 
-    cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
+    if (verbose && (removeduplicates || removecomplements)) 
+      cat("\n\nA total of", length(rules_obj$duplicates.removed) + length(rules_obj$complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
     
-  if (verbose)
-    cat("\n\nAn initial ensemble consisting of", length(rules), "rules was successfully created.")  
-  
-  # Check if any rules were generated at all:
-  if (length(rules) == 0L) 
-    warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
+    if (verbose)
+      cat("\n\nAn initial ensemble consisting of", length(rules_obj$rules), "rules was successfully created.")  
+    
+  } else {
+    warning("No prediction rules could be derived from dataset.", immediate. = TRUE)  
+    rules_obj <- list(rules = rules,
+                      complements.removed = NULL, 
+                      duplicates.removed = NULL, 
+                      rulevars = NULL)
+  }
   
   rules_obj
 }
