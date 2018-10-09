@@ -438,16 +438,16 @@ pre <- function(formula, data, family = gaussian,
       stop("Argument 'tree.control' should be a list of control parameters.")
     }
     if (use.grad && tree.unbiased && !use_glmertree) {
-      if (!all(sort(names(ctree_control())) == sort(names(tree.control)))) {
-        stop("Argument 'tree.control' should be a list containing named elements", names(ctree_control()))
+      if (!setequal(names(ctree_control()), names(tree.control))) {
+        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(ctree_control()), collapse = ', '))
       }
     } else if (!use.grad && tree.unbiased) { 
-      if (!all(sort(names(mob_control())) == sort(names(tree.control)))) {
-        stop("Argument 'tree.control' should be a list containing named elements", names(mob_control()))
+      if (!setequal(names(mob_control()), names(tree.control))) {
+        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(mob_control()), collapse = ', '))
       }
     } else if (!tree.unbiased) {
-      if(!all(sort(names(rpart.control())) == sort(names(tree.control)))) {
-        stop("Argument 'tree.control' should be a list containing names elements", names(rpart.control()))
+      if (!setequal(names(rpart.control()), names(tree.control))) {
+        stop("Argument 'tree.control' should be a list containing names elements ", paste(names(rpart.control()), collapse = ', '))
       }
     }
     if (use.grad) { ## if ctree or rpart are employed:
@@ -1301,7 +1301,6 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     if (sparse) {
       rules <- .get_most_sparse_rule(rules, data)
     }
-    
     ## Adjust rule format of rpart rules:
     if (!tree.unbiased) {
       if (any(sapply(data, is.factor))) {
