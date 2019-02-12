@@ -125,9 +125,11 @@ caret_pre_model <- list(
     return(out)
   },
   fit = function(x, y, wts = NULL, param, lev = NULL, last = NULL, 
-                 weights = NULL, classProbs, ...) { 
+                 classProbs, ...) { 
+    dat <- if (is.data.frame(x)) x else as.data.frame(x)
+    dat$.outcome <- y
     theDots <- list(...)
-    if(!any(names(theDots) == "family")) {
+    if (!any(names(theDots) == "family")) {
       theDots$family <- if (is.factor(y)) {
         if (nlevels(y) == 2L) { 
           "binomial"
@@ -138,24 +140,40 @@ caret_pre_model <- list(
         "gaussian"
       }
     }
-    data <- data.frame(x, .outcome = y)
-    formula <- .outcome ~ .
-    if (is.null(weights)) { weights <- rep(1, times = nrow(x)) }
-    pre(formula = formula, data = data, weights = weights, 
-        sampfrac = param$sampfrac, maxdepth = param$maxdepth, 
-        learnrate = param$learnrate, mtry = param$mtry, 
-        use.grad = param$use.grad, ...)
+    
+    if(!is.null(wts)) theDots$weights <- wts
+    
+    modelArgs <- c(
+      list(
+        formula = as.formula(".outcome ~ ."),
+        data = dat,
+        sampfrac = param$sampfrac, 
+        maxdepth = param$maxdepth, 
+        learnrate = param$learnrate, 
+        mtry = param$mtry, 
+        use.grad = param$use.grad),
+        theDots)
+    out <- do.call(pre::pre, modelArgs)
+    out
+
+    #pre(formula = as.formula(".outcome ~ ."), data = dat, weights = weights, 
+    #    sampfrac = param$sampfrac, maxdepth = param$maxdepth, 
+    #    learnrate = param$learnrate, mtry = param$mtry, 
+    #    use.grad = param$use.grad, ...)
   },
   predict = function(modelFit, newdata, submodels = NULL) {
     if (is.null(submodels)) {
       if (modelFit$family %in% c("gaussian", "mgaussian")) {
         out <- pre:::predict.pre(object = modelFit, 
+                                 penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
                                  newdata = as.data.frame(newdata))
       } else if (modelFit$family == "poisson") {
         out <- pre:::predict.pre(object = modelFit, 
+                                 penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
                                  newdata = as.data.frame(newdata), type = "response")
       } else {
         out <- factor(pre:::predict.pre(object = modelFit, 
+                                        penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
                                         newdata = as.data.frame(newdata), type = "class"))      
       }
     } else {
@@ -183,6 +201,7 @@ caret_pre_model <- list(
   prob = function(modelFit, newdata, submodels = NULL) {
     if (is.null(submodels)) {
       probs <- pre:::predict.pre(object = modelFit, 
+                                 penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
                                  newdata = as.data.frame(newdata), 
                                  type = "response")
       # For binary classification, create matrix:    

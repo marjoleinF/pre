@@ -299,8 +299,7 @@ list.rules <- function (x, i = NULL, removecomplements = TRUE, ...) {
       slevels <- slevels[!is.na(slevels)]
       srule <- paste(svar, " %in% c(\"", paste(slevels, 
                                                collapse = "\", \"", sep = ""), "\")", sep = "")
-    }
-    else {
+    } else {
       if (is.null(index)) {
         index <- 1:length(kid)
       }

@@ -263,17 +263,17 @@ pre <- function(formula, data, family = gaussian,
   ## Check if proper formula argument is specified 
   ## and check if glmertree should be employed:
   if (!(inherits(formula, "formula"))) {
-    stop("Argument 'formula' should specify and object of class 'formula'.")
+    stop("Argument 'formula' should specify and object of class 'formula'.\n")
   } else {
     if (length(as.Formula(formula))[[2]] == 3L) { # then right-hand side of regression formula consists of three parts and glmertree should be employed
       formula <- as.Formula(formula)
       use_glmertree <- TRUE
       if (formula[[3]][[2]][[2]] == 1) { # check if intercept is specified as regressor for linear model
           if (use.grad || learnrate > 0) {
-            stop("When specifying a formula with three-part right-hand side, argument 'use.grad' should be set to FALSE and 'learnrate' to 0", immediate. = TRUE)
+            stop("When specifying a formula with three-part right-hand side, argument 'use.grad' should be set to FALSE and 'learnrate' to 0.\n", immediate. = TRUE)
           }
         } else {
-          stop("When specifying a three-part right-hand side, the first part of the right-hand side should consist of an intercept only, e.g., y ~ 1 | cluster | x1 + x2 + x3.")
+          stop("When specifying a three-part right-hand side, the first part of the right-hand side should consist of an intercept only, e.g., y ~ 1 | cluster | x1 + x2 + x3.\n")
         }
       } else {
       use_glmertree <- FALSE
@@ -286,23 +286,23 @@ pre <- function(formula, data, family = gaussian,
     if (any(grepl(".", form, fixed = TRUE))) {
       if (any(grepl("(", form, fixed = TRUE))) {
         if (any(grepl(")", form, fixed = TRUE))) {
-          warning("Argument 'formula' contains both one or more functions of predictor variables, as well as a dot ('.'), which should be avoided. Model fitting may fail, and/or both the original variable(s) and their functions may be included as predictor variables.", immediate. = TRUE)  
+          warning("Argument 'formula' contains both one or more functions of predictor variables, as well as a dot ('.'), which should be avoided. Model fitting may fail, and/or both the original variable(s) and their functions may be included as predictor variables.\n", immediate. = TRUE)  
         }
       }
     }
     if (any(grepl("-", as.character(formula), fixed = TRUE))) {
-      warning("Argument 'formula' contains a minus sign. Note that the minus sign should not be used to omit the intercept or variables from the ensemble.", immediate. = TRUE)
+      warning("Argument 'formula' contains a minus sign. Note that the minus sign should not be used to omit the intercept or variables from the ensemble.\n", immediate. = TRUE)
     }
   }
 
   ## Check if proper data argument is specified:
   if (!is.data.frame(data)) {
-    stop("Argument 'data' should specify a data frame.")
+    stop("Argument 'data' should specify a data frame.\n")
   }
 
   ## Check and set up family argument: 
   if (length(family) > 1L) {
-    warning("Argument 'family' has length > 1, only first element will be used")
+    warning("Argument 'family' has length > 1, only first element will be used.\n")
     family <- family[1L]
   }
   if (is.function(family)) { 
@@ -311,41 +311,41 @@ pre <- function(formula, data, family = gaussian,
       link <- family$link
       family <- family$family
       if (family == "gaussian" && link != "identity") {
-        warning("The link function specified is currently not supported; identity link will be employed.", immediate. = TRUE)
+        warning("The link function specified is currently not supported; identity link will be employed.\n", immediate. = TRUE)
       } else if (family == "binomial" && link != "logit") {
-        warning("The link function specified is currently not supported; logit link will be employed.", immediate. = TRUE)
+        warning("The link function specified is currently not supported; logit link will be employed.\n", immediate. = TRUE)
       } else if (family == "poisson" && link != "log") {
-        warning("The link function specified is currently not supported; log link will be employed.", immediate. = TRUE)
+        warning("The link function specified is currently not supported; log link will be employed.\n", immediate. = TRUE)
       }
     } else {
-      stop("Argument 'family' should specify a family object.")
+      stop("Argument 'family' should specify a family object.\n")
     }
   }
   if (is.character(family)) {
     if (!(family %in% c("gaussian", "binomial", "poisson", "mgaussian", "multinomial", "cox"))) {
-      stop("Argument 'family' should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian', 'cox', or a corresponding family object.")
+      stop("Argument 'family' should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian', 'cox', or a corresponding family object.\n")
     }
   } else {
-    stop("Argument 'family' should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian', 'cox', or a corresponding family object.")
+    stop("Argument 'family' should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian', 'cox', or a corresponding family object.\n")
   }
   
   ## Check if proper weights argument is specified, if specified:
   if (missing(weights)) {
     weights <- rep(1L, times = nrow(data))
   } else if (length(weights) != nrow(data)) {
-      warning("Length of argument 'weights' is not equal to nrow(data)", immediate. = TRUE)
+      warning("Length of argument 'weights' is not equal to nrow(data).\n", immediate. = TRUE)
   }
   
   ## Check if proper type argument is specified:
   if (!(length(type) == 1L && type %in% c("rules", "both", "linear"))) {
-    stop("Argument 'type' should be 'rules', 'linear' or 'both'.")
+    stop("Argument 'type' should be 'rules', 'linear' or 'both'.\n")
   }
   
   ## Check if proper sampfrac argument is specified:
   if (!is.function(sampfrac)) {
     if (!(length(sampfrac) == 1 && is.numeric(sampfrac) && sampfrac > 0 && 
           sampfrac <= 1)) {
-      stop("Argument 'sampfrac' should be a single numeric value > 0 and <= 1, or a sampling function.")
+      stop("Argument 'sampfrac' should be a single numeric value > 0 and <= 1, or a sampling function.\n")
     }
   }
 
@@ -353,50 +353,50 @@ pre <- function(formula, data, family = gaussian,
   if (is.function(maxdepth)) {
     maxdepth <- maxdepth(ntrees = ntrees)
   } else if (!is.numeric(maxdepth)) {
-    stop("Argument 'maxdepth' should be either a numeric vector of length 1 or ntrees, or a random number generating function.")
+    stop("Argument 'maxdepth' should be either a numeric vector of length 1 or ntrees, or a random number generating function.\n")
   } else if (!(length(maxdepth) %in% c(1L, ntrees))) {
-    warning("Argument 'maxdepth' should be either a numeric vector of length 1 or ntrees, only first value of maxdepth will be used")
+    warning("Argument 'maxdepth' should be either a numeric vector of length 1 or ntrees, only first value of maxdepth will be used.\n")
     maxdepth <- maxdepth[1L]
   } 
   if (!all(maxdepth > 0)) {
-    stop("All values of maxdepth should be > 0")
+    stop("All values of maxdepth should be > 0.\n")
   } 
   if (!all(maxdepth == suppressWarnings(as.integer(maxdepth)) | is.infinite(maxdepth))) {
-    stop("Argument 'maxdepth' should consist of  of integer values or Inf), or a random number generating function.")
+    stop("Argument 'maxdepth' should consist of  of integer values or Inf), or a random number generating function.\n")
   }
   
   ## Check if proper learnrate argument is specified:
   if (!(length(learnrate) == 1L && is.numeric(learnrate) && 
         (learnrate >= 0 || learnrate <= 1))) {
-    stop("Argument 'learnrate' shoud be a single numeric value >= 0 and <= 1.")
+    stop("Argument 'learnrate' shoud be a single numeric value >= 0 and <= 1.\n")
   }
   
   ## Check if proper mtry argument is specified:
   if (!(length(mtry) == 1L && mtry > 0 && 
         (mtry == suppressWarnings(as.integer(mtry)) || is.infinite(mtry)))) {
-    stop("Argument 'mtry' should be a single integer value, or Inf.")
+    stop("Argument 'mtry' should be a single integer value, or Inf.\n")
   }
   
   ## Check if proper ntrees argument is specified:
   if (!(length(ntrees) == 1L && ntrees == as.integer(ntrees) && ntrees > 0)) {
-    stop("Argument 'ntrees' should be a single positive integer.")
+    stop("Argument 'ntrees' should be a single positive integer.\n")
   }
   
   ## Check if proper winsfrac argument is specified:
   if (!(length(winsfrac == 1L) && is.numeric(winsfrac) && winsfrac >= 0 && 
         winsfrac < 1)) {
-    stop("Argument 'winsfrac' should be a numeric value >= 0 and < 1.")
+    stop("Argument 'winsfrac' should be a numeric value >= 0 and < 1.\n")
   }
 
   ## Check if proper nfolds argument is specified:
   if (!(length(nfolds) == 1L && nfolds > 0 && nfolds == as.integer(nfolds))) {
-    stop("Argument 'nfolds' should be a positive integer.")
+    stop("Argument 'nfolds' should be a positive integer.\n")
   }
   
   ## Check if proper confirmatory argument is specified:
   if (!is.null(confirmatory)) {
     if (!is.character(confirmatory)) {
-      stop("Argument 'confirmatory' should specify a character vector.")
+      stop("Argument 'confirmatory' should specify a character vector.\n")
     }
   }
   
@@ -406,13 +406,13 @@ pre <- function(formula, data, family = gaussian,
               standardize, ordinal, verbose, tree.unbiased, par.init, 
               par.final)) {
     if (!is_logical_and_length_one(i)) {
-      stop("Argument ", i, "should be TRUE of FALSE.")
+      stop("Argument ", i, "should be TRUE of FALSE.\n")
     }
   }
   
   if (par.final || par.init) {
     if(!requireNamespace("foreach")) {
-      warning("Parallel computation requires package foreach. Arguments 'par.init' and 'par.final' are set to FALSE.")   
+      warning("Parallel computation requires package foreach. Arguments 'par.init' and 'par.final' are set to FALSE.\n")   
       par.init <- par.final <- FALSE
     }
   }
@@ -426,28 +426,28 @@ pre <- function(formula, data, family = gaussian,
     } else if (!tree.unbiased) {
       if (any(maxdepth > 29)) {
         maxdepth[maxdepth > 29] <- 29L
-        warning("If tree.unbiased = FALSE, max(maxdepth) is 29.")
+        warning("If tree.unbiased = FALSE, max(maxdepth) is 29.\n")
       }
       tree.control <- rpart.control(maxdepth = maxdepth[1L])
       if (!is.infinite(mtry)) {
-        warning("Value specified for mtry will be ignored if tree.unbiased = FALSE.")
+        warning("Value specified for mtry will be ignored if tree.unbiased = FALSE.\n")
       }
     }
   } else {
     if (!is.list(tree.control)) {
-      stop("Argument 'tree.control' should be a list of control parameters.")
+      stop("Argument 'tree.control' should be a list of control parameters.\n")
     }
     if (use.grad && tree.unbiased && !use_glmertree) {
       if (!setequal(names(ctree_control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(ctree_control()), collapse = ', '))
+        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(ctree_control()), collapse = ', '), "\n")
       }
     } else if (!use.grad && tree.unbiased) { 
       if (!setequal(names(mob_control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(mob_control()), collapse = ', '))
+        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(mob_control()), collapse = ', '), "\n")
       }
     } else if (!tree.unbiased) {
       if (!setequal(names(rpart.control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing names elements ", paste(names(rpart.control()), collapse = ', '))
+        stop("Argument 'tree.control' should be a list containing names elements ", paste(names(rpart.control()), collapse = ', '), "\n")
       }
     }
     if (use.grad) { ## if ctree or rpart are employed:
@@ -458,13 +458,13 @@ pre <- function(formula, data, family = gaussian,
     if (tree.unbiased) {
       tree.control$mtry <- mtry
     } else if (mtry != Inf) {
-      warning("Argument 'tree.unbiased' was set to FALSE, so rpart is employed for tree induction, and value specified for 'mtry' will be ignored.")
+      warning("Argument 'tree.unbiased' was set to FALSE, so rpart is employed for tree induction, and value specified for 'mtry' will be ignored.\n")
       mtry <- Inf
     }
   }
   
   if (!tree.unbiased && !use.grad && learnrate > 0) {
-    stop("Employing the rpart algorithm with a learnrate > 0 without gradient boosting is not supported.")
+    stop("Employing the rpart algorithm with a learnrate > 0 without gradient boosting is not supported.\n")
   }
   
   
@@ -478,12 +478,12 @@ pre <- function(formula, data, family = gaussian,
   ## Coerce character and logical variables to factors:
   if (any(char_names <- sapply(data, is.character))) {
     char_names <- names(data)[char_names]
-    warning("The following variables were of class 'character' and will be coerced to 'factor': ", char_names)
+    warning("The following variables were of class 'character' and will be coerced to 'factor': ", paste(char_names, collapse = " "), "\n")
     data[ , char_names] <- sapply(data[ , char_names], factor)
   }
   if (any(logic_names <- sapply(data, is.logical))) {
     logic_names <- names(data)[logic_names]
-    warning("The following variables were of class 'logical' and will be coerced to 'factor': ", logic_names)
+    warning("The following variables were of class 'logical' and will be coerced to 'factor': ", paste(logic_names, collapse = " "), "\n")
     data[ , logic_names] <- sapply(data[ , logic_names], factor)
   } 
   
@@ -546,7 +546,7 @@ pre <- function(formula, data, family = gaussian,
       if (all(sapply(data[,y_names], is.numeric))) {
         family <- "mgaussian"
       } else {
-        warning("Multiple response variables were specified, but not all were (but should be) numeric.")
+        warning("Multiple response variables were specified, but not all were (but should be) numeric.\n")
       }
     }
     
@@ -554,45 +554,45 @@ pre <- function(formula, data, family = gaussian,
     
     if (family[1L] == "gaussian") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'gaussian', but multiple response variables were specified in 'formula'.")        
+        warning("Argument 'family' was set to 'gaussian', but multiple response variables were specified in 'formula'.\n")        
       }
       if (!is.numeric(data[,y_names])) { # then family should be poisson or gaussian
-        warning("Argument 'family' was set to 'gaussian', but the response variable specified in 'formula' is not of class numeric.")
+        warning("Argument 'family' was set to 'gaussian', but the response variable specified in 'formula' is not of class numeric.\n")
       }
     } else if (family[1L] == "poisson") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'poisson', but multiple response variables were specified, which is not supported.")
+        warning("Argument 'family' was set to 'poisson', but multiple response variables were specified, which is not supported.\n")
       }
       if (!isTRUE(all.equal(round(data[,y_names]), data[,y_names]))) {
-        warning("Argument 'family' was set to 'poisson', but the response variable specified in 'formula' is non-integer.")
+        warning("Argument 'family' was set to 'poisson', but the response variable specified in 'formula' is non-integer.\n")
       }
     } else if (family[1L] == "binomial") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'binomial', but multiple response variables were specified, which is not supported.")
+        warning("Argument 'family' was set to 'binomial', but multiple response variables were specified, which is not supported.\n")
       } else if (!is.factor(data[,y_names])) {
-        warning("Argument 'family' was set to 'binomial', but the response variable specified is not a factor.")
+        warning("Argument 'family' was set to 'binomial', but the response variable specified is not a factor.\n")
       } else if (nlevels(data[,y_names]) != 2L) {
-        warning("Argument 'family' was set to 'binomial', but the response variable has ", nlevels(data[,y_names]), " levels.")        
+        warning("Argument 'family' was set to 'binomial', but the response variable has ", nlevels(data[,y_names]), " levels.\n")        
       }
     } else if (family[1L] == "multinomial") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'multinomial', but multiple response variables were specified, which is not supported.")
+        warning("Argument 'family' was set to 'multinomial', but multiple response variables were specified, which is not supported.\n")
       } else if (!is.factor(data[,y_names])) {
-        warning("Argument 'family' was set to 'multinomial', but the response variable specified is not a factor.")
+        warning("Argument 'family' was set to 'multinomial', but the response variable specified is not a factor.\n")
       } else if (nlevels(data[,y_names]) < 3L) {
-        warning("Argument 'family' was set to 'multinomial', but the response variable has ", nlevels(data[,y_names]), " levels.")
+        warning("Argument 'family' was set to 'multinomial', but the response variable has ", nlevels(data[,y_names]), " levels.\n")
       }
     } else if (family[1L] == "cox") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'cox', but multiple response variables were specified, which is not supported.")
+        warning("Argument 'family' was set to 'cox', but multiple response variables were specified, which is not supported.\n")
       } else if (!is.Surv(data[ , y_names])) {
-        warning("Argument 'family' was set to 'cox', but the response variable specified is not of class Surv.")
+        warning("Argument 'family' was set to 'cox', but the response variable specified is not of class Surv.\n")
       }
     } else if (family == "mgaussian") {
       if (length(y_names) == 1L) {
-        warning("Argument 'family' was set to 'mgaussian', but only a single response variable was specified.")
+        warning("Argument 'family' was set to 'mgaussian', but only a single response variable was specified.\n")
       } else if (!all(sapply(data[,y_names], is.numeric))) {
-        warning("Argument 'family' was set to 'mgaussian', but not all response variables specified are numeric.")
+        warning("Argument 'family' was set to 'mgaussian', but not all response variables specified are numeric.\n")
       }
     }
   }
@@ -602,27 +602,27 @@ pre <- function(formula, data, family = gaussian,
   ## Check specification of tree growing algorithms employed:
   if (!tree.unbiased) { # rpart is employed
     if (family == "mgaussian") {
-      stop("Employing rpart algorithm for rule induction with a multivariate response variable is not supported. Set argument 'tree.unbiased' to TRUE and argument 'use.grad' to FALSE.")
+      stop("Employing rpart algorithm for rule induction with a multivariate response variable is not supported. Set argument 'tree.unbiased' to TRUE and argument 'use.grad' to FALSE.\n")
     } else if (learnrate > 0 && family == "multinomial") {
-      stop("Employing rpart algorithm for rule induction with a multinomial response variable and learnrate > 0 is not supported. Set argument 'learnrate' to 0, or arguments 'tree.unbiased' and 'use.grad' to TRUE.")
+      stop("Employing rpart algorithm for rule induction with a multinomial response variable and learnrate > 0 is not supported. Set argument 'learnrate' to 0, or arguments 'tree.unbiased' and 'use.grad' to TRUE.\n")
     }
   } else if (!use.grad) { # (g)lmtree is employed
     if (family == "multinomial") {
-      stop("Employing (g)lmtree for rule induction with a multinomial response variable is not supported. Set argument 'use.grad' to TRUE for multivariate responses.")
+      stop("Employing (g)lmtree for rule induction with a multinomial response variable is not supported. Set argument 'use.grad' to TRUE for multivariate responses.\n")
     } else if (family == "mgaussian") {
-      stop("Employing (g)lmtree for rule induction with a multivariate response variable is not supported. Set argument 'use.grad' to TRUE for multivariate responses.")
+      stop("Employing (g)lmtree for rule induction with a multivariate response variable is not supported. Set argument 'use.grad' to TRUE for multivariate responses.\n")
     } else if (family == "cox") {
-      stop("Employing (g)lmertree for rule induction with a survival response is not supported. Set argument 'use.grad' to TRUE for a survival response.")
+      stop("Employing (g)lmertree for rule induction with a survival response is not supported. Set argument 'use.grad' to TRUE for a survival response.\n")
     }
   }
   
   if (family == "cox") {
     if (!requireNamespace("survival", quietly = TRUE)) {
-      stop("For fitting a prediction rule ensemble with a survival response, package survival should be installed and loaded")    
+      stop("For fitting a prediction rule ensemble with a survival response, package survival should be installed and loaded.\n")    
     }
     if (learnrate > 0) {
       if (!requireNamespace("mboost", quietly = TRUE)) {
-        stop("For fitting a prediction rule ensemble with a survival response and learning rate > 0, package mboost should be installed.")
+        stop("For fitting a prediction rule ensemble with a survival response and learning rate > 0, package mboost should be installed.\n")
       }
     }
   }
@@ -1724,7 +1724,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
       x$glmnet.fit$lambda - penalty.par.val)))
     cat("Final ensemble with lambda = ", rf(x$glmnet.fit$lambda[lambda_ind]))
   }
-  cat("\n  number of terms = ", x$glmnet.fit$nzero[lambda_ind], 
+  cat("\n  number of terms = ", x$glmnet.fit$glmnet.fit$df[lambda_ind], 
       "\n  mean cv error (se) = ", rf(x$glmnet.fit$cvm[lambda_ind]), 
       " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ")", "\n\n  cv error type : ",
       x$glmnet.fit$name, "\n\n", sep = "")
@@ -1744,6 +1744,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
     }
   coefs <- rbind(coefs[is_intercept,], coefs[!is_intercept,])
   
+  ## TODO: digits argument appears not to work for multivariate outcomes
   print(coefs, print.gap = 2, quote = FALSE, row.names = FALSE, digits = digits)
   invisible(coefs)
 }
@@ -2296,6 +2297,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' \code{type = "response"} gives fitted values for continuous outputs and
 #' fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 #' values for continuous outputs and linear predictor values for nominal outputs.
+#' @param ylab character. Label to be printed on the y-axis.
 #' @param ... Further arguments to be passed to 
 #' \code{\link[graphics]{plot.default}}.
 #' @details By default, a partial dependence plot will be created for each unique
@@ -2318,7 +2320,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' @seealso \code{\link{pre}}, \code{\link{pairplot}}
 #' @export
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
-                       nvals = NULL, type = "response", ...)
+                       nvals = NULL, type = "response", ylab = "predicted", 
+                       ...)
 {
  
   ## Check family:
@@ -2384,7 +2387,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   # create plot:
   plot(aggregate(
     exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean),
-    type = "l", ylab = "predicted y", xlab = varname, ...)
+    type = "l", ylab = ylab, xlab = varname, ...)
 }
 
 
@@ -2812,8 +2815,13 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     
     ## Step 3: Return (and plot) importances:
     
+
+    
     if (object$family %in% c("mgaussian", "multinomial")) {
-      varimps <- varimps[rowSums(varimps[ , gsub("coefficient", "importance", coef_inds)]) != 0, ]   
+      varimps <- varimps[rowSums(varimps[ , gsub("coefficient", "importance", coef_inds)]) != 0, ]
+      ord <- order(rowSums(varimps[ , gsub("coefficient", "importance", coef_inds)]), 
+                   decreasing = TRUE, method = "radix")
+      varimps <- varimps[ord, ]
     } else {
       baseimps <- baseimps[order(baseimps$imp, decreasing = TRUE, method = "radix"), ]
       varimps <- varimps[order(varimps$imp, decreasing = TRUE, method = "radix"), ]
