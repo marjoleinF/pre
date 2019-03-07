@@ -54,13 +54,13 @@ airq.ens
 
 Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function `cvpre()` later on. If linear terms were selected for the final ensemble (which is not the case here), the winsorizing points used to reduce the influence of outliers on the estimated coefficient are provided in the `description` column.
 
-We can plot the baselarners in the ensemble using the `plot` method (note that only the nine most important baselearners are requested here). Note that this provides the exact same results as printed above, but now in a tree-based representation:
+We can plot the baselarners in the ensemble using the `plot` method. Note that only the nine most important baselearners are requested here through specification of the `nterms` argument. Also note that plotting the baselearners provides the exact same information as printing the ensemble as above, but now in decision tree format:
 
 ``` r
 plot(airq.ens, nterms = 9, cex = .5)
 ```
 
-<img src="inst/README-figures/README-treeplot-1.png" width="400px" />
+<img src="inst/README-figures/README-treeplot-1.png" width="550px" />
 
 We can obtain the estimated coefficients for each of the baselearners using the `coef` method:
 
@@ -150,7 +150,7 @@ We can assess correlations between the baselearners using the `corplot()` functi
 corplot(airq.ens)
 ```
 
-![](inst/README-figures/README-corplot-1.png)
+<img src="inst/README-figures/README-corplot-1.png" width="500px" />
 
 Including hinge functions (multivariate adaptive regression splines)
 --------------------------------------------------------------------

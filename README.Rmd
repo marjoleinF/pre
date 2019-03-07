@@ -46,13 +46,13 @@ airq.ens
 ```
 Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function ```cvpre()``` later on. If linear terms were selected for the final ensemble (which is not the case here), the winsorizing points used to reduce the influence of outliers on the estimated coefficient are provided in the `description` column.
 
-We can plot the baselarners in the ensemble using the ```plot``` method (note that only the nine most important baselearners are requested here). Note that this provides the exact same results as printed above, but now in a tree-based representation:
+We can plot the baselarners in the ensemble using the ```plot``` method. Note that only the nine most important baselearners are requested here through specification of the `nterms` argument. Also note that plotting the baselearners provides the exact same information as printing the ensemble as above, but now in decision tree format:
 
 ```{r treeplot, fig.show = "hide"}
 plot(airq.ens, nterms = 9, cex = .5)
 ```
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "400px"}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "550px"}
 library("knitr")
 include_graphics(sprintf("%streeplot-1.png", opts_current$get("fig.path")))
 ```
@@ -115,7 +115,7 @@ The results provide the mean squared error (MSE) and mean absolute error (MAE) w
 
 We can assess the presence of input variable interactions using the ```interact()``` and ```bsnullinteract()``` funtions:
 
-```{r interact, fig.show = "hide", eval=FALSE}
+```{r interact, fig.show = "hide"}
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods)
@@ -129,8 +129,12 @@ The plot with variable interaction strengths indicates that Temperature and Wind
 
 We can assess correlations between the baselearners using the ```corplot()``` function:
 
-```{r corplot, fig.width=6, fig.heigth=5}
+```{r corplot, fig.show='hide'}
 corplot(airq.ens)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "500px"}
+include_graphics(sprintf("%scorplot-1.png", opts_current$get("fig.path")))
 ```
 
 
