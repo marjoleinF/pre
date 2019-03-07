@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-**pre** is an **`R`** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival outcome variables. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema17]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
+**pre** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival outcome variables. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema17]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
 
 1) The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2) The unbiased tree induction algorithms of [@Hothorn06] is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of [@Zeileis08] can be employed, or the classification and regression tree (CART) algorithm of [@Breiman84].
@@ -31,7 +31,7 @@ Note that pre is under development, and much work still needs to be done. Below,
 
 ## Example: Prediction rule ensemble for predicting ozone levels
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the pre() function:
+To get a first impression of how function `pre()` works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the pre() function:
 
 ```{r, results = FALSE}
 library("pre")
@@ -52,7 +52,7 @@ We can plot the baselarners in the ensemble using the ```plot``` method. Note th
 plot(airq.ens, nterms = 9, cex = .5)
 ```
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "550px"}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "600px"}
 library("knitr")
 include_graphics(sprintf("%streeplot-1.png", opts_current$get("fig.path")))
 ```
@@ -115,7 +115,7 @@ The results provide the mean squared error (MSE) and mean absolute error (MAE) w
 
 We can assess the presence of input variable interactions using the ```interact()``` and ```bsnullinteract()``` funtions:
 
-```{r interact, fig.show = "hide"}
+```{r interact, eval=FALSE, fig.show = "hide"}
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods)
