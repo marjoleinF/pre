@@ -2038,6 +2038,9 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
 coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 {
   
+  ## TODO: Add argument on whether learners with zero coefficients should
+  ## be included ot not
+  
   ## check if proper object argument is specified:
   if(class(object) != "pre") {
     stop("Argument 'object' should supply an object of class 'pre'")

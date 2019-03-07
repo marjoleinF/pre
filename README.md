@@ -15,7 +15,7 @@ Note that pre is under development, and much work still needs to be done. Below,
 Example: Prediction rule ensemble for predicting ozone levels
 -------------------------------------------------------------
 
-To get a first impression of how function `pre()` works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the pre() function:
+To get a first impression of how function `pre()` works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the `pre()` function:
 
 ``` r
 library("pre")
@@ -54,7 +54,7 @@ airq.ens
 
 Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function `cvpre()` later on. If linear terms were selected for the final ensemble (which is not the case here), the winsorizing points used to reduce the influence of outliers on the estimated coefficient are provided in the `description` column.
 
-We can plot the baselarners in the ensemble using the `plot` method. Note that only the nine most important baselearners are requested here through specification of the `nterms` argument. Through using the `cex` argument, we specify the size of the node and path labels. Also note that plotting the baselearners provides the exact same information as printing the ensemble as above, but now in decision tree format:
+We can plot the baselearners in the ensemble using the `plot` method. Note that only the nine most important baselearners are requested here through specification of the `nterms` argument. Through using the `cex` argument, we specify the size of the node and path labels. Also note that plotting the baselearners provides the exact same information as printing the ensemble as above, but now in decision tree format:
 
 ``` r
 plot(airq.ens, nterms = 9, cex = .5)
@@ -88,7 +88,7 @@ imps <- importance(airq.ens, round = 4)
 
 <img src="inst/README-figures/README-importance-1.png" width="400px" />
 
-The resulting plot shows that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that is not associate with Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
+The resulting plot shows that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly, associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that is not associate with Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
 
 We can generate predictions for new observations using the `predict` method:
 
@@ -114,7 +114,7 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 
 <img src="inst/README-figures/README-pairplot-1.png" width="400px" />
 
-Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` created by Stephen Milborrow (2018) provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models.
+Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` created by Stephen Milborrow (2018) provides more efficient functions for plotting partial dependence, which also support `pre` models.
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
 
@@ -130,9 +130,9 @@ airq.cv <- cvpre(airq.ens)
 #> 13.186533  1.200747
 ```
 
-The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which observations were assigned as saved in `airq.cv$foldids`.
+The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which observations were assigned as saved in `airq.cv$fold_indicators`.
 
-We can assess the presence of input variable interactions using the `interact()` and `bsnullinteract()` funtions:
+We can assess the presence of input variable interactions using the `interact()` and `bsnullinteract()` funtions. Function `bsnullinteract()` computes null-interaction models (10, by default) based on bootstrap-sampled and permuted datasets. Function `interact()` computes interaction test statistics for each predictor variables appearing in the specified ensemble. If null-interaction models are provided through the `nullmods` argument, interaction test statistics will also be computed for the null-interaction model, providing a reference null distribution.
 
 ``` r
 set.seed(44)
@@ -142,9 +142,9 @@ int <- interact(airq.ens, nullmods = nullmods)
 
 <img src="inst/README-figures/README-interact-1.png" width="400px" />
 
-The plot with variable interaction strengths indicates that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval of interaction stengths in the null interaction models (lighter grey with error bars). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
+The plot with variable interaction strengths indicates that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval (CI) of interaction stengths in the null interaction models (lighter grey bar represents the median, error bars represent the 90% CIs). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
 
-We can assess correlations between the baselearners using the `corplot()` function:
+Finally, we can assess correlations between the baselearners appearing in the ensemble using the `corplot()` function:
 
 ``` r
 corplot(airq.ens)
