@@ -17,21 +17,33 @@ knitr::opts_chunk$set(
 )
 ```
 
-pre is an R package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival outcome variables. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema17]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
+**pre** is an **`R`** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival outcome variables. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema17]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
 
 1) The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2) The unbiased tree induction algorithms of [@Hothorn06] is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of [@Zeileis08] can be employed, or the classification and regression tree (CART) algorithm of [@Breiman84].
 3) The package supports a wider range of response variable types. 
 4) The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 5) The initial ensembles may be generated as in bagging, boosting and/or random forests.
-6) Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of [@Friedman91], using the gpe() function.
+6) Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of [@Friedman91], using function `gpe()`.
 
-Note that pre is under development, and much work still needs to be done.
+Note that pre is under development, and much work still needs to be done. Below, a short introductory example is provided. Fokkema [@Fokkema17] provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations. 
 
 
 ## Example: Prediction rule ensemble for predicting ozone levels
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. We can fit a prediction rule ensemble using the pre() function:
+
+```{r generate_figures, fig.show = "hide", echo=FALSE}
+library(knitr)
+plot(1:10, col = "green")
+plot(1:10, col = "red")
+```
+
+```{r}
+include_graphics(sprintf("%sgenerate_figures-2.png", opts_current$get("fig.path")))
+```
+
+
+To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the pre() function:
 
 ```{r, results = FALSE}
 library(pre)
@@ -44,12 +56,12 @@ We can print the resulting ensemble (alternatively, we could use the ```print```
 ```{r}
 airq.ens
 ```
-Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function ```cvpre()``` later on.
+Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function ```cvpre()``` later on. If linear terms were selected for the final ensemble (which is not the case here), the winsorizing points used to reduce the influence of outliers on the estimated coefficient are provided in the `description` column.
 
-We can plot the baselarners in the ensemble using the ```plot``` method (note that only the nine most important baselearners are requested here):
+We can plot the baselarners in the ensemble using the ```plot``` method (note that only the nine most important baselearners are requested here). Note that this provides the exact same results as printed above, but now in a tree-based representation:
 
-```{r, fig.height=6, fig.width=6}
-plot(airq.ens, nterms = 9, cex = .5)
+```{r, fig.height=5, fig.width=5}
+plot(airq.ens, nterms = 9, cex = .6)
 ```
 
 We can obtain the estimated coefficients for each of the baselearners using the ```coef``` method:
@@ -61,7 +73,7 @@ coefs[1:10,]
 
 We can assess the importance of input variables as well as baselearners using the ```importance()``` function:
 
-```{r, fig.height=4, fig.width=4}
+```{r, fig.height=3, fig.width=3}
 imps <- importance(airq.ens, round = 4)
 ```
 
@@ -81,9 +93,11 @@ singleplot(airq.ens, varname = "Temp")
 
 We can obtain partial dependence plots to assess the effects of pairs of predictor variables on the outcome using the ```pairplot()``` function:
 
-```{r,  fig.width=5, fig.height=5}
+```{r,  fig.width=5, fig.height=5, warning=FALSE, message=FALSE}
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
 ```
+
+Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models. 
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the ```cvpre()``` function:
 
@@ -96,7 +110,7 @@ The results provide the mean squared error (MSE) and mean absolute error (MAE) w
 
 We can assess the presence of input variable interactions using the ```interact()``` and ```bsnullinteract()``` funtions:
 
-```{r, fig.width=5, fig.height=5}
+```{r, fig.width=5, fig.height=5, eval=FALSE}
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods)
@@ -104,7 +118,7 @@ int <- interact(airq.ens, nullmods = nullmods)
 
 The plot with variable interaction strengths indicates that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval of interaction stengths in the null interaction models (lighter grey with error bars). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the ```nsamp``` argument of function ```bsnullinteract()``` to a larger value (e.g., 100).
 
-We can check assess correlations between the baselearners using the ```corplot()``` function:
+We can assess correlations between the baselearners using the ```corplot()``` function:
 
 ```{r, fig.width=6, fig.heigth=5}
 corplot(airq.ens)

@@ -1,21 +1,29 @@
 pre: an R package for deriving prediction rule ensembles
 ========================================================
 
-pre is an R package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival outcome variables. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in Fokkema (2017). The package largely implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
+**pre** is an **`R`** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival outcome variables. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in Fokkema (2017). The package largely implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
 
 1.  The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2.  The unbiased tree induction algorithms of Hothorn, Hornik, & Zeileis (2006) is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of Zeileis, Hothorn, & Hornik (2008) can be employed, or the classification and regression tree (CART) algorithm of Breiman, Friedman, Olshen, & Stone (1984).
 3.  The package supports a wider range of response variable types.
 4.  The package allows for plotting the final rule ensemble as a collection of simple decision trees.
 5.  The initial ensembles may be generated as in bagging, boosting and/or random forests.
-6.  Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of Friedman (1991), using the gpe() function.
+6.  Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of Friedman (1991), using function `gpe()`.
 
-Note that pre is under development, and much work still needs to be done.
+Note that pre is under development, and much work still needs to be done. Below, a short introductory example is provided. Fokkema Fokkema (2017) provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations.
 
 Example: Prediction rule ensemble for predicting ozone levels
 -------------------------------------------------------------
 
-To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the airquality dataset. We can fit a prediction rule ensemble using the pre() function:
+    #> Warning: package 'knitr' was built under R version 3.4.4
+
+``` r
+include_graphics(sprintf("%sgenerate_figures-2.png", opts_current$get("fig.path")))
+```
+
+<img src="inst/README-figures/README-generate_figures-2.png" width="672" />
+
+To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the pre() function:
 
 ``` r
 library(pre)
@@ -52,15 +60,15 @@ airq.ens
 #>       rule166   -0.1202175              Wind > 6.9 & Temp <= 82
 ```
 
-Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function `cvpre()` later on.
+Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function `cvpre()` later on. If linear terms were selected for the final ensemble (which is not the case here), the winsorizing points used to reduce the influence of outliers on the estimated coefficient are provided in the `description` column.
 
-We can plot the baselarners in the ensemble using the `plot` method (note that only the nine most important baselearners are requested here):
+We can plot the baselarners in the ensemble using the `plot` method (note that only the nine most important baselearners are requested here). Note that this provides the exact same results as printed above, but now in a tree-based representation:
 
 ``` r
-plot(airq.ens, nterms = 9, cex = .5)
+plot(airq.ens, nterms = 9, cex = .6)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-4-1.png)
+![](inst/README-figures/README-unnamed-chunk-5-1.png)
 
 We can obtain the estimated coefficients for each of the baselearners using the `coef` method:
 
@@ -86,7 +94,7 @@ We can assess the importance of input variables as well as baselearners using th
 imps <- importance(airq.ens, round = 4)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-6-1.png)
+![](inst/README-figures/README-unnamed-chunk-7-1.png)
 
 The resulting plot shows that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that is not associate with Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
 
@@ -104,17 +112,17 @@ We can obtain partial dependence plots to assess the effect of single predictor 
 singleplot(airq.ens, varname = "Temp")
 ```
 
-![](inst/README-figures/README-unnamed-chunk-8-1.png)
+![](inst/README-figures/README-unnamed-chunk-9-1.png)
 
 We can obtain partial dependence plots to assess the effects of pairs of predictor variables on the outcome using the `pairplot()` function:
 
 ``` r
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
-#> Loading required namespace: akima
-#> NOTE: function pairplot uses package 'akima', which has an ACM license. See also https://www.acm.org/publications/policies/software-copyright-notice.
 ```
 
-![](inst/README-figures/README-unnamed-chunk-9-1.png)
+![](inst/README-figures/README-unnamed-chunk-10-1.png)
+
+Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models.
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
 
@@ -140,17 +148,15 @@ nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-11-1.png)
-
 The plot with variable interaction strengths indicates that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval of interaction stengths in the null interaction models (lighter grey with error bars). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
 
-We can check assess correlations between the baselearners using the `corplot()` function:
+We can assess correlations between the baselearners using the `corplot()` function:
 
 ``` r
 corplot(airq.ens)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-12-1.png)
+![](inst/README-figures/README-unnamed-chunk-13-1.png)
 
 Including hinge functions (multivariate adaptive regression splines)
 --------------------------------------------------------------------
@@ -195,7 +201,7 @@ References
 
 Breiman, L., Friedman, J., Olshen, R., & Stone, C. (1984). Classification and regression trees. Chapman&Hall/CRC.
 
-Fokkema, M. (2017). Pre: An r package for fitting prediction rule ensembles. *arXiv:1707.07149*. Retrieved from <https://arxiv.org/abs/1707.07149>
+Fokkema, M. (2017). Pre: An R package for fitting prediction rule ensembles. *arXiv:1707.07149*. Retrieved from <https://arxiv.org/abs/1707.07149>
 
 Friedman, J. (1991). Multivariate adaptive regression splines. *The Annals of Statistics*, *19*(1), 1–67.
 

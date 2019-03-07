@@ -24,7 +24,7 @@ Imports:
     glmnet,
     graphics,
     methods,
-    partykit,
+    partykit (>= 1.2-0), 
     rpart,
     stringr,
     survival, 

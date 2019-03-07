@@ -49,7 +49,7 @@
 
 @Article{Fokkema17,
   author  = {Fokkema, Marjolein},
-  title   = {pre: an R package for fitting prediction rule ensembles},
+  title   = {pre: an {R} package for fitting prediction rule ensembles},
   journal = {arXiv:1707.07149},
   year    = {2017},
   url     = {https://arxiv.org/abs/1707.07149},
