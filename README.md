@@ -15,18 +15,10 @@ Note that pre is under development, and much work still needs to be done. Below,
 Example: Prediction rule ensemble for predicting ozone levels
 -------------------------------------------------------------
 
-    #> Warning: package 'knitr' was built under R version 3.4.4
-
-``` r
-include_graphics(sprintf("%sgenerate_figures-2.png", opts_current$get("fig.path")))
-```
-
-<img src="inst/README-figures/README-generate_figures-2.png" width="672" />
-
 To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the pre() function:
 
 ``` r
-library(pre)
+library("pre")
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
 ```
@@ -65,10 +57,10 @@ Note that the cross-validated error printed here is calculated using the same da
 We can plot the baselarners in the ensemble using the `plot` method (note that only the nine most important baselearners are requested here). Note that this provides the exact same results as printed above, but now in a tree-based representation:
 
 ``` r
-plot(airq.ens, nterms = 9, cex = .6)
+plot(airq.ens, nterms = 9, cex = .5)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-5-1.png)
+<img src="inst/README-figures/README-treeplot-1.png" width="400px" />
 
 We can obtain the estimated coefficients for each of the baselearners using the `coef` method:
 
@@ -94,7 +86,7 @@ We can assess the importance of input variables as well as baselearners using th
 imps <- importance(airq.ens, round = 4)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-7-1.png)
+<img src="inst/README-figures/README-importance-1.png" width="400px" />
 
 The resulting plot shows that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that is not associate with Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
 
@@ -112,7 +104,7 @@ We can obtain partial dependence plots to assess the effect of single predictor 
 singleplot(airq.ens, varname = "Temp")
 ```
 
-![](inst/README-figures/README-unnamed-chunk-9-1.png)
+<img src="inst/README-figures/README-singleplot-1.png" width="400px" />
 
 We can obtain partial dependence plots to assess the effects of pairs of predictor variables on the outcome using the `pairplot()` function:
 
@@ -120,9 +112,9 @@ We can obtain partial dependence plots to assess the effects of pairs of predict
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
 ```
 
-![](inst/README-figures/README-unnamed-chunk-10-1.png)
+<img src="inst/README-figures/README-pairplot-1.png" width="400px" />
 
-Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models.
+Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` Milborrow (2018) provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models.
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
 
@@ -148,6 +140,8 @@ nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods)
 ```
 
+<img src="inst/README-figures/README-interact-1.png" width="400px" />
+
 The plot with variable interaction strengths indicates that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval of interaction stengths in the null interaction models (lighter grey with error bars). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
 
 We can assess correlations between the baselearners using the `corplot()` function:
@@ -156,7 +150,7 @@ We can assess correlations between the baselearners using the `corplot()` functi
 corplot(airq.ens)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-13-1.png)
+![](inst/README-figures/README-corplot-1.png)
 
 Including hinge functions (multivariate adaptive regression splines)
 --------------------------------------------------------------------
@@ -208,5 +202,7 @@ Friedman, J. (1991). Multivariate adaptive regression splines. *The Annals of St
 Friedman, J., & Popescu, B. (2008). Predictive learning via rule ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954. Retrieved from <http://www.jstor.org/stable/30245114>
 
 Hothorn, T., Hornik, K., & Zeileis, A. (2006). Unbiased recursive partitioning: A conditional inference framework. *Journal of Computational and Graphical Statistics*, *15*(3), 651–674.
+
+Milborrow, S. (2018). *Plotmo: Plot a model’s residuals, response, and partial dependence plots*. Retrieved from <https://CRAN.R-project.org/package=plotmo>
 
 Zeileis, A., Hothorn, T., & Hornik, K. (2008). Model-based recursive partitioning. *Journal of Computational and Graphical Statistics*, *17*(2), 492–514.

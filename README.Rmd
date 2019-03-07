@@ -31,22 +31,10 @@ Note that pre is under development, and much work still needs to be done. Below,
 
 ## Example: Prediction rule ensemble for predicting ozone levels
 
-
-```{r generate_figures, fig.show = "hide", echo=FALSE}
-library(knitr)
-plot(1:10, col = "green")
-plot(1:10, col = "red")
-```
-
-```{r}
-include_graphics(sprintf("%sgenerate_figures-2.png", opts_current$get("fig.path")))
-```
-
-
 To get a first impression of how pre works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the pre() function:
 
 ```{r, results = FALSE}
-library(pre)
+library("pre")
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
 ```
@@ -60,8 +48,13 @@ Note that the cross-validated error printed here is calculated using the same da
 
 We can plot the baselarners in the ensemble using the ```plot``` method (note that only the nine most important baselearners are requested here). Note that this provides the exact same results as printed above, but now in a tree-based representation:
 
-```{r, fig.height=5, fig.width=5}
-plot(airq.ens, nterms = 9, cex = .6)
+```{r treeplot, fig.show = "hide"}
+plot(airq.ens, nterms = 9, cex = .5)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "400px"}
+library("knitr")
+include_graphics(sprintf("%streeplot-1.png", opts_current$get("fig.path")))
 ```
 
 We can obtain the estimated coefficients for each of the baselearners using the ```coef``` method:
@@ -73,8 +66,12 @@ coefs[1:10,]
 
 We can assess the importance of input variables as well as baselearners using the ```importance()``` function:
 
-```{r, fig.height=3, fig.width=3}
+```{r importance, fig.show = "hide"}
 imps <- importance(airq.ens, round = 4)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "400px"}
+include_graphics(sprintf("%simportance-1.png", opts_current$get("fig.path")))
 ```
 
 The resulting plot shows that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that is not associate with Ozone levels. The variable and baselearner importances are saved in ```imps$varimps``` and ```imps$baseimps```, respectively. 
@@ -87,17 +84,25 @@ predict(airq.ens, newdata = airquality[1:4,])
 
 We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the ```singleplot()``` function:
 
-```{r, fig.width=5, fig.height=3}
+```{r singleplot,  fig.show = "hide"}
 singleplot(airq.ens, varname = "Temp")
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "400px"}
+include_graphics(sprintf("%ssingleplot-1.png", opts_current$get("fig.path")))
 ```
 
 We can obtain partial dependence plots to assess the effects of pairs of predictor variables on the outcome using the ```pairplot()``` function:
 
-```{r,  fig.width=5, fig.height=5, warning=FALSE, message=FALSE}
+```{r pairplot, fig.show = "hide", warning=FALSE, message=FALSE}
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
 ```
 
-Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models. 
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "400px"}
+include_graphics(sprintf("%spairplot-1.png", opts_current$get("fig.path")))
+```
+
+Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` [@Milb18] provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models. 
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the ```cvpre()``` function:
 
@@ -110,17 +115,21 @@ The results provide the mean squared error (MSE) and mean absolute error (MAE) w
 
 We can assess the presence of input variable interactions using the ```interact()``` and ```bsnullinteract()``` funtions:
 
-```{r, fig.width=5, fig.height=5, eval=FALSE}
+```{r interact, fig.show = "hide", eval=FALSE}
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "400px"}
+include_graphics(sprintf("%sinteract-1.png", opts_current$get("fig.path")))
 ```
 
 The plot with variable interaction strengths indicates that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval of interaction stengths in the null interaction models (lighter grey with error bars). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the ```nsamp``` argument of function ```bsnullinteract()``` to a larger value (e.g., 100).
 
 We can assess correlations between the baselearners using the ```corplot()``` function:
 
-```{r, fig.width=6, fig.heigth=5}
+```{r corplot, fig.width=6, fig.heigth=5}
 corplot(airq.ens)
 ```
 
