@@ -10,7 +10,7 @@ pre: an R package for deriving prediction rule ensembles
 5.  The initial ensembles may be generated as in bagging, boosting and/or random forests.
 6.  Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of Friedman (1991), using function `gpe()`.
 
-Note that pre is under development, and much work still needs to be done. Below, a short introductory example is provided. Fokkema Fokkema (2017) provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations.
+Note that pre is under development, and much work still needs to be done. Below, a short introductory example is provided. Fokkema (2017) provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations.
 
 Example: Prediction rule ensemble for predicting ozone levels
 -------------------------------------------------------------
@@ -54,7 +54,7 @@ airq.ens
 
 Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function `cvpre()` later on. If linear terms were selected for the final ensemble (which is not the case here), the winsorizing points used to reduce the influence of outliers on the estimated coefficient are provided in the `description` column.
 
-We can plot the baselarners in the ensemble using the `plot` method. Note that only the nine most important baselearners are requested here through specification of the `nterms` argument. Also note that plotting the baselearners provides the exact same information as printing the ensemble as above, but now in decision tree format:
+We can plot the baselarners in the ensemble using the `plot` method. Note that only the nine most important baselearners are requested here through specification of the `nterms` argument. Through using the `cex` argument, we specify the size of the node and path labels. Also note that plotting the baselearners provides the exact same information as printing the ensemble as above, but now in decision tree format:
 
 ``` r
 plot(airq.ens, nterms = 9, cex = .5)
@@ -114,7 +114,7 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 
 <img src="inst/README-figures/README-pairplot-1.png" width="400px" />
 
-Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` Milborrow (2018) provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models.
+Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` created by Stephen Milborrow (2018) provides dedicated, more efficient functions for plotting partial dependence, which provide support for `pre` models.
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
 
@@ -130,7 +130,7 @@ airq.cv <- cvpre(airq.ens)
 #> 13.186533  1.200747
 ```
 
-The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`.
+The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which observations were assigned as saved in `airq.cv$foldids`.
 
 We can assess the presence of input variable interactions using the `interact()` and `bsnullinteract()` funtions:
 
