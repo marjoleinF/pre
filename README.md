@@ -122,38 +122,12 @@ If the final ensemble does not contain a lot of terms, inspecting individual rul
 We can obtain explanations of the predictions for individual observations using function `explain()`:
 
 ``` r
-explain(airq.ens, newdata = airq[1:4, ], cex = .8)
+expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .7)
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-10-1.png)
 
-    #> $predictors
-    #>   rule191 rule173 rule204 rule42 rule10 rule192 rule93 rule51 rule25
-    #> 1       1       1       1      1      1       1      0      1      1
-    #> 2       1       1       0      1      1       1      0      1      1
-    #> 3       1       1       0      1      1       1      0      1      1
-    #> 4       1       1       0      1      1       1      0      1      1
-    #>   rule28 rule74 rule200 rule166
-    #> 1      0      1       1       1
-    #> 2      1      1       1       1
-    #> 3      1      1       1       1
-    #> 4      1      1       0       1
-    #> 
-    #> $contribution
-    #>                   1           2           3           4
-    #> rule191 -15.6401487 -15.6401487 -15.6401487 -15.6401487
-    #> rule173  -8.6645924  -8.6645924  -8.6645924  -8.6645924
-    #> rule204   8.1715564   0.0000000   0.0000000   0.0000000
-    #> rule42   -7.6928586  -7.6928586  -7.6928586  -7.6928586
-    #> rule10   -6.8032890  -6.8032890  -6.8032890  -6.8032890
-    #> rule192  -4.6926624  -4.6926624  -4.6926624  -4.6926624
-    #> rule93    0.0000000   0.0000000   0.0000000   0.0000000
-    #> rule51   -2.6981570  -2.6981570  -2.6981570  -2.6981570
-    #> rule25   -2.4481192  -2.4481192  -2.4481192  -2.4481192
-    #> rule28    0.0000000  -2.1119330  -2.1119330  -2.1119330
-    #> rule74   -0.8276940  -0.8276940  -0.8276940  -0.8276940
-    #> rule200  -0.4479854  -0.4479854  -0.4479854   0.0000000
-    #> rule166  -0.1202175  -0.1202175  -0.1202175  -0.1202175
+The values of the rules and linear terms for each observations are saved in `expl$predictors` and the contributions in `expl$contribution`.
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
 
