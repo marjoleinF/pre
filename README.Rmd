@@ -110,7 +110,7 @@ If the final ensemble does not contain a lot of terms, inspecting individual rul
 We can obtain explanations of the predictions for individual observations using function `explain()`:
 
 ```{r}
-explain(airq.ens, newdata = airq[1:4, ], cex = .8)
+explain(airq.ens, newdata = airq[1:4, ], cex = .6)
 ```
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
