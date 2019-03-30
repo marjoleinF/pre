@@ -107,7 +107,7 @@ The results provide the mean squared error (MSE) and mean absolute error (MAE) w
 
 ### Tools for interpretation
 
-Although the `print` method and `cvpre()` function reveal all there is to know about the fitted ensemble, additional tools for interpretation of the final ensemble are also available:
+Package **pre** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for more complex ensembles, containing many rules and linear terms.
 
 We can assess the importance of input variables as well as baselearners using the `importance()` function:
 
@@ -117,7 +117,7 @@ imps <- importance(airq.ens, round = 4)
 
 <img src="inst/README-figures/README-importance-1.png" width="400px" />
 
-The resulting plot shows that Temperature and wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly, associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that it is not associated with Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
+The resulting plot shows that Temperature and Wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly, associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that it is not associated with Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
 
 We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the `singleplot()` function:
 
