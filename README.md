@@ -122,7 +122,7 @@ If the final ensemble does not contain a lot of terms, inspecting individual rul
 We can obtain explanations of the predictions for individual observations using function `explain()`:
 
 ``` r
-expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .7)
+expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .6)
 ```
 
 ![](inst/README-figures/README-unnamed-chunk-10-1.png)
