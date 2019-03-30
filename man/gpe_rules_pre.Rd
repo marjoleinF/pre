@@ -12,16 +12,16 @@ gpe_rules_pre(learnrate = 0.01, par.init = FALSE, mtry = Inf,
 \arguments{
 \item{learnrate}{numeric value \eqn{> 0}. Learning rate or boosting parameter.}
 
-\item{par.init}{logical. Should parallel foreach be used to generate initial 
-ensemble? Only used when \verb{learnrate == 0}. Note: Must register parallel 
-beforehand, such as doMC or others. Furthermore, setting 
-\code{par.init = TRUE} will likely increase computation time for smaller 
+\item{par.init}{logical. Should parallel \code{foreach} be used to generate 
+initial ensemble? Only used when \code{learnrate == 0}. Note: Must register 
+parallel beforehand, such as doMC or others. Furthermore, setting 
+\code{par.init = TRUE} will likely only increase computation time for smaller 
 datasets.}
 
 \item{mtry}{positive integer. Number of randomly selected predictor variables for 
 creating each split in each tree. Ignored when \code{tree.unbiased=FALSE}.}
 
-\item{maxdepth}{positive integer. Maximum number of conditions in a rule. 
+\item{maxdepth}{positive integer. Maximum number of conditions in rules. 
 If \code{length(maxdepth) == 1}, it specifies the maximum depth of 
 of each tree grown. If \code{length(maxdepth) == ntrees}, it specifies the
 maximum depth of every consecutive tree grown. Alternatively, a random
@@ -37,14 +37,13 @@ fitting function, generated using \code{\link[partykit]{ctree_control}},
 \code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}).}
 
 \item{use.grad}{logical. Should gradient boosting with regression trees be
-employed when \code{learnrate > 0}? That is, use 
-\code{\link[partykit]{ctree}} as in Friedman (2001), but without the line 
-search. If \code{FALSE}. By default set to \code{TRUE}, as yielding shorter
-computation times and sparser ensembles. If \code{use.grad = FALSE}, 
+employed when \code{learnrate > 0}? If \code{TRUE}, use trees fitted by 
+\code{\link[partykit]{ctree}} or \code{\link[rpart]{rpart}} as in Friedman 
+(2001), but without the line search. If \code{use.grad = FALSE}, 
 \code{\link[partykit]{glmtree}} instead of \code{\link[partykit]{ctree}} 
 will be employed for rule induction, yielding longer computation times, 
-higher complexity, but likely higher predictive accuracy. See details below for 
-possible combinations of \code{family}, \code{use.grad} and \code{learnrate}.}
+higher complexity, but possibly higher predictive accuracy. See Details for 
+supported combinations of \code{family}, \code{use.grad} and \code{learnrate}.}
 
 \item{removeduplicates}{logical. Remove rules from the ensemble which are 
 identical to an earlier rule?}

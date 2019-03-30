@@ -41,18 +41,22 @@ values for continuous outputs and linear predictor values for nominal outputs.}
 }
 \description{
 \code{singleplot} creates a partial dependence plot, which shows the effect of
-a predictor variable on the ensemble's predictions
+a predictor variable on the ensemble's predictions. Note that plotting partial 
+dependence is computationally intensive. Computation time will increase fast 
+with increasing numbers of observations and variables. For large 
+datasets, package `plotmo` (Milborrow, 2019) provides more efficient functions 
+for plotting partial dependence and also supports `pre` models.
 }
 \details{
 By default, a partial dependence plot will be created for each unique
 observed value of the specified predictor variable. When the number of unique
 observed values is large, this may take a long time to compute. In that case,
-specifying the nvals argument can substantially reduce computing time. When the
-nvals argument is supplied, values for the minimum, maximum, and (nvals - 2)
-intermediate values of the predictor variable will be plotted. Note that nvals
+specifying the \code{nvals} argument can substantially reduce computing time. When the
+\code{nvals} argument is supplied, values for the minimum, maximum, and \code{(nvals - 2)}
+intermediate values of the predictor variable will be plotted. Note that \code{nvals}
 can be specified only for numeric and ordered input variables. If the plot is
 requested for a nominal input variable, the \code{nvals} argument will be
-ignored and a warning is printed.
+ignored and a warning printed.
 
 See also section 8.1 of Friedman & Popescu (2008).
 }
@@ -62,8 +66,14 @@ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 singleplot(airq.ens, "Temp")}
 }
 \references{
+Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+\url{https://arxiv.org/abs/1707.07149}.
+
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+
+Milborrow, S. (2019). plotmo: Plot a model's residuals, response, and partial 
+dependence plots. \url{https://CRAN.R-project.org/package=plotmo}
 }
 \seealso{
 \code{\link{pre}}, \code{\link{pairplot}}

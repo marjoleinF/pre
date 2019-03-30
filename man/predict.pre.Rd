@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{predict.pre}
 \alias{predict.pre}
-\title{Predicted values based on final unbiased prediction rule ensemble}
+\title{Predicted values based on final prediction rule ensemble}
 \usage{
 \method{predict}{pre}(object, newdata = NULL, type = "link",
   penalty.par.val = "lambda.1se", ...)

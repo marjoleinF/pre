@@ -16,21 +16,22 @@ pre(formula, data, family = gaussian, use.grad = TRUE, weights,
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
 \code{y ~ x1 + x2 + ...+ xn}. Response (left-hand side of the formula) 
-should be of class numeric (for \code{family = "gaussian"} of 
+should be of class numeric (for \code{family = "gaussian"} or
 \code{"mgaussian"}), integer (for \code{family = "poisson"}), factor (for 
-\code{family = "binomial"} or \code{"multinomial"}. Multivariate 
-continuous response should be specified like: \code{y1 + y2 + y3 ~ x1 + x2 + xn}. 
+\code{family = "binomial"} or \code{"multinomial"}). See Examples below. 
 Note that the minus sign (\code{-}) may not be used in the formula to omit
-variables in \code{data}, or the intercept, and neither should  \code{+ 0} 
+the intercept or variables in \code{data}, and neither should  \code{+ 0} 
 be used to omit the intercept. To omit the intercept from the final ensemble, 
 add \code{intercept = FALSE} to the call. To omit variables from the final
-ensemble, amke sure they are excluded from \code{data}.}
+ensemble, make sure they are excluded from \code{data}.}
 
-\item{data}{data.frame containing the variables in the model. Response must
-be a factor for binary classification, numeric for (count) regression. Input
-variables must be of class numeric, factor or ordered factor.}
+\item{data}{\code{data.frame} containing the variables in the model. Response 
+must be of class \code{factor} for classification, \code{numeric} for (count) 
+regression, \code{Surv} for survival regression. Input variables must be of 
+class numeric, factor or ordered factor. Otherwise, \code{pre} will attempt
+to recode.}
 
-\item{family}{specification of a glm family. Can be a character string (i.e., 
+\item{family}{specifies a glm family object. Can be a character string (i.e., 
 \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"multinomial"}, 
 \code{"cox"} or \code{"mgaussian"}), or a corresponding family object 
 (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
@@ -41,19 +42,18 @@ class of the response variable specified in \code{formula}. als see Examples
 below.}
 
 \item{use.grad}{logical. Should gradient boosting with regression trees be
-employed when \code{learnrate > 0}? That is, use 
-\code{\link[partykit]{ctree}} as in Friedman (2001), but without the line 
-search. If \code{FALSE}. By default set to \code{TRUE}, as yielding shorter
-computation times and sparser ensembles. If \code{use.grad = FALSE}, 
+employed when \code{learnrate > 0}? If \code{TRUE}, use trees fitted by 
+\code{\link[partykit]{ctree}} or \code{\link[rpart]{rpart}} as in Friedman 
+(2001), but without the line search. If \code{use.grad = FALSE}, 
 \code{\link[partykit]{glmtree}} instead of \code{\link[partykit]{ctree}} 
 will be employed for rule induction, yielding longer computation times, 
-higher complexity, but likely higher predictive accuracy. See details below for 
-possible combinations of \code{family}, \code{use.grad} and \code{learnrate}.}
+higher complexity, but possibly higher predictive accuracy. See Details for 
+supported combinations of \code{family}, \code{use.grad} and \code{learnrate}.}
 
-\item{weights}{an optional vector of observation weights to be used for 
+\item{weights}{optional vector of observation weights to be used for 
 deriving the ensemble.}
 
-\item{type}{character. Specifies type of base learners to be included in the 
+\item{type}{character. Specifies type of base learners to include in the 
 ensemble. Defaults to \code{"both"} (initial ensemble will include both rules 
 and linear functions). Other option are \code{"rules"} (prediction 
 rules only) or \code{"linear"} (linear functions only).}
@@ -65,7 +65,7 @@ subsampling), a value of 1 will result in sampling with replacement
 (i.e., bootstrap sampling). Alternatively, a sampling function may be supplied, 
 which should take arguments \code{n} (sample size) and \code{weights}.}
 
-\item{maxdepth}{positive integer. Maximum number of conditions in a rule. 
+\item{maxdepth}{positive integer. Maximum number of conditions in rules. 
 If \code{length(maxdepth) == 1}, it specifies the maximum depth of 
 of each tree grown. If \code{length(maxdepth) == ntrees}, it specifies the
 maximum depth of every consecutive tree grown. Alternatively, a random
@@ -85,7 +85,7 @@ to be included in the final ensemble. Linear terms can be specified as the
 name of a predictor variable included in \code{data}, rules can be specified
 as, for example, \code{"x1 > 6 & x2 <= 8"}, where x1 and x2 should be names
 of variables in \code{data}. Terms thus specified will be included in the
-final ensemble and their coefficient will not be penalized in the estimation.}
+final ensemble, as their coefficients will not be penalized in the estimation.}
 
 \item{removecomplements}{logical. Remove rules from the ensemble which are
 identical to (1 - an earlier rule)?}
@@ -110,8 +110,8 @@ standardize the dummified factors, users are advised to use the default
 \code{standardize = FALSE}.}
 
 \item{ordinal}{logical. Should ordinal variables (i.e., ordered factors) be
-treated as continuous for generating rules? If \code{TRUE} (the default), 
-this generally yields simpler rules, shorter computation times and better 
+treated as continuous for generating rules? \code{TRUE} (the default)
+generally yields simpler rules, shorter computation times and better 
 generalizability of the final ensemble.}
 
 \item{nfolds}{positive integer. Number of cross-validation folds to be used for 
@@ -130,39 +130,41 @@ be employed for rule generation? Defaults to \code{TRUE}, if set to
 \code{\link[rpart]{rpart}}. See details below for possible combinations 
 with \code{family}, \code{use.grad} and \code{learnrate}.}
 
-\item{verbose}{logical. Should information on the initial and final ensemble 
-be printed to the command line?}
+\item{verbose}{logical. Should progress be printed to the command line?}
 
-\item{par.init}{logical. Should parallel foreach be used to generate initial 
-ensemble? Only used when \verb{learnrate == 0}. Note: Must register parallel 
-beforehand, such as doMC or others. Furthermore, setting 
-\code{par.init = TRUE} will likely increase computation time for smaller 
+\item{par.init}{logical. Should parallel \code{foreach} be used to generate 
+initial ensemble? Only used when \code{learnrate == 0}. Note: Must register 
+parallel beforehand, such as doMC or others. Furthermore, setting 
+\code{par.init = TRUE} will likely only increase computation time for smaller 
 datasets.}
 
-\item{par.final}{logical. Should parallel foreach be used to perform cross 
+\item{par.final}{logical. Should parallel \code{foreach} be used to perform cross 
 validation for selecting the final ensemble? Must register parallel beforehand, 
 such as doMC or others.}
 
-\item{sparse}{logical for whether sparse design matrices should be used.}
+\item{sparse}{logical. Should sparse design matrices be used? Likely improves
+computation times for large datasets.}
 
 \item{...}{Additional arguments to be passed to
 \code{\link[glmnet]{cv.glmnet}}.}
 }
 \value{
 An object of class \code{pre}. It contains the initial ensemble of 
-rules and/or linear terms and a whole range of possible final ensembles. 
+rules and/or linear terms and a range of possible final ensembles. 
 By default, the final ensemble employed by all other
 methods and functions in package \code{pre} is selected using the 'minimum
 cross validated error plus 1 standard error' criterion. All functions and 
-methods for objects of class pre take a \code{penalty.parameter.value} argument, 
-which can be used to select a different criterion.
+methods for objects of class \code{pre} take a \code{penalty.parameter.value} 
+argument, which can be used to select a different criterion.
 }
 \description{
 \code{pre} derives a sparse ensemble of rules and/or linear functions for 
-prediction of a continuous or binary outcome.
+prediction of a continuous, binary, count, multinomial, multivariate 
+continuous or survival response.
 }
 \details{
-Obervations with missing values will be removed prior to analysis.
+Note that obervations with missing values will be removed prior to 
+analysis.
 
 In some cases, duplicated variable names may appear in the model.
 For example, the first variable is a factor named 'V1' and there are also
@@ -188,12 +190,12 @@ TRUE	\tab TRUE	\tab 0 \tab multinomial	\tab ctree\tab Single, factor with >2 lev
 TRUE	\tab TRUE	\tab 0 \tab poisson	    \tab ctree\tab Single, integer \cr
 TRUE \tab TRUE \tab 0 \tab cox         \tab ctree\tab Object of class 'Surv' \cr
 \cr
-TRUE	\tab TRUE	\tab >0 \tab 	gaussian	  \tab ctree \tab Sinlge, numeric (non-integer) \cr
-TRUE	\tab TRUE	\tab >0	\tab mgaussian	  \tab ctree \tab Mutliple, numeric (non-integer) \cr
+TRUE	\tab TRUE	\tab >0 \tab 	gaussian	  \tab ctree \tab Single, numeric (non-integer) \cr
+TRUE	\tab TRUE	\tab >0	\tab mgaussian	  \tab ctree \tab Multiple, numeric (non-integer) \cr
 TRUE	\tab TRUE	\tab >0	\tab binomial	  \tab ctree  \tab Single, factor with 2 levels \cr
 TRUE	\tab TRUE	\tab >0	\tab multinomial	\tab ctree \tab Single, factor with >2 levels \cr
 TRUE	\tab TRUE	\tab >0	\tab poisson	    \tab ctree  \tab Single, integer \cr
-TRUE \tab TRUE \tab >0 \tab cox         \tab ctree\tab Object of class 'Surv \cr'
+TRUE \tab TRUE \tab >0 \tab cox         \tab ctree\tab Object of class 'Surv' \cr
 \cr
 FALSE \tab TRUE \tab 0 \tab gaussian	  \tab glmtree \tab Single, numeric (non-integer) \cr
 FALSE \tab TRUE \tab 0 \tab binomial	  \tab glmtree \tab Single, factor with 2 levels \cr
@@ -224,36 +226,32 @@ by Achim Zeileis and Torsten Hothorn.
 \donttest{## Fit pre to a continuous response:
 airq <- airquality[complete.cases(airquality), ]
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data = airq, verbose = TRUE)
+airq.ens <- pre(Ozone ~ ., data = airq)
 airq.ens
 
 ## Fit pre to a binary response:
 airq2 <- airquality[complete.cases(airquality), ]
 airq2$Ozone <- factor(airq2$Ozone > median(airq2$Ozone))
 set.seed(42)
-airq.ens2 <- pre(Ozone ~ ., data = airq2, family = "binomial", 
-                 verbose = TRUE)
+airq.ens2 <- pre(Ozone ~ ., data = airq2, family = "binomial")
 airq.ens2
 
 ## Fit pre to a multivariate continuous response:
 airq3 <- airquality[complete.cases(airquality), ] 
 set.seed(42)
-airq.ens3 <- pre(Ozone + Wind ~ ., data = airq3, family = "mgaussian", 
-                 verbose = TRUE)
+airq.ens3 <- pre(Ozone + Wind ~ ., data = airq3, family = "mgaussian")
 airq.ens3
 
 ## Fit pre to a multinomial response:
 set.seed(42)
-iris.pre <- pre(Species ~ ., data = iris, family = "multinomial",
-                verbose = TRUE)
+iris.pre <- pre(Species ~ ., data = iris, family = "multinomial")
 iris.pre
 
 ## Fit pre to a survival response:
 library("survival")
 lung <- lung[complete.cases(lung), ]
 set.seed(42)
-lung.ens <- pre(Surv(time, status) ~ . - sex, data = lung, family = "cox", 
-                verbose = TRUE)
+lung.ens <- pre(Surv(time, status) ~ . - sex, data = lung, family = "cox")
 lung.ens
 
 ## Fit pre to a count response:
@@ -271,6 +269,9 @@ count.ens <- pre(counts ~ ., data = countdata, family = "poisson")
 count.ens}
 }
 \references{
+Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+\url{https://arxiv.org/abs/1707.07149}.
+
 Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
 

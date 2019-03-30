@@ -29,6 +29,7 @@ export("corplot")
 export("maxdepth_sampler")
 export("gpe_rules_pre")
 export("caret_pre_model")
+export("explain")
 
 
 import("Formula")
@@ -41,7 +42,7 @@ import("survival")
 
 
 importFrom("methods", "as")
-importFrom("utils", "head", "tail", "object.size")
+importFrom("utils", "head", "tail", "object.size", "capture.output")
 importFrom("earth", "earth")
 importFrom("stringr", "str_match", "str_replace_all")
 importFrom("Matrix", "sparseMatrix")

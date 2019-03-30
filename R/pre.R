@@ -3,23 +3,25 @@ utils::globalVariables("%dopar%")
 #' Derive a prediction rule ensemble
 #'
 #' \code{pre} derives a sparse ensemble of rules and/or linear functions for 
-#' prediction of a continuous or binary outcome.
+#' prediction of a continuous, binary, count, multinomial, multivariate 
+#' continuous or survival response.
 #' 
 #' @param formula a symbolic description of the model to be fit of the form 
 #' \code{y ~ x1 + x2 + ...+ xn}. Response (left-hand side of the formula) 
-#' should be of class numeric (for \code{family = "gaussian"} of 
+#' should be of class numeric (for \code{family = "gaussian"} or
 #' \code{"mgaussian"}), integer (for \code{family = "poisson"}), factor (for 
-#' \code{family = "binomial"} or \code{"multinomial"}. Multivariate 
-#' continuous response should be specified like: \code{y1 + y2 + y3 ~ x1 + x2 + xn}. 
+#' \code{family = "binomial"} or \code{"multinomial"}). See Examples below. 
 #' Note that the minus sign (\code{-}) may not be used in the formula to omit
-#' variables in \code{data}, or the intercept, and neither should  \code{+ 0} 
+#' the intercept or variables in \code{data}, and neither should  \code{+ 0} 
 #' be used to omit the intercept. To omit the intercept from the final ensemble, 
 #' add \code{intercept = FALSE} to the call. To omit variables from the final
-#' ensemble, amke sure they are excluded from \code{data}.
-#' @param data data.frame containing the variables in the model. Response must
-#' be a factor for binary classification, numeric for (count) regression. Input
-#' variables must be of class numeric, factor or ordered factor.
-#' @param family specification of a glm family. Can be a character string (i.e., 
+#' ensemble, make sure they are excluded from \code{data}.
+#' @param data \code{data.frame} containing the variables in the model. Response 
+#' must be of class \code{factor} for classification, \code{numeric} for (count) 
+#' regression, \code{Surv} for survival regression. Input variables must be of 
+#' class numeric, factor or ordered factor. Otherwise, \code{pre} will attempt
+#' to recode.
+#' @param family specifies a glm family object. Can be a character string (i.e., 
 #' \code{"gaussian"}, \code{"binomial"}, \code{"poisson"}, \code{"multinomial"}, 
 #' \code{"cox"} or \code{"mgaussian"}), or a corresponding family object 
 #' (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
@@ -29,17 +31,16 @@ utils::globalVariables("%dopar%")
 #' class of the response variable specified in \code{formula}. als see Examples 
 #' below. 
 #' @param use.grad logical. Should gradient boosting with regression trees be
-#' employed when \code{learnrate > 0}? That is, use 
-#' \code{\link[partykit]{ctree}} as in Friedman (2001), but without the line 
-#' search. If \code{FALSE}. By default set to \code{TRUE}, as yielding shorter
-#' computation times and sparser ensembles. If \code{use.grad = FALSE}, 
+#' employed when \code{learnrate > 0}? If \code{TRUE}, use trees fitted by 
+#' \code{\link[partykit]{ctree}} or \code{\link[rpart]{rpart}} as in Friedman 
+#' (2001), but without the line search. If \code{use.grad = FALSE}, 
 #' \code{\link[partykit]{glmtree}} instead of \code{\link[partykit]{ctree}} 
 #' will be employed for rule induction, yielding longer computation times, 
-#' higher complexity, but likely higher predictive accuracy. See details below for 
-#' possible combinations of \code{family}, \code{use.grad} and \code{learnrate}.
-#' @param weights an optional vector of observation weights to be used for 
+#' higher complexity, but possibly higher predictive accuracy. See Details for 
+#' supported combinations of \code{family}, \code{use.grad} and \code{learnrate}.
+#' @param weights optional vector of observation weights to be used for 
 #' deriving the ensemble.
-#' @param type character. Specifies type of base learners to be included in the 
+#' @param type character. Specifies type of base learners to include in the 
 #' ensemble. Defaults to \code{"both"} (initial ensemble will include both rules 
 #' and linear functions). Other option are \code{"rules"} (prediction 
 #' rules only) or \code{"linear"} (linear functions only).
@@ -49,7 +50,7 @@ utils::globalVariables("%dopar%")
 #' subsampling), a value of 1 will result in sampling with replacement 
 #' (i.e., bootstrap sampling). Alternatively, a sampling function may be supplied, 
 #' which should take arguments \code{n} (sample size) and \code{weights}. 
-#' @param maxdepth positive integer. Maximum number of conditions in a rule. 
+#' @param maxdepth positive integer. Maximum number of conditions in rules. 
 #' If \code{length(maxdepth) == 1}, it specifies the maximum depth of 
 #' of each tree grown. If \code{length(maxdepth) == ntrees}, it specifies the
 #' maximum depth of every consecutive tree grown. Alternatively, a random
@@ -65,7 +66,7 @@ utils::globalVariables("%dopar%")
 #' name of a predictor variable included in \code{data}, rules can be specified
 #' as, for example, \code{"x1 > 6 & x2 <= 8"}, where x1 and x2 should be names
 #' of variables in \code{data}. Terms thus specified will be included in the
-#' final ensemble and their coefficient will not be penalized in the estimation.
+#' final ensemble, as their coefficients will not be penalized in the estimation.
 #' @param removeduplicates logical. Remove rules from the ensemble which are 
 #' identical to an earlier rule?
 #' @param removecomplements logical. Remove rules from the ensemble which are
@@ -84,20 +85,19 @@ utils::globalVariables("%dopar%")
 #' standardize the dummified factors, users are advised to use the default 
 #' \code{standardize = FALSE}.
 #' @param ordinal logical. Should ordinal variables (i.e., ordered factors) be
-#' treated as continuous for generating rules? If \code{TRUE} (the default), 
-#' this generally yields simpler rules, shorter computation times and better 
+#' treated as continuous for generating rules? \code{TRUE} (the default)
+#' generally yields simpler rules, shorter computation times and better 
 #' generalizability of the final ensemble. 
 #' @param nfolds positive integer. Number of cross-validation folds to be used for 
 #' selecting the optimal value of the penalty parameter \eqn{\lambda} in selecting
 #' the final ensemble.
-#' @param verbose logical. Should information on the initial and final ensemble 
-#' be printed to the command line?
-#' @param par.init logical. Should parallel foreach be used to generate initial 
-#' ensemble? Only used when \verb{learnrate == 0}. Note: Must register parallel 
-#' beforehand, such as doMC or others. Furthermore, setting 
-#' \code{par.init = TRUE} will likely increase computation time for smaller 
+#' @param verbose logical. Should progress be printed to the command line?
+#' @param par.init logical. Should parallel \code{foreach} be used to generate 
+#' initial ensemble? Only used when \code{learnrate == 0}. Note: Must register 
+#' parallel beforehand, such as doMC or others. Furthermore, setting 
+#' \code{par.init = TRUE} will likely only increase computation time for smaller 
 #' datasets.
-#' @param par.final logical. Should parallel foreach be used to perform cross 
+#' @param par.final logical. Should parallel \code{foreach} be used to perform cross 
 #' validation for selecting the final ensemble? Must register parallel beforehand, 
 #' such as doMC or others.
 #' @param tree.control list with control parameters to be passed to the tree 
@@ -110,10 +110,13 @@ utils::globalVariables("%dopar%")
 #' (which suffers from biased variable selection) as implemented in 
 #' \code{\link[rpart]{rpart}}. See details below for possible combinations 
 #' with \code{family}, \code{use.grad} and \code{learnrate}.
-#' @param sparse logical for whether sparse design matrices should be used.
+#' @param sparse logical. Should sparse design matrices be used? Likely improves
+#' computation times for large datasets.
 #' @param ... Additional arguments to be passed to
 #' \code{\link[glmnet]{cv.glmnet}}.
-#' @details Obervations with missing values will be removed prior to analysis.
+#' 
+#' @details Note that obervations with missing values will be removed prior to 
+#' analysis.
 #' 
 #' In some cases, duplicated variable names may appear in the model.
 #' For example, the first variable is a factor named 'V1' and there are also
@@ -140,12 +143,12 @@ utils::globalVariables("%dopar%")
 #' TRUE	\tab TRUE	\tab 0 \tab poisson	    \tab ctree\tab Single, integer \cr
 #' TRUE \tab TRUE \tab 0 \tab cox         \tab ctree\tab Object of class 'Surv' \cr
 #' \cr
-#' TRUE	\tab TRUE	\tab >0 \tab 	gaussian	  \tab ctree \tab Sinlge, numeric (non-integer) \cr
-#' TRUE	\tab TRUE	\tab >0	\tab mgaussian	  \tab ctree \tab Mutliple, numeric (non-integer) \cr
+#' TRUE	\tab TRUE	\tab >0 \tab 	gaussian	  \tab ctree \tab Single, numeric (non-integer) \cr
+#' TRUE	\tab TRUE	\tab >0	\tab mgaussian	  \tab ctree \tab Multiple, numeric (non-integer) \cr
 #' TRUE	\tab TRUE	\tab >0	\tab binomial	  \tab ctree  \tab Single, factor with 2 levels \cr
 #' TRUE	\tab TRUE	\tab >0	\tab multinomial	\tab ctree \tab Single, factor with >2 levels \cr
 #' TRUE	\tab TRUE	\tab >0	\tab poisson	    \tab ctree  \tab Single, integer \cr
-#' TRUE \tab TRUE \tab >0 \tab cox         \tab ctree\tab Object of class 'Surv \cr'
+#' TRUE \tab TRUE \tab >0 \tab cox         \tab ctree\tab Object of class 'Surv' \cr
 #' \cr
 #' FALSE \tab TRUE \tab 0 \tab gaussian	  \tab glmtree \tab Single, numeric (non-integer) \cr
 #' FALSE \tab TRUE \tab 0 \tab binomial	  \tab glmtree \tab Single, factor with 2 levels \cr
@@ -172,46 +175,42 @@ utils::globalVariables("%dopar%")
 #' by Achim Zeileis and Torsten Hothorn.
 #' 
 #' @return An object of class \code{pre}. It contains the initial ensemble of 
-#' rules and/or linear terms and a whole range of possible final ensembles. 
+#' rules and/or linear terms and a range of possible final ensembles. 
 #' By default, the final ensemble employed by all other
 #' methods and functions in package \code{pre} is selected using the 'minimum
 #' cross validated error plus 1 standard error' criterion. All functions and 
-#' methods for objects of class pre take a \code{penalty.parameter.value} argument, 
-#' which can be used to select a different criterion.
+#' methods for objects of class \code{pre} take a \code{penalty.parameter.value} 
+#' argument, which can be used to select a different criterion.
 #' 
 #' @examples \donttest{## Fit pre to a continuous response:
 #' airq <- airquality[complete.cases(airquality), ]
 #' set.seed(42)
-#' airq.ens <- pre(Ozone ~ ., data = airq, verbose = TRUE)
+#' airq.ens <- pre(Ozone ~ ., data = airq)
 #' airq.ens
 #' 
 #' ## Fit pre to a binary response:
 #' airq2 <- airquality[complete.cases(airquality), ]
 #' airq2$Ozone <- factor(airq2$Ozone > median(airq2$Ozone))
 #' set.seed(42)
-#' airq.ens2 <- pre(Ozone ~ ., data = airq2, family = "binomial", 
-#'                  verbose = TRUE)
+#' airq.ens2 <- pre(Ozone ~ ., data = airq2, family = "binomial")
 #' airq.ens2
 #' 
 #' ## Fit pre to a multivariate continuous response:
 #' airq3 <- airquality[complete.cases(airquality), ] 
 #' set.seed(42)
-#' airq.ens3 <- pre(Ozone + Wind ~ ., data = airq3, family = "mgaussian", 
-#'                  verbose = TRUE)
+#' airq.ens3 <- pre(Ozone + Wind ~ ., data = airq3, family = "mgaussian")
 #' airq.ens3
 #' 
 #' ## Fit pre to a multinomial response:
 #' set.seed(42)
-#' iris.pre <- pre(Species ~ ., data = iris, family = "multinomial",
-#'                 verbose = TRUE)
+#' iris.pre <- pre(Species ~ ., data = iris, family = "multinomial")
 #' iris.pre
 #' 
 #' ## Fit pre to a survival response:
 #' library("survival")
 #' lung <- lung[complete.cases(lung), ]
 #' set.seed(42)
-#' lung.ens <- pre(Surv(time, status) ~ . - sex, data = lung, family = "cox", 
-#'                 verbose = TRUE)
+#' lung.ens <- pre(Surv(time, status) ~ . - sex, data = lung, family = "cox")
 #' lung.ens
 #' 
 #' ## Fit pre to a count response:
@@ -232,6 +231,10 @@ utils::globalVariables("%dopar%")
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' @references
+#' 
+#' Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+#' \url{https://arxiv.org/abs/1707.07149}.
+#' 
 #' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 #' machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
 #' 
@@ -1809,8 +1812,8 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' Full k-fold cross validation of a prediction rule ensemble (pre)
 #' 
 #' \code{cvpre} performs k-fold cross validation on the dataset used to create 
-#' the prediction rule ensemble, providing an estimate of predictive accuracy 
-#' on future observations.
+#' the specified prediction rule ensemble, providing an estimate of predictive 
+#' accuracy on future observations.
 #' 
 #' @param object An object of class \code{\link{pre}}.
 #' @param k integer. The number of cross validation folds to be used.
@@ -1846,7 +1849,7 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' and \code{$table} (proportion table with (mis)classification rates).
 #' @details The random sampling employed by default may yield folds including all 
 #' observations with a given level of a given factor. This results in an error, 
-#' as it requirea predictions for factor levels to be computed that were not 
+#' as it requires predictions for factor levels to be computed that were not 
 #' observed in the training data, which is impossible. By manually specifying the
 #' \code{foldids} argument, users can make sure all class levels are represented in
 #' each of the \eqn{k} training partitions. 
@@ -1903,15 +1906,16 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
       stop("Argument 'foldids' should be an integer vector, but is not.")
     } 
   }
-  
-  library(pre)
+
   ## Set up fold-ids, seeds and object for collecting CV predictions:
   if (is.null(foldids)) {
     foldids <- sample(rep(1:k, length.out = nrow(object$data)), 
                       size = nrow(object$data), replace = FALSE)
   }
   seeds <- sample(k*99, size = k)
-  y_ncol <- ifelse(object$family == "multinomial", nlevels(object$data[,object$y_names]), length(object$y_names)) 
+  y_ncol <- ifelse(object$family == "multinomial", 
+                   nlevels(object$data[,object$y_names]), 
+                   length(object$y_names)) 
   cvpreds <- replicate(n = y_ncol, rep(NA, times = nrow(object$data)))
   cl <- object$call
   cl$verbose <- FALSE
@@ -2130,7 +2134,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 
 
 
-#' Predicted values based on final unbiased prediction rule ensemble
+#' Predicted values based on final prediction rule ensemble
 #'
 #' \code{predict.pre} generates predictions based on the final prediction rule
 #' ensemble, for training or new (test) observations
@@ -2286,7 +2290,11 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' ensemble (pre)
 #'
 #' \code{singleplot} creates a partial dependence plot, which shows the effect of
-#' a predictor variable on the ensemble's predictions
+#' a predictor variable on the ensemble's predictions. Note that plotting partial 
+#' dependence is computationally intensive. Computation time will increase fast 
+#' with increasing numbers of observations and variables. For large 
+#' datasets, package `plotmo` (Milborrow, 2019) provides more efficient functions 
+#' for plotting partial dependence and also supports `pre` models. 
 #'
 #' @param object an object of class \code{\link{pre}}
 #' @param varname character vector of length one, specifying the variable for
@@ -2306,17 +2314,24 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' @details By default, a partial dependence plot will be created for each unique
 #' observed value of the specified predictor variable. When the number of unique
 #' observed values is large, this may take a long time to compute. In that case,
-#' specifying the nvals argument can substantially reduce computing time. When the
-#' nvals argument is supplied, values for the minimum, maximum, and (nvals - 2)
-#' intermediate values of the predictor variable will be plotted. Note that nvals
+#' specifying the \code{nvals} argument can substantially reduce computing time. When the
+#' \code{nvals} argument is supplied, values for the minimum, maximum, and \code{(nvals - 2)}
+#' intermediate values of the predictor variable will be plotted. Note that \code{nvals}
 #' can be specified only for numeric and ordered input variables. If the plot is
 #' requested for a nominal input variable, the \code{nvals} argument will be
-#' ignored and a warning is printed.
+#' ignored and a warning printed.
 #' 
 #' See also section 8.1 of Friedman & Popescu (2008).
 #' 
-#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+#' \url{https://arxiv.org/abs/1707.07149}.
+#' 
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' 
+#' Milborrow, S. (2019). plotmo: Plot a model's residuals, response, and partial 
+#' dependence plots. \url{https://CRAN.R-project.org/package=plotmo}
+#' 
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' singleplot(airq.ens, "Temp")}
@@ -2401,7 +2416,11 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' rule ensemble (pre)
 #'
 #' \code{pairplot} creates a partial dependence plot to assess the effects of a
-#' pair of predictor variables on the predictions of the ensemble
+#' pair of predictor variables on the predictions of the ensemble. Note that plotting 
+#' partial dependence is computationally intensive. Computation time will increase 
+#' fast with increasing numbers of observations and variables. For large 
+#' datasets, package `plotmo` (Milborrow, 2019) provides more efficient functions 
+#' for plotting partial dependence and also supports `pre` models. 
 #'
 #' @param object an object of class \code{\link{pre}}
 #' @param varnames character vector of length two. Currently, pairplots can only
@@ -2448,8 +2467,14 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
-#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+#' \url{https://arxiv.org/abs/1707.07149}.
+#' 
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' 
+#' Milborrow, S. (2019). plotmo: Plot a model's residuals, response, and partial 
+#' dependence plots. \url{https://CRAN.R-project.org/package=plotmo}
 #' @import graphics
 #' @seealso \code{\link{pre}}, \code{\link{singleplot}} 
 #' @export
@@ -2563,8 +2588,8 @@ pairplot <- function(object, varnames, type = "both",
 }
 
 
-#' Calculate importances of baselearners (rules and linear terms) and input
-#' variables in a prediction rule ensemble (pre)
+#' Calculate importances of baselearners and input variables in a prediction 
+#' rule ensemble (pre)
 #'
 #' \code{importance} calculates importances for rules, linear terms and input
 #' variables in the prediction rule ensemble (pre), and creates a bar plot 
@@ -2622,7 +2647,10 @@ pairplot <- function(object, varnames, type = "both",
 #' importance(airq.ens, global = FALSE)
 #' # calculate local importances (custom: over 25% lowest predicted values):
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
-#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+#' \url{https://arxiv.org/abs/1707.07149}.
+#' 
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @seealso \code{\link{pre}}
 #' @export
@@ -2947,7 +2975,10 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 #' 
 #' See also section 8.3 of Friedman & Popescu (2008).
 #' 
-#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+#' \url{https://arxiv.org/abs/1707.07149}.
+#' 
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @seealso \code{\link{pre}}, \code{\link{interact}} 
 #' @export
@@ -3155,7 +3186,10 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' 
 #' See also section 8 of Friedman & Popescu (2008).
 #' 
-#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+#' \url{https://arxiv.org/abs/1707.07149}.
+#' 
+#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
 #' @export
@@ -3718,4 +3752,261 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
               breaks = legend.breaks)
   axis(4, at = legend.breaks, las = 2)
   return(invisible(cormat))
+}
+
+
+
+#' Explain predictions from final prediction rule ensemble
+#'
+#' \code{explain} shows which rules apply to which observations and visualizes
+#' the contribution of rules and linear predictors to the predicted values
+#'
+#' @param object object of class \code{\link{pre}}.
+#' @param newdata optional dataframe of new (test) observations, including all
+#' predictor variables used for deriving the prediction rule ensemble.
+#' @inheritParams print.pre
+#' @param plot logical. Should explanations be plotted?
+#' @param intercept logical. Specifies whether intercept should be included in
+#' explaining predictions.
+#' @param center.linear logical. Specifies whether linear terms should be
+#' centered with respect to the training sample mean before computing their 
+#' contribution to the predicted value.
+#' @param pred.type character. Specifies the type of predicted values provided
+#' in the plot(s).
+#' @param plot.max.nobs numeric. Specifies maximum number of observations
+#' for which explanations will be plotted. The default \code{4} plots the
+#' explanation for the first four observations supplied in \code{newdata}.
+#' @param plot.dim numeric vector of length 2. Specifies the number of rows and
+#' columns in the resulting plot.
+#' @param cex numeric. Specifies the relative text size of title, tick and axis
+#' labels.
+#' @param plot.obs.names logical vector of length 1, NULL, or character vector 
+#' of length \code{nrow(data)} supplying the names that should be used for
+#' individual observations' plots. If \code{TRUE} (default), 
+#' \code{rownames(newdata)} will be used as titles. If \code{NULL},
+#' \code{paste("Observation", 1:nrow(newdata))} will be used as titles. If 
+#' \code{FALSE}, no titles will be plotted.
+#' @param digits integer. Specifies the number of digits used in depcting the
+#' predicted values in the plot.
+#' @param bar.col character vector of length two. Specifies the colors to be used for
+#' plotting the positive and negative contributions to the predictions, respectively.
+#' @param rule.col character. Specifies the color to be used for plotting the rule
+#' descriptions. If \code{NULL}, rule descriptions are not plotted.
+#' @param ylab character. Specifies the label for the horizonantal (y-) axis.
+#' @details Provides a graphical depiction of the contribution of rules and
+#' linear terms to the individual predictions (if \code{plot = TRUE}.
+#' Invisibly returns a list with objects \code{predictors} and
+#' \code{contribution}. \code{predictors} contains the values of the rules and
+#' linear terms for each observation in \code{newdata}, for those rules
+#' and linear terms included in the final ensemble with the specified
+#' value of \code{penalty.par.val}. \code{contribution} contains the
+#' values of \code{predictors}, multiplied by the estimated values
+#' of the coefficients in the final ensemble selected with the
+#' specified value of \code{penalty.par.val}.
+#' All contributions are calculated w.r.t. the intercept, by default.
+#' Thus, if a given rule applies to an observation in \code{newdata}, 
+#' the contribution of that rule equals the estimated coefficient of
+#' that rule. If a given rule does not apply to an observation in
+#' \code{newdata}, the contribution of that rule equals 0. 
+#' For linear terms, contributions can be centered, or not (the default).
+#' Thus, by default the contribution of a linear terms for an 
+#' observation in \code{newdata} equals the obeservation's value of the 
+#' linear term, times the estimated coefficient of the linear term.
+#' If \code{center.linear = TRUE}, the contribution of a linear term 
+#' for an observation in \code{newdata} equals (the value of the linear
+#' temr, minus the mean value of the linear term in the training data)
+#' times the estimated coefficient for the linear term.
+#' @examples \donttest{airq <- airquality[complete.cases(airquality), ]
+#' set.seed(1)
+#' train <- sample(1:nrow(airq), size = 100)
+#' set.seed(42)
+#' airq.ens <- pre(Ozone ~ ., data = airq[train,])
+#' airq.ens.exp <- explain(airq.ens, newdata = airq[-train,])
+#' airq.ens.exp$predictors
+#' airq.ens.exp$contribution
+#' 
+#' ## Fit PRE with three trees and lower penalty parameter value,
+#' ## to allow linear terms to appear in final ensemble:
+#' set.seed(42)
+#' airq.ens2 <- pre(Ozone ~ ., data = airq[train,], ntrees = 3L)
+#' ## Compared to intercept, Month has negative and 
+#' ## Day has positive contribution:
+#' explain(airq.ens2, newdata = airq[-train,][1:2,], 
+#'         penalty.par.val = "lambda.min")$contribution
+#' ## Compared with training data means, Month has positive 
+#' ## and Day has negative contribution: 
+#' explain(airq.ens2, newdata = airq[-train,][1:2,], 
+#'         penalty.par.val = "lambda.min", center.linear = TRUE)$contribution
+#' }
+#' @seealso \code{\link{pre}}, \code{\link{plot.pre}},
+#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}},
+#' \code{\link{interact}}, \code{\link{print.pre}}
+#' @export
+explain <- function(object, newdata, penalty.par.val = "lambda.1se",
+                    plot = TRUE, intercept = FALSE, center.linear = FALSE,
+                    plot.max.nobs = 4, plot.dim = c(2, 2),
+                    plot.obs.names = TRUE, pred.type = "response", 
+                    digits = 3L,  cex = .8,
+                    ylab = "Contribution to linear predictor",
+                    bar.col = c("#E495A5", "#39BEB1"),
+                    rule.col = "darkgrey") {
+  
+  ## check arguments:
+  if (!inherits(object, what = "pre")) {
+    stop("Argument object should specfify an object of class 'pre'.")
+  }
+  if (!is.data.frame(newdata)) {
+    stop("Argument newdata should specify a data frame.")
+  }
+  if (!(is.logical(intercept) || length(intercept) != 1L)) {
+    stop("Argument intercept should be a logical vector of length 1.")
+  }
+  if (!(is.logical(plot) || length(plot) != 1L)) {
+    stop("Argument plot should be a logical vector of length 1.")
+  }
+  
+  preds <- round(predict(object, newdata = newdata, type = pred.type,
+                         penalty.par.val = penalty.par.val), digits = digits)
+  
+  ## Prepare newdata:
+  winsfrac <- (object$call)$winsfrac
+  if (is.null(winsfrac)) winsfrac <- formals(pre)$winsfrac
+  
+  ## Check if variable names and classes are the same in newdata as in object$data:
+  if (!all(object$x_names %in% names(newdata))) {
+    newdata <- model.frame(as.Formula((object$call)$formula), data = newdata, 
+                           rhs = NULL, lhs = 0, na.action = NULL)
+  } else {
+    newdata <- newdata[ , object$x_names]
+  }
+  
+  ## Coerce character and logical variables to factors:
+  if (any(char_names <- sapply(newdata, is.character))) {
+    char_names <- names(newdata)[char_names]
+    data[ , char_names] <- sapply(newdata[ , char_names], factor)
+  }
+  if (any(logic_names <- sapply(newdata, is.logical))) {
+    logic_names <- names(newdata)[logic_names]
+    newdata[ , logic_names] <- sapply(newdata[ , logic_names], factor)
+  } 
+  
+  ## Coerce ordered categorical variables to numeric, if necessary:
+  if (if (is.null((object$call)$ordinal)) {
+    formals(pre)$ordinal
+  } else {
+    (object$call)$ordinal
+  }) {
+    if (any(ord_var_inds <- sapply(newdata, is.ordered))) {
+      newdata[ , ord_var_inds] <- sapply(newdata[ , ord_var_inds], as.numeric)
+    }
+  }
+  
+  if (any(is.na(newdata))) {
+    newdata <- newdata[complete.cases(newdata),]
+    warning("Some observations in newdata have missing predictor variable values and will be removed.", immediate. = TRUE)
+  }
+  
+  ## Check and set factor levels of newdata to variable levels in object$data:
+  if (any(factor_inds <- sapply(newdata, is.factor))) {
+    for (i in names(newdata)[factor_inds]) {
+      if (all(levels(newdata[ , i]) %in% levels(object$data[ , i]))) {
+        levels(newdata[ , i]) <- levels(object$data[ , i])
+      } else {
+        stop("Variable ", i, " has levels not present in training data. Cannot compute predictions.")
+      }
+    }
+  }
+  
+  newdata <- get_modmat(
+    wins_points = object$wins_points, 
+    x_scales = object$x_scales, 
+    formula = object$formula, 
+    data = newdata, 
+    rules = if (object$type == "linear" || is.null(object$rules)) {NULL} else {
+      structure(object$rules$description, names = object$rules$rule)}, 
+    type = object$type, 
+    winsfrac = winsfrac,
+    x_names = object$x_names, 
+    normalize = object$normalize,
+    y_names = NULL,
+    confirmatory = object$call$confirmatory)
+  
+  newdata <- newdata$x
+  
+  invisible(capture.output(
+    rules <- print(object, penalty.par.val = penalty.par.val)))
+
+  newdata <- newdata[, rules$rule[-which(rules$rule == "(Intercept)")]]
+  if (intercept) {
+    newdata <- cbind(1, newdata)
+    colnames(newdata)[1] <- "(Intercept)"
+  } else {
+    rules <- rules[-which(rules$rule == "(Intercept)"),]
+  }
+
+  linear_terms <- rules$rule[rules$rule %in% object$x_names]
+  if (length(linear_terms) > 0) {
+    means <- colMeans(object$modmat[, linear_terms])  
+  }
+  if (center.linear) {
+    if (length(linear_terms) > 0) {
+      newdata[, linear_terms] <- 
+        t(apply(newdata[, linear_terms], 1, function(x) x - means))
+    }
+  }
+  
+  explanation <- apply(newdata, 1, function(x) x*rules$coefficient)
+  rownames(explanation) <- rules$rule
+
+  plot_func <- function(explanation, plotname, pred, maxval) {
+    barplot(explanation,
+            col = ifelse(explanation < 0, bar.col[1], bar.col[2]),
+            main = ifelse(is.null(plotname),  
+                          paste0("\n\npredicted: ", pred),
+                          paste0(plotname, "\n\npredicted: ", pred)),
+            xlab = ylab,
+            xlim = c(-maxval, maxval), horiz = TRUE, las = 1,
+            cex.axis = cex, cex.names = cex, cex.main = cex, cex.lab = cex)
+  }
+  maxval <- max(abs(min(explanation)), max(explanation))
+
+  
+  if (is.null(plot.obs.names)) {
+    plot.obs.names <- paste("Observation", 1:nrow(newdata))
+  } else if (is.logical(plot.obs.names)) {
+    if (plot.obs.names) {
+      plot.obs.names <- rownames(newdata)
+    } else {
+      plot.obs.names <- NULL
+    }
+  } else if (is.character(plot.obs.names)) {
+    plot.obs.names <- rep_len(plot.obs.names, length.out = nrow(newdata))
+  }
+
+  par(mfrow = plot.dim)
+  for (i in 1:min(nrow(newdata), plot.max.nobs)) {
+    midpoints <- plot_func(explanation[ , i], plot.obs.names[i], preds[i], maxval)
+    labels <- rules$description
+    if (length(linear_terms) > 0) {
+      linear_term_ids <- which(rules$rule %in% linear_terms)
+      for (j in linear_term_ids) {
+        if (center.linear) {
+          labels[j] <- paste0(rules$rule[j], " = ", 
+                              round(newdata[i, j], digits = digits), 
+                              " (centered)")          
+        } else {
+          labels[j] <- paste0(rules$rule[j], " = ", 
+                              round(newdata[i, j], digits = digits), 
+                              " (mean = ", 
+                              round(means[rules$rule[j]], digits = digits), ")")
+        }
+      }
+    }
+    if (!is.null(rule.col)) {
+      text(y = midpoints, x = -maxval, labels = labels, cex = cex,
+         col = rule.col, pos=4)
+    }
+  }
+  
+  return(list(predictors = newdata, contribution = explanation))
 }

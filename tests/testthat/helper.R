@@ -70,6 +70,7 @@ if(interactive()){
 
 data(PimaIndiansDiabetes, package = "mlbench", envir = environment())
 # We sub-sample to decrease computation time
+suppressWarnings(RNGversion("3.1.0"))
 set.seed(58594084)
 PimaIndiansDiabetes_full <- PimaIndiansDiabetes
 PimaIndiansDiabetes <- PimaIndiansDiabetes[

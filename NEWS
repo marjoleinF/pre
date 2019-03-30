@@ -1,8 +1,13 @@
-Changes in Version 0.7 (....-..-..)
+Changes in Version 0.7 (2019-03-30)
 
   - Added support for sparse rule matrix, which can be invoked through sparse 
       argument in pre(). If sparse = TRUE, memory usage will be reduced and 
       computation speed may be improved for large datasets.
+ 
+  - Added function explain(), which provides (graphical) explanations of the 
+      ensemble's predictions at the individual observation level.
+
+
 
 
 Changes in Version 0.6 (2018-08-03)
@@ -33,6 +38,7 @@ Changes in Version 0.6 (2018-08-03)
       when tree.unbiased = FALSE, thanks to a bug report by Stephen 
       Milborrow. 
  
+
 
 
 Changes in Version 0.5 (2018-05-07)
@@ -72,6 +78,7 @@ Changes in Version 0.4 (2017-08-31)
 
   - Bug fixed in predict.pre: No error printed when response variable is not 
       supplied.
+
 
 
 
@@ -123,6 +130,7 @@ Changes in Version 0.3 (2017-08-03):
   
 
 
+
 Changes in Version 0.2 (2017-04-25):
 
   - Added print() and plot() method for objects of class pre.
@@ -149,6 +157,7 @@ Changes in Version 0.2 (2017-04-25):
   - Fixed cvpre() function: penalty.par.val argument now included
   
   - Many minor bug fixes.
+
 
 
 

@@ -19,8 +19,9 @@ To get a first impression of how function `pre()` works, we will fit a predictio
 
 ``` r
 library("pre")
+airq <- airquality[complete.cases(airquality), ]
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
+airq.ens <- pre(Ozone ~ ., data = airq)
 ```
 
 We can print the resulting ensemble (alternatively, we could use the `print` method):
@@ -93,7 +94,7 @@ The resulting plot shows that Temperature and wind are most strongly associated 
 We can generate predictions for new observations using the `predict` method:
 
 ``` r
-predict(airq.ens, newdata = airquality[1:4,])
+predict(airq.ens, newdata = airq[1:4, ])
 #>        1        2        3        4 
 #> 31.10390 20.82041 20.82041 21.26840
 ```
@@ -115,6 +116,44 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 <img src="inst/README-figures/README-pairplot-1.png" width="400px" />
 
 Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` created by Stephen Milborrow (2018) provides more efficient functions for plotting partial dependence, which also support `pre` models.
+
+If the final ensemble does not contain a lot of terms, inspecting individual rules and linear terms through the `print` method may be (much) more informative than partial dependence plots. One of the main advantages of prediction rule ensembles is their interpretability: the predictive model contains only simple functions of the predictor variables (rules and linear terms), which are easy to grasp. Partial dependence plots are often useful for interpretation of more complex models, like random forests for example.
+
+We can obtain explanations of the predictions for individual observations using function `explain()`:
+
+``` r
+explain(airq.ens, newdata = airq[1:4, ], cex = .8)
+```
+
+![](inst/README-figures/README-unnamed-chunk-10-1.png)
+
+    #> $predictors
+    #>   rule191 rule173 rule204 rule42 rule10 rule192 rule93 rule51 rule25
+    #> 1       1       1       1      1      1       1      0      1      1
+    #> 2       1       1       0      1      1       1      0      1      1
+    #> 3       1       1       0      1      1       1      0      1      1
+    #> 4       1       1       0      1      1       1      0      1      1
+    #>   rule28 rule74 rule200 rule166
+    #> 1      0      1       1       1
+    #> 2      1      1       1       1
+    #> 3      1      1       1       1
+    #> 4      1      1       0       1
+    #> 
+    #> $contribution
+    #>                   1           2           3           4
+    #> rule191 -15.6401487 -15.6401487 -15.6401487 -15.6401487
+    #> rule173  -8.6645924  -8.6645924  -8.6645924  -8.6645924
+    #> rule204   8.1715564   0.0000000   0.0000000   0.0000000
+    #> rule42   -7.6928586  -7.6928586  -7.6928586  -7.6928586
+    #> rule10   -6.8032890  -6.8032890  -6.8032890  -6.8032890
+    #> rule192  -4.6926624  -4.6926624  -4.6926624  -4.6926624
+    #> rule93    0.0000000   0.0000000   0.0000000   0.0000000
+    #> rule51   -2.6981570  -2.6981570  -2.6981570  -2.6981570
+    #> rule25   -2.4481192  -2.4481192  -2.4481192  -2.4481192
+    #> rule28    0.0000000  -2.1119330  -2.1119330  -2.1119330
+    #> rule74   -0.8276940  -0.8276940  -0.8276940  -0.8276940
+    #> rule200  -0.4479854  -0.4479854  -0.4479854   0.0000000
+    #> rule166  -0.1202175  -0.1202175  -0.1202175  -0.1202175
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
 

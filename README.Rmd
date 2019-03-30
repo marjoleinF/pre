@@ -35,8 +35,9 @@ To get a first impression of how function `pre()` works, we will fit a predictio
 
 ```{r, results = FALSE}
 library("pre")
+airq <- airquality[complete.cases(airquality), ]
 set.seed(42)
-airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality), ])
+airq.ens <- pre(Ozone ~ ., data = airq)
 ```
 
 We can print the resulting ensemble (alternatively, we could use the `print` method): 
@@ -79,7 +80,7 @@ The resulting plot shows that Temperature and wind are most strongly associated 
 We can generate predictions for new observations using the `predict` method:
 
 ```{r}
-predict(airq.ens, newdata = airquality[1:4,])
+predict(airq.ens, newdata = airq[1:4, ])
 ```
 
 We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the `singleplot()` function:
@@ -103,6 +104,14 @@ include_graphics(sprintf("%spairplot-1.png", opts_current$get("fig.path")))
 ```
 
 Note that plotting partial dependence is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `R` package `plotmo` created by Stephen @Milb18 provides more efficient functions for plotting partial dependence, which also support `pre` models. 
+
+If the final ensemble does not contain a lot of terms, inspecting individual rules and linear terms through the `print` method may be (much) more informative than partial dependence plots. One of the main advantages of prediction rule ensembles is their interpretability: the predictive model contains only simple functions of the predictor variables (rules and linear terms), which are easy to grasp. Partial dependence plots are often useful for interpretation of more complex models, like random forests for example.
+
+We can obtain explanations of the predictions for individual observations using function `explain()`:
+
+```{r}
+explain(airq.ens, newdata = airq[1:4, ], cex = .8)
+```
 
 We can assess the expected prediction error of the prediction rule ensemble through cross validation (10-fold, by default) using the `cvpre()` function:
 
@@ -136,6 +145,8 @@ corplot(airq.ens)
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "500px"}
 include_graphics(sprintf("%scorplot-1.png", opts_current$get("fig.path")))
 ```
+
+
 
 
 ## Including hinge functions (multivariate adaptive regression splines)

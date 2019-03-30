@@ -60,13 +60,13 @@ and \code{$table} (proportion table with (mis)classification rates).
 }
 \description{
 \code{cvpre} performs k-fold cross validation on the dataset used to create 
-the prediction rule ensemble, providing an estimate of predictive accuracy 
-on future observations.
+the specified prediction rule ensemble, providing an estimate of predictive 
+accuracy on future observations.
 }
 \details{
 The random sampling employed by default may yield folds including all 
 observations with a given level of a given factor. This results in an error, 
-as it requirea predictions for factor levels to be computed that were not 
+as it requires predictions for factor levels to be computed that were not 
 observed in the training data, which is impossible. By manually specifying the
 \code{foldids} argument, users can make sure all class levels are represented in
 each of the \eqn{k} training partitions.

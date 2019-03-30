@@ -47,7 +47,11 @@ or \code{"perspective"}).}
 }
 \description{
 \code{pairplot} creates a partial dependence plot to assess the effects of a
-pair of predictor variables on the predictions of the ensemble
+pair of predictor variables on the predictions of the ensemble. Note that plotting 
+partial dependence is computationally intensive. Computation time will increase 
+fast with increasing numbers of observations and variables. For large 
+datasets, package `plotmo` (Milborrow, 2019) provides more efficient functions 
+for plotting partial dependence and also supports `pre` models.
 }
 \details{
 By default, partial dependence will be plotted for each combination
@@ -79,8 +83,14 @@ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 pairplot(airq.ens, c("Temp", "Wind"))}
 }
 \references{
+Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+\url{https://arxiv.org/abs/1707.07149}.
+
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+
+Milborrow, S. (2019). plotmo: Plot a model's residuals, response, and partial 
+dependence plots. \url{https://CRAN.R-project.org/package=plotmo}
 }
 \seealso{
 \code{\link{pre}}, \code{\link{singleplot}}

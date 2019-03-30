@@ -52,6 +52,9 @@ nullmods <- bsnullinteract(airq.ens)
 interact(airq.ens, nullmods = nullmods, col = c("#7FBFF5", "#8CC876"))}
 }
 \references{
+Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+\url{https://arxiv.org/abs/1707.07149}.
+
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }

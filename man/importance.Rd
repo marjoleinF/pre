@@ -2,8 +2,8 @@
 % Please edit documentation in R/pre.R
 \name{importance}
 \alias{importance}
-\title{Calculate importances of baselearners (rules and linear terms) and input
-variables in a prediction rule ensemble (pre)}
+\title{Calculate importances of baselearners and input variables in a prediction 
+rule ensemble (pre)}
 \usage{
 importance(object, standardize = FALSE, global = TRUE,
   quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se",
@@ -101,6 +101,9 @@ importance(airq.ens, global = FALSE)
 importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 }
 \references{
+Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+\url{https://arxiv.org/abs/1707.07149}.
+
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }

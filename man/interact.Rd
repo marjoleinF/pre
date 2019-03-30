@@ -114,6 +114,9 @@ specified, in which case setting \verb{parallel = TRUE} may improve speed.
  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
 }
 \references{
+Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
+\url{https://arxiv.org/abs/1707.07149}.
+
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 }

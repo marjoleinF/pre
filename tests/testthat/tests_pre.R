@@ -2,6 +2,7 @@ context("Tests the pre functions")
 
 
 test_that("Get previous results with airquality and pre function", {
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   #####
   # With learning rate
@@ -26,6 +27,7 @@ test_that("Get previous results with airquality and pre function", {
   
   #####
   # Works only with rules
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data = airquality, type="rules", ntrees = 10)
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
@@ -36,6 +38,7 @@ test_that("Get previous results with airquality and pre function", {
   
   ####
   # Works with multivariate responses
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone + Solar.R ~ ., data = airquality, family = "mgaussian", ntrees = 10)
   airq.ens <- airq.ens[!names(airq.ens) %in%  c(
@@ -49,6 +52,7 @@ test_that("Get previous results with airquality and pre function", {
 test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   #####
   # Without learning rate
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(7385056)
   fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, ntrees = 10, maxdepth = 3)
   
@@ -63,6 +67,7 @@ test_that("Get previous results with PimaIndiansDiabetes and pre function", {
   
   #####
   # With learning rate
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(4989935)
   fit <- pre(diabetes ~ ., data = PimaIndiansDiabetes, learnrate = .01,
              ntrees = 10, maxdepth = 3)
@@ -81,6 +86,7 @@ test_that("Get previous results with iris and pre function", {
   
   #####
   # With learning rate
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(7385056)
   fit <- pre(Species ~ ., data = iris, ntrees = 10, maxdepth = 3)
   
@@ -101,6 +107,7 @@ test_that("Get previous results with iris and pre function", {
     ##
     #####
     # Without learning rate
+    suppressWarnings(RNGversion("3.1.0"))
     set.seed(4989935)
     fit <- pre(Species ~ ., data = iris, learnrate = 0, ntrees = 10, maxdepth = 3, nlambda =10)
     
@@ -119,6 +126,7 @@ test_that("Get previous results with iris and pre function", {
     library("doParallel")
     cl <- makeCluster(2)
     registerDoParallel(cl)
+    suppressWarnings(RNGversion("3.1.0"))
     set.seed(4989935)
     fit2 <- pre(Species ~ ., data = iris, learnrate = 0, ntrees = 10, maxdepth = 3, par.init=TRUE, par.final=TRUE, nlambda = 10)
     stopCluster(cl)
@@ -137,6 +145,7 @@ test_that("Get previous results with iris and pre function", {
 
 
 test_that("Get previous results with lung survival data", {
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   fit <- pre(Surv(time, status) ~ ., data = Lung, ntrees = 10, family = "cox")
   fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]
@@ -151,8 +160,10 @@ test_that("Get previous results with lung survival data", {
 test_that("pre gives almost the same rules with `sparse` set to `TRUE` and `FALSE`", {
   #####
   # With learning rate
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(seed <- 42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(seed)
   airq.ens.sparse <- pre(Ozone ~ ., data=airquality, ntrees = 10, sparse = TRUE)
   
@@ -176,6 +187,7 @@ test_that("pre gives almost the same rules with `sparse` set to `TRUE` and `FALS
 test_that("predict.pre works with `sparse` set to `TRUE`", {
   #####
   # With learning rate
+  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens.sparse <- pre(Ozone ~ ., data=airquality, ntrees = 10, sparse = TRUE)
   
