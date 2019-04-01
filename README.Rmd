@@ -31,7 +31,7 @@ Note that **pre** is under development, and much work still needs to be done. Be
 
 ## Example: Predicting ozone levels
 
-To get a first impression of how function `pre()` works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We can fit a prediction rule ensemble using the `pre()` function:
+To get a first impression of how function `pre()` works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We fit a prediction rule ensemble using function `pre()`:
 
 ```{r, results = FALSE}
 library("pre")
@@ -40,15 +40,19 @@ set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airq)
 ```
 
+Note that the random seed was set first, to allow for later replication of the results, as the fitting procedure depends on random sampling of training observations. 
+
 We can print the resulting ensemble (alternatively, we could use the `print` method): 
 
 ```{r}
 airq.ens
 ```
 
-Note that the cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function ```cvpre()``` later on. If linear terms were selected for the final ensemble (which is not the case here), the winsorizing points used to reduce the influence of outliers on the estimated coefficient are provided in the `description` column.
+The cross-validated error printed here is calculated using the same data as was used for generating the rules and therefore may provide an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function ```cvpre()``` later on. 
 
-If we want to plot the rule above as simple decision trees, we can use the `plot` method. Here, we request the nine most important baselearners are requested here through specification of the `nterms` argument. Through the `cex` argument, we specify the size of the node and path labels:
+The table represents the rules and linear terms selected for the final ensemble, with the estimated coefficients. For rules, the `description` column provides the conditions. If all conditions of a rule apply to an observation, the predicted value of the response increases by the estimated coefficient, which is printed in the `coefficient` column. If linear terms were selected for the final ensemble (which is not the case here), the winsorizing points used to reduce the influence of outliers on the estimated coefficient would be printed in the `description` column. For linear terms, the estimated coefficient in `coefficient` reflects the increase in the predicted value of the response, for a unit increase in the predictor variable.
+
+If we want to plot the rules in the ensemble as simple decision trees, we can use the `plot` method. Here, we request the nine most important baselearners are requested here through specification of the `nterms` argument. Through the `cex` argument, we specify the size of the node and path labels:
 
 ```{r treeplot, fig.show = "hide"}
 plot(airq.ens, nterms = 9, cex = .5)
@@ -84,9 +88,9 @@ The results provide the mean squared error (MSE) and mean absolute error (MAE) w
 
 ### Tools for interpretation
 
-Package **pre** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for more complex ensembles, containing many rules and linear terms. 
+Package **pre** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for complex ensembles containing many rules and linear terms. 
 
-We can assess the importance of input variables as well as baselearners using the `importance()` function:
+We can assess the relative importance of input variables as well as baselearners using the `importance()` function:
 
 ```{r importance, fig.show = "hide"}
 imps <- importance(airq.ens, round = 4)
@@ -96,7 +100,7 @@ imps <- importance(airq.ens, round = 4)
 include_graphics(sprintf("%simportance-1.png", opts_current$get("fig.path")))
 ```
 
-The resulting plot shows that Temperature and Wind are most strongly associated with Ozone levels, while Solar.R and Day are somewhat, but much less strongly, associated with Ozone levels. Variable Month is not included in the plotted variable importances, indicating that it is not associated with Ozone levels. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively. 
+As we already observed in the printed ensemble, the plotted variable importances indicate that Temperature and Wind are most strongly associated with Ozone levels. Solar.R and Day are also associated with Ozone levels, but much less strongly. Variable Month is not plotted, which means it obtained an importance of zero, indicating that it is not associated with Ozone levels. We already observed this in the printed ensemble: Month was not selected as a linear term and did not appear in any of the selected rules. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively. 
 
 We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the `singleplot()` function:
 
