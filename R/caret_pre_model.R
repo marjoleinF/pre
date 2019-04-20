@@ -21,13 +21,12 @@
 #' set.seed(42)
 #' prefit1 <- train(x = x, y = y, method = caret_pre_model,
 #'                  trControl = trainControl(number = 1),
-#'                  ntrees = 5L)
+#'                  ntrees = 50L)
 #' prefit1
 #' 
 #' ## Create custom tuneGrid:
 #' set.seed(42)
 #' tuneGrid <- caret_pre_model$grid(x = x, y = y,
-#'                                  use.grad = c(TRUE, FALSE),
 #'                                  maxdepth = 3L:5L,
 #'                                  learnrate = c(.01, .1),
 #'                                  penalty.par.val = c("lambda.1se", "lambda.min"))
@@ -35,16 +34,13 @@
 #' ## Apply caret (again, ntrees and trControl set only to reduce computation time):
 #' prefit2 <- train(x = x, y = y, method = caret_pre_model,
 #'                  trControl = trainControl(number = 1),
-#'                  tuneGrid = tuneGrid)
+#'                  tuneGrid = tuneGrid, ntrees = 50L)
 #' prefit2
 #' 
 #' ## Get best tuning parameter values:
 #' prefit2$bestTune
 #' ## Get predictions from model with best tuning parameters:
 #' predict(prefit2, newdata = x[1:10,])
-#' ## Predictors included in model with best tuning parameter values:
-#' predictors(prefit2)
-#' varImp(prefit2)
 #' plot(prefit2)
 #'
 #' ## Obtain tuning grid through random search over the tuning parameter space:
@@ -54,14 +50,14 @@
 #' set.seed(42)
 #' prefit3 <- train(x = x, y = y, method = caret_pre_model,
 #'                  trControl = trainControl(number = 1, verboseIter = TRUE),
-#'                  tuneGrid = tuneGrid2, ntrees = 5L)
+#'                  tuneGrid = tuneGrid2, ntrees = 50L)
 #' prefit3
 #' 
 #' ## Count response:
 #' set.seed(42)
 #' prefit4 <- train(x = x, y = y, method = caret_pre_model,
 #'                  trControl = trainControl(number = 1),
-#'                  ntrees = 5L, family = "poisson")
+#'                  ntrees = 50L, family = "poisson")
 #' prefit4
 #' 
 #' ## Binary factor response:
@@ -69,7 +65,7 @@
 #' set.seed(42)
 #' prefit5 <- train(x = x, y = y_bin, method = caret_pre_model,
 #'                  trControl = trainControl(number = 1),
-#'                  ntrees = 5L, family = "binomial")
+#'                  ntrees = 50L, family = "binomial")
 #' prefit5
 #' 
 #' ## Factor response with > 2 levels:
@@ -78,7 +74,7 @@
 #' set.seed(42)
 #' prefit6 <- train(x = x_multin, y = y_multin, method = caret_pre_model,
 #'                  trControl = trainControl(number = 1),
-#'                  ntrees = 5L, family = "multinomial")
+#'                  ntrees = 50L, family = "multinomial")
 #' prefit6
 #' }
 caret_pre_model <- list(
@@ -162,7 +158,7 @@ caret_pre_model <- list(
     #    use.grad = param$use.grad, ...)
   },
   predict = function(modelFit, newdata, submodels = NULL) {
-    if (is.null(submodels)) {
+    #if (is.null(submodels)) {
       if (modelFit$family %in% c("gaussian", "mgaussian")) {
         out <- pre:::predict.pre(object = modelFit, 
                                  penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
@@ -176,30 +172,32 @@ caret_pre_model <- list(
                                         penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
                                         newdata = as.data.frame(newdata), type = "class"))      
       }
-    } else {
-      out <- list()
+    #} else {
+    if (!is.null(submodels)) {
+      tmp <- list()
       for (i in seq(along.with = submodels$penalty.par.val)) {
         if (modelFit$family %in% c("gaussian", "mgaussian")) {
-          out[[i]] <- pre:::predict.pre(object = modelFit, 
+          tmp[[i]] <- pre:::predict.pre(object = modelFit, 
                                         newdata = as.data.frame(newdata), 
                                         penalty.par.val = as.character(submodels$penalty.par.val[i])) 
         } else if (modelFit$family == "poisson") {
-          out[[i]] <- pre:::predict.pre(object = modelFit, 
+          tmp[[i]] <- pre:::predict.pre(object = modelFit, 
                                         newdata = as.data.frame(newdata), 
                                         type = "response",
                                         penalty.par.val = as.character(submodels$penalty.par.val[i]))
         } else {
-          out[[i]] <- factor(pre:::predict.pre(object = modelFit, 
+          tmp[[i]] <- factor(pre:::predict.pre(object = modelFit, 
                                                newdata = as.data.frame(newdata), 
                                                type = "class",
                                                penalty.par.val = as.character(submodels$penalty.par.val[i])))      
         }
       }
+      out <- c(list(out), tmp)
     }
     out
   },
   prob = function(modelFit, newdata, submodels = NULL) {
-    if (is.null(submodels)) {
+    #if (is.null(submodels)) {
       probs <- pre:::predict.pre(object = modelFit, 
                                  penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
                                  newdata = as.data.frame(newdata), 
@@ -209,19 +207,21 @@ caret_pre_model <- list(
         probs <- data.frame(1 - probs, probs)
         colnames(probs) <- levels(modelFit$data[,modelFit$y_names])
       }
-    } else {
-      probs <- list()
+    #} else {
+    if (!is.null(submodels)) {
+      tmp <- list()
       for (i in seq(along.with = submodels$penalty.par.val)) {
-        probs[[i]] <- pre:::predict.pre(object = modelFit, 
-                                        newdata = as.data.frame(newdata), 
-                                        type = "response",
-                                        penalty.par.val = as.character(submodels$penalty.par.val[i]))
+        tmp[[i]] <- pre:::predict.pre(object = modelFit, 
+                                      newdata = as.data.frame(newdata), 
+                                      type = "response",
+                                      penalty.par.val = as.character(submodels$penalty.par.val[i]))
         # For binary classification, create matrix:    
-        if (is.null(ncol(probs[[i]])) || ncol(probs[[i]]) == 1) {
-          probs[[i]] <- data.frame(1 - probs[[i]], probs[[i]])
-          colnames(probs[[i]]) <- levels(modelFit$data[,modelFit$y_names])
+        if (is.null(ncol(tmp[[i]])) || ncol(tmp[[i]]) == 1) {
+          tmp[[i]] <- data.frame(1 - tmp[[i]], tmp[[i]])
+          colnames(tmp[[i]]) <- levels(modelFit$data[ , modelFit$y_names])
         }
       }
+      probs <- c(list(probs), tmp)
     }
     probs
   },
@@ -260,29 +260,33 @@ caret_pre_model <- list(
     }
     list(loop = loop, submodels = submodels)
   },
-  levels = function(x) { levels(x$data[,x$y_names]) },
+  levels = NULL, #function(x) { levels(x$data[,x$y_names]) },
   tag = c("Rule-Based Model", "Tree-Based Model", "L1 regularization", "Bagging", "Boosting"),
   label = "Prediction Rule Ensembles",
-  predictors = function(x, ...) { 
-    if (x$family %in% c("gaussian", "poisson", "binomial")) {
-      return(suppressWarnings(importance(x, plot = FALSE, ...)$varimps$varname))
-    } else {
-      warning("Reporting the predictors in the model is not yet available for multinomial and multivariate responses")
-      return(NULL)
-    }
-  },
-  varImp = function(x, ...) {
-    if (x$family %in% c("gaussian","binomial","poisson")) {
-      varImp <- pre:::importance(x, plot = FALSE, ...)$varimps
-      varnames <- varImp$varname
-      varImp <- data.frame(Overall = varImp$imp)
-      rownames(varImp) <- varnames  
-      return(varImp)
-    } else {
-      warning("Variable importances cannot be calculated for multinomial or mgaussian family")
-      return(NULL)
-    }
-  },
+  predictors = NULL, #function(x, ...) { 
+    #if (x$family %in% c("gaussian", "poisson", "binomial")) {
+    #  return(suppressWarnings(importance(x, plot = FALSE, 
+    #                                     penalty.par.val = object$tuneValue$penalty.par.val,
+    #                                     ...)$varimps$varname))
+    #} else {
+    #  warning("Reporting the predictors in the model is not yet available for multinomial and multivariate responses")
+    #  return(NULL)
+    #}
+  #},
+  varImp = NULL, #function(x, ...) {
+    #if (x$family %in% c("gaussian","binomial","poisson")) {
+    #  varImps <- pre:::importance(x, plot = FALSE, 
+    #                              penalty.par.val = object$tuneValue$penalty.par.val, 
+    #                              ...)$varimps
+    #  varnames <- varImps$varname
+    #  varImps <- data.frame(Overall = varImps$imp)
+    #  rownames(varImps) <- varnames  
+    #  return(varImps)
+    #} else {
+    #  warning("Variable importances cannot be calculated for multinomial or mgaussian family")
+    #  return(NULL)
+    #}
+  #},
   oob = NULL,
   notes = NULL,
   check = NULL

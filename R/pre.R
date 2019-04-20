@@ -3946,7 +3946,11 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
 
   linear_terms <- rules$rule[rules$rule %in% object$x_names]
   if (length(linear_terms) > 0) {
-    means <- colMeans(object$modmat[, linear_terms])  
+    if (length(linear_terms) == 1L) {
+      means <- mean(object$modmat[, linear_terms])
+    } else {
+      means <- colMeans(object$modmat[, linear_terms])  
+    }
   }
   if (center.linear) {
     if (length(linear_terms) > 0) {
