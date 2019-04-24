@@ -1,3 +1,16 @@
+Changes in Version 0.7.1 (2019-04-24)
+
+  - Bugs fixed in caret_pre_model: tuning of penalty.par.val argument
+      always yielded results for "lambda.1se" only. Results are now
+      correctly returned for "lambda.min" and "lambda.1se". caret's 
+      varImp() and predictors() not supported (perhaps temporarily), 
+      as these would always employ default penalty.par.val of
+      "lambda.1se". 
+
+  - Bugs fixed in explain(). 
+
+
+
 Changes in Version 0.7 (2019-03-30)
 
   - Added support for sparse rule matrix, which can be invoked through sparse 
