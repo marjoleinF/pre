@@ -122,9 +122,10 @@ test_that("bsnullinteract and interact gives previous results with airquality da
   nullmods <- bsnullinteract(airq.ens, nsamp = 1)
   inter <- interact(airq.ens, c("Temp", "Wind"), nullmods = nullmods, plot = FALSE)
   
-  for(i in 1:1)
+  for(i in 1:1) {
     nullmods[[i]] <- nullmods[[i]][!names(nullmods[[i]]) %in%  c(
-      "classify", "formula", "orig_data", "modmat_formula", "modmat", "data")]
+      "glmnet.fit", "classify", "formula", "orig_data", "modmat_formula", "data")]
+  }
   # save_to_test(nullmods, "airquality_w_bsnullinteract")
   expect_equal(nullmods, read_to_test("airquality_w_bsnullinteract"), tolerance = 1.490116e-08)
 
