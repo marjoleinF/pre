@@ -114,7 +114,7 @@ delete_duplicates_complements <- function(
   }
   
   rulevars = if (keep_rulevars && rules_to_process)
-    rulevars[, names(rules)] else NULL
+    rulevars[, names(rules), drop = FALSE] else NULL
   
   ## Return results:
   if (return.dupl.compl) {

@@ -4,11 +4,12 @@
 \alias{explain}
 \title{Explain predictions from final prediction rule ensemble}
 \usage{
-explain(object, newdata, penalty.par.val = "lambda.1se", plot = TRUE,
-  intercept = FALSE, center.linear = FALSE, plot.max.nobs = 4,
-  plot.dim = c(2, 2), plot.obs.names = TRUE, pred.type = "response",
-  digits = 3L, cex = 0.8, ylab = "Contribution to linear predictor",
-  bar.col = c("#E495A5", "#39BEB1"), rule.col = "darkgrey")
+explain(object, newdata, penalty.par.val = "lambda.1se", response = 1L,
+  plot = TRUE, intercept = FALSE, center.linear = FALSE,
+  plot.max.nobs = 4, plot.dim = c(2, 2), plot.obs.names = TRUE,
+  pred.type = "response", digits = 3L, cex = 0.8,
+  ylab = "Contribution to linear predictor", bar.col = c("#E495A5",
+  "#39BEB1"), rule.col = "darkgrey")
 }
 \arguments{
 \item{object}{object of class \code{\link{pre}}.}
@@ -26,6 +27,12 @@ specified, with higher values yielding a sparser ensemble. To evaluate the
 trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
+\item{response}{numeric or character vector of length one. Specifies the
+name or number of the response variable (for multivariate responses) or
+the name or number of the factor level (for multinomial responses) for 
+which explanations and contributions should be computed and/or plotted.
+Only used for\code{pre}s fitted to multivariate or multinomial responses.}
+
 \item{plot}{logical. Should explanations be plotted?}
 
 \item{intercept}{logical. Specifies whether intercept should be included in
@@ -33,10 +40,12 @@ explaining predictions.}
 
 \item{center.linear}{logical. Specifies whether linear terms should be
 centered with respect to the training sample mean before computing their 
-contribution to the predicted value.}
+contribution to the predicted value. If \code{intercept = TRUE}, this
+will also affect the intercept. That is, the value of the intercept returned
+will differ from that of the value returned by the \code{print} method.}
 
 \item{plot.max.nobs}{numeric. Specifies maximum number of observations
-for which explanations will be plotted. The default \code{4} plots the
+for which explanations will be plotted. The default (\code{4}) plots the
 explanation for the first four observations supplied in \code{newdata}.}
 
 \item{plot.dim}{numeric vector of length 2. Specifies the number of rows and
@@ -49,8 +58,10 @@ individual observations' plots. If \code{TRUE} (default),
 \code{paste("Observation", 1:nrow(newdata))} will be used as titles. If 
 \code{FALSE}, no titles will be plotted.}
 
-\item{pred.type}{character. Specifies the type of predicted values provided
-in the plot(s).}
+\item{pred.type}{character. Specifies the type of predicted values to be 
+computed, returned and provided in the plot(s). Note that the computed 
+contributions must be additive and are therefore always on the scale of 
+the linear predictor.}
 
 \item{digits}{integer. Specifies the number of digits used in depcting the
 predicted values in the plot.}
@@ -105,16 +116,18 @@ airq.ens.exp <- explain(airq.ens, newdata = airq[-train,])
 airq.ens.exp$predictors
 airq.ens.exp$contribution
 
-## Fit PRE with three trees and lower penalty parameter value,
-## to allow linear terms to appear in final ensemble:
+## Can also include intercept in explanation:
+airq.ens.exp <- explain(airq.ens, newdata = airq[-train,])
+
+## Fit PRE with linear terms only to illustrate effect of center.linear:
 set.seed(42)
-airq.ens2 <- pre(Ozone ~ ., data = airq[train,], ntrees = 3L)
-## Compared to intercept, Month has negative and 
-## Day has positive contribution:
-explain(airq.ens2, newdata = airq[-train,][1:2,], 
+airq.ens2 <- pre(Ozone ~ ., data = airq[train,], type = "linear")
+## When not centered around their means, Month has negative and 
+##   Day has positive contribution:
+explain(airq.ens2, newdata = airq[-train,][1:2,],
         penalty.par.val = "lambda.min")$contribution
-## Compared with training data means, Month has positive 
-## and Day has negative contribution: 
+## After mean centering, contributions of Month and Day have switched
+##   sign (for these two observations): 
 explain(airq.ens2, newdata = airq[-train,][1:2,], 
         penalty.par.val = "lambda.min", center.linear = TRUE)$contribution
 }

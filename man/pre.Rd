@@ -22,8 +22,9 @@ should be of class numeric (for \code{family = "gaussian"} or
 Note that the minus sign (\code{-}) may not be used in the formula to omit
 the intercept or variables in \code{data}, and neither should  \code{+ 0} 
 be used to omit the intercept. To omit the intercept from the final ensemble, 
-add \code{intercept = FALSE} to the call. To omit variables from the final
-ensemble, make sure they are excluded from \code{data}.}
+add \code{intercept = FALSE} to the call (although omitting the intercept from
+the final ensemble will only very rarely be appropriate). To omit variables 
+from the final ensemble, make sure they are excluded from \code{data}.}
 
 \item{data}{\code{data.frame} containing the variables in the model. Response 
 must be of class \code{factor} for classification, \code{numeric} for (count) 
@@ -154,7 +155,7 @@ rules and/or linear terms and a range of possible final ensembles.
 By default, the final ensemble employed by all other
 methods and functions in package \code{pre} is selected using the 'minimum
 cross validated error plus 1 standard error' criterion. All functions and 
-methods for objects of class \code{pre} take a \code{penalty.parameter.value} 
+methods for objects of class \code{pre} take a \code{penalty.parameter.val} 
 argument, which can be used to select a different criterion.
 }
 \description{
@@ -244,14 +245,14 @@ airq.ens3
 
 ## Fit pre to a multinomial response:
 set.seed(42)
-iris.pre <- pre(Species ~ ., data = iris, family = "multinomial")
-iris.pre
+iris.ens <- pre(Species ~ ., data = iris, family = "multinomial")
+iris.ens
 
 ## Fit pre to a survival response:
 library("survival")
 lung <- lung[complete.cases(lung), ]
 set.seed(42)
-lung.ens <- pre(Surv(time, status) ~ . - sex, data = lung, family = "cox")
+lung.ens <- pre(Surv(time, status) ~ ., data = lung, family = "cox")
 lung.ens
 
 ## Fit pre to a count response:

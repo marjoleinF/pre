@@ -1,3 +1,7 @@
+## TODO: Check whether explain makes proper use of coef and sds
+## TODO: Implement foward selection based on AIC (and BIC)?
+## TODO: Implement functionality for missing-in-attributes approach for missing values
+
 utils::globalVariables("%dopar%")
 
 #' Derive a prediction rule ensemble
@@ -14,8 +18,9 @@ utils::globalVariables("%dopar%")
 #' Note that the minus sign (\code{-}) may not be used in the formula to omit
 #' the intercept or variables in \code{data}, and neither should  \code{+ 0} 
 #' be used to omit the intercept. To omit the intercept from the final ensemble, 
-#' add \code{intercept = FALSE} to the call. To omit variables from the final
-#' ensemble, make sure they are excluded from \code{data}.
+#' add \code{intercept = FALSE} to the call (although omitting the intercept from
+#' the final ensemble will only very rarely be appropriate). To omit variables 
+#' from the final ensemble, make sure they are excluded from \code{data}.
 #' @param data \code{data.frame} containing the variables in the model. Response 
 #' must be of class \code{factor} for classification, \code{numeric} for (count) 
 #' regression, \code{Surv} for survival regression. Input variables must be of 
@@ -179,7 +184,7 @@ utils::globalVariables("%dopar%")
 #' By default, the final ensemble employed by all other
 #' methods and functions in package \code{pre} is selected using the 'minimum
 #' cross validated error plus 1 standard error' criterion. All functions and 
-#' methods for objects of class \code{pre} take a \code{penalty.parameter.value} 
+#' methods for objects of class \code{pre} take a \code{penalty.parameter.val} 
 #' argument, which can be used to select a different criterion.
 #' 
 #' @examples \donttest{## Fit pre to a continuous response:
@@ -203,14 +208,14 @@ utils::globalVariables("%dopar%")
 #' 
 #' ## Fit pre to a multinomial response:
 #' set.seed(42)
-#' iris.pre <- pre(Species ~ ., data = iris, family = "multinomial")
-#' iris.pre
+#' iris.ens <- pre(Species ~ ., data = iris, family = "multinomial")
+#' iris.ens
 #' 
 #' ## Fit pre to a survival response:
 #' library("survival")
 #' lung <- lung[complete.cases(lung), ]
 #' set.seed(42)
-#' lung.ens <- pre(Surv(time, status) ~ . - sex, data = lung, family = "cox")
+#' lung.ens <- pre(Surv(time, status) ~ ., data = lung, family = "cox")
 #' lung.ens
 #' 
 #' ## Fit pre to a count response:
@@ -878,6 +883,7 @@ get_modmat <- function(
   
   #####
   # Perform winsorizing and normalizing
+  ## TODO: Allow for not supplying all variables, but only variables with non-zero importances:
   if (type != "rules" && any(sapply(data[,x_names], is.numeric))) {
     #####
     # if type is not rules, linear terms should be prepared:
@@ -3765,16 +3771,25 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
 #' @param newdata optional dataframe of new (test) observations, including all
 #' predictor variables used for deriving the prediction rule ensemble.
 #' @inheritParams print.pre
+#' @param response numeric or character vector of length one. Specifies the
+#' name or number of the response variable (for multivariate responses) or
+#' the name or number of the factor level (for multinomial responses) for 
+#' which explanations and contributions should be computed and/or plotted.
+#' Only used for\code{pre}s fitted to multivariate or multinomial responses.  
 #' @param plot logical. Should explanations be plotted?
 #' @param intercept logical. Specifies whether intercept should be included in
 #' explaining predictions.
 #' @param center.linear logical. Specifies whether linear terms should be
 #' centered with respect to the training sample mean before computing their 
-#' contribution to the predicted value.
-#' @param pred.type character. Specifies the type of predicted values provided
-#' in the plot(s).
+#' contribution to the predicted value. If \code{intercept = TRUE}, this
+#' will also affect the intercept. That is, the value of the intercept returned
+#' will differ from that of the value returned by the \code{print} method.
+#' @param pred.type character. Specifies the type of predicted values to be 
+#' computed, returned and provided in the plot(s). Note that the computed 
+#' contributions must be additive and are therefore always on the scale of 
+#' the linear predictor.
 #' @param plot.max.nobs numeric. Specifies maximum number of observations
-#' for which explanations will be plotted. The default \code{4} plots the
+#' for which explanations will be plotted. The default (\code{4}) plots the
 #' explanation for the first four observations supplied in \code{newdata}.
 #' @param plot.dim numeric vector of length 2. Specifies the number of rows and
 #' columns in the resulting plot.
@@ -3825,16 +3840,18 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
 #' airq.ens.exp$predictors
 #' airq.ens.exp$contribution
 #' 
-#' ## Fit PRE with three trees and lower penalty parameter value,
-#' ## to allow linear terms to appear in final ensemble:
+#' ## Can also include intercept in explanation:
+#' airq.ens.exp <- explain(airq.ens, newdata = airq[-train,])
+#' 
+#' ## Fit PRE with linear terms only to illustrate effect of center.linear:
 #' set.seed(42)
-#' airq.ens2 <- pre(Ozone ~ ., data = airq[train,], ntrees = 3L)
-#' ## Compared to intercept, Month has negative and 
-#' ## Day has positive contribution:
-#' explain(airq.ens2, newdata = airq[-train,][1:2,], 
+#' airq.ens2 <- pre(Ozone ~ ., data = airq[train,], type = "linear")
+#' ## When not centered around their means, Month has negative and 
+#' ##   Day has positive contribution:
+#' explain(airq.ens2, newdata = airq[-train,][1:2,],
 #'         penalty.par.val = "lambda.min")$contribution
-#' ## Compared with training data means, Month has positive 
-#' ## and Day has negative contribution: 
+#' ## After mean centering, contributions of Month and Day have switched
+#' ##   sign (for these two observations): 
 #' explain(airq.ens2, newdata = airq[-train,][1:2,], 
 #'         penalty.par.val = "lambda.min", center.linear = TRUE)$contribution
 #' }
@@ -3843,10 +3860,10 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
 #' \code{\link{interact}}, \code{\link{print.pre}}
 #' @export
 explain <- function(object, newdata, penalty.par.val = "lambda.1se",
-                    plot = TRUE, intercept = FALSE, center.linear = FALSE,
-                    plot.max.nobs = 4, plot.dim = c(2, 2),
-                    plot.obs.names = TRUE, pred.type = "response", 
-                    digits = 3L,  cex = .8,
+                    response = 1L, plot = TRUE, intercept = FALSE, 
+                    center.linear = FALSE, plot.max.nobs = 4, 
+                    plot.dim = c(2, 2), plot.obs.names = TRUE, 
+                    pred.type = "response", digits = 3L,  cex = .8,
                     ylab = "Contribution to linear predictor",
                     bar.col = c("#E495A5", "#39BEB1"),
                     rule.col = "darkgrey") {
@@ -3865,7 +3882,54 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
     stop("Argument plot should be a logical vector of length 1.")
   }
   
-  preds <- round(predict(object, newdata = newdata, type = pred.type,
+  ## Check if all variables with non-zero importances have been supplied:
+  req_vars <- importance(object, plot = FALSE, 
+                         penalty.par.val = penalty.par.val)$varimps$varname
+  if (!all(req_vars%in% names(newdata))) {
+    stop("All variables with non-zero importances should be included in newdata")
+  }
+  
+  ## Check if proper response variable is specified: 
+  if (object$family %in% c("mgaussian", "multinomial")) {
+    if (!((is.numeric(response) || is.character(response)) && length(response) == 1L)) {
+      stop("Argument 'response' should specify a numeric or character vector or length 1.")
+    }
+    if (object$family == "mgaussian") {
+      if (is.numeric(response)) {
+        if (response > length(object$y_names)) {
+          stop(paste0("There is no response variable number ", response, "."))
+        }
+        response <- object$y_names[response]
+      } else {
+        if (!(response %in% object$y_names)) {
+          stop(paste0("Response variable named '", response, "'does not exist. Argument 'response' should specify one of: "), paste(object$y_names, collapse = " "))
+        }
+      }
+    } else {
+      if (is.numeric(response)) {
+        if (response > length(levels(object$data[ , object$y_names]))) {
+          stop(paste0("The response variable has no level number ", response, "."))
+        }
+        response <- levels(object$data[ , object$y_names])[response]
+      } else {
+        if (!(response %in% levels(object$data[ , object$y_names]))) {
+          stop(paste0("Response variable level '", response, "' does not exist. Argument 'response' should specify one of: "), paste(levels(object$data[ , object$y_names]), collapse = " "))
+        }
+      }
+    }
+  }
+  
+  ## Prepare model matrix for getting explanations:
+  modmat <- newdata
+  
+  ## Add values of variables which have zero importance, if missing:
+  nonreq_vars <- object$x_names[!object$x_names %in% req_vars]
+  if (any(add_vars <- !nonreq_vars %in% names(modmat))) {
+    modmat[, nonreq_vars[add_vars]] <- object$data[1, nonreq_vars[add_vars]]
+  }
+  
+  ## Get predicted values:
+  preds <- round(predict(object, newdata = modmat, type = pred.type,
                          penalty.par.val = penalty.par.val), digits = digits)
   
   ## Prepare newdata:
@@ -3873,21 +3937,21 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
   if (is.null(winsfrac)) winsfrac <- formals(pre)$winsfrac
   
   ## Check if variable names and classes are the same in newdata as in object$data:
-  if (!all(object$x_names %in% names(newdata))) {
-    newdata <- model.frame(as.Formula((object$call)$formula), data = newdata, 
+  if (!all(object$x_names %in% names(modmat))) {
+    modmat <- model.frame(as.Formula((object$call)$formula), data = modmat, 
                            rhs = NULL, lhs = 0, na.action = NULL)
   } else {
-    newdata <- newdata[ , object$x_names]
+    modmat <- modmat[ , object$x_names]
   }
   
   ## Coerce character and logical variables to factors:
-  if (any(char_names <- sapply(newdata, is.character))) {
-    char_names <- names(newdata)[char_names]
-    data[ , char_names] <- sapply(newdata[ , char_names], factor)
+  if (any(char_names <- sapply(modmat, is.character))) {
+    char_names <- names(modmat)[char_names]
+    data[ , char_names] <- sapply(modmat[ , char_names], factor)
   }
-  if (any(logic_names <- sapply(newdata, is.logical))) {
-    logic_names <- names(newdata)[logic_names]
-    newdata[ , logic_names] <- sapply(newdata[ , logic_names], factor)
+  if (any(logic_names <- sapply(modmat, is.logical))) {
+    logic_names <- names(modmat)[logic_names]
+    modmat[ , logic_names] <- sapply(modmat[ , logic_names], factor)
   } 
   
   ## Coerce ordered categorical variables to numeric, if necessary:
@@ -3896,32 +3960,32 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
   } else {
     (object$call)$ordinal
   }) {
-    if (any(ord_var_inds <- sapply(newdata, is.ordered))) {
-      newdata[ , ord_var_inds] <- sapply(newdata[ , ord_var_inds], as.numeric)
+    if (any(ord_var_inds <- sapply(modmat, is.ordered))) {
+      modmat[ , ord_var_inds] <- sapply(modmat[ , ord_var_inds], as.numeric)
     }
   }
   
-  if (any(is.na(newdata))) {
-    newdata <- newdata[complete.cases(newdata),]
+  if (any(is.na(modmat))) {
+    modmat <- modmat[complete.cases(modmat),]
     warning("Some observations in newdata have missing predictor variable values and will be removed.", immediate. = TRUE)
   }
   
   ## Check and set factor levels of newdata to variable levels in object$data:
-  if (any(factor_inds <- sapply(newdata, is.factor))) {
-    for (i in names(newdata)[factor_inds]) {
-      if (all(levels(newdata[ , i]) %in% levels(object$data[ , i]))) {
-        levels(newdata[ , i]) <- levels(object$data[ , i])
+  if (any(factor_inds <- sapply(modmat, is.factor))) {
+    for (i in names(modmat)[factor_inds]) {
+      if (all(levels(modmat[ , i]) %in% levels(object$data[ , i]))) {
+        levels(modmat[ , i]) <- levels(object$data[ , i])
       } else {
         stop("Variable ", i, " has levels not present in training data. Cannot compute predictions.")
       }
     }
   }
   
-  newdata <- get_modmat(
+  modmat <- get_modmat(
     wins_points = object$wins_points, 
     x_scales = object$x_scales, 
     formula = object$formula, 
-    data = newdata, 
+    data = modmat, 
     rules = if (object$type == "linear" || is.null(object$rules)) {NULL} else {
       structure(object$rules$description, names = object$rules$rule)}, 
     type = object$type, 
@@ -3929,88 +3993,123 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
     x_names = object$x_names, 
     normalize = object$normalize,
     y_names = NULL,
-    confirmatory = object$call$confirmatory)
-  
-  newdata <- newdata$x
-  
-  invisible(capture.output(
-    rules <- print(object, penalty.par.val = penalty.par.val)))
+    confirmatory = object$call$confirmatory)$x
+  if (intercept) modmat <- cbind(`(Intercept)` = 1L, modmat)
+  coefs <- coef(object$glmnet.fit, s = penalty.par.val)
 
-  newdata <- newdata[, rules$rule[-which(rules$rule == "(Intercept)")]]
-  if (intercept) {
-    newdata <- cbind(1, newdata)
-    colnames(newdata)[1] <- "(Intercept)"
+  ## Select only non-zero terms and compute explanations:
+  if (object$family %in% c("multinomial", "mgaussian")) {
+    coefs <- sapply(coefs, function(x) x[x@i + 1L, ])[ , response]
   } else {
-    rules <- rules[-which(rules$rule == "(Intercept)"),]
-  }
-
-  linear_terms <- rules$rule[rules$rule %in% object$x_names]
-  if (length(linear_terms) > 0) {
-    if (length(linear_terms) == 1L) {
-      means <- mean(object$modmat[, linear_terms])
-    } else {
-      means <- colMeans(object$modmat[, linear_terms])  
-    }
-  }
-  if (center.linear) {
-    if (length(linear_terms) > 0) {
-      newdata[, linear_terms] <- 
-        t(apply(newdata[, linear_terms], 1, function(x) x - means))
-    }
+    coefs <- coefs[coefs@i + 1L, ]
   }
   
-  explanation <- apply(newdata, 1, function(x) x*rules$coefficient)
-  rownames(explanation) <- rules$rule
-
-  plot_func <- function(explanation, plotname, pred, maxval) {
-    barplot(explanation,
-            col = ifelse(explanation < 0, bar.col[1], bar.col[2]),
-            main = ifelse(is.null(plotname),  
-                          paste0("\n\npredicted: ", pred),
-                          paste0(plotname, "\n\npredicted: ", pred)),
-            xlab = ylab,
-            xlim = c(-maxval, maxval), horiz = TRUE, las = 1,
-            cex.axis = cex, cex.names = cex, cex.main = cex, cex.lab = cex)
+  if (!intercept) coefs <- coefs[-1L]
+  modmat <- modmat[ , names(coefs)]      
+  linear_terms <- names(coefs)[!grepl("rule", names(coefs))]
+  linear_terms <- linear_terms[!grepl("(Intercept)", linear_terms)]
+  numeric_linear_terms <- linear_terms[linear_terms %in% object$x_names]
+  if (length(numeric_linear_terms) > 0L) {
+    tmp <- scale(modmat[ , numeric_linear_terms], center = TRUE, scale = FALSE)
+    means <- attr(tmp, "scaled:center")
+    if (center.linear) modmat[ , numeric_linear_terms] <- tmp
+    if (is.null(names(means))) names(means) <- numeric_linear_terms
+    if (object$normalize) means <- means * object$x_scales[numeric_linear_terms]
   }
-  maxval <- max(abs(min(explanation)), max(explanation))
-
+  explanation <- apply(modmat, 1L, function(x) x*coefs)
   
-  if (is.null(plot.obs.names)) {
-    plot.obs.names <- paste("Observation", 1:nrow(newdata))
-  } else if (is.logical(plot.obs.names)) {
-    if (plot.obs.names) {
-      plot.obs.names <- rownames(newdata)
-    } else {
-      plot.obs.names <- NULL
-    }
-  } else if (is.character(plot.obs.names)) {
-    plot.obs.names <- rep_len(plot.obs.names, length.out = nrow(newdata))
+  ## Combine dummy indicators of categorical predictors:
+  factor_names <- c()
+  for (i in linear_terms[!linear_terms %in% numeric_linear_terms]) {
+    factor_names <- c(factor_names, 
+                      unlist(sapply(object$x_names, function(x) grep(x, i))))
   }
+  factor_names <- unique(names(factor_names))
+  ## TODO: Make this optional through an argument of function explain()?
+  ## Replace all dummy indicators from the same factor_names with a single sum:
+  for (i in factor_names) {
+    factor_ids <- grep(i, rownames(explanation))
+    if (length(factor_ids) > 1L) {
+      explanation[factor_ids[1L], ] <- colSums(
+        explanation[grep(i, rownames(explanation)),])
+      explanation <- explanation[-(factor_ids[-1L]), ]
+    } else {
+      explanation[factor_ids[1L], ] <- sum(
+        explanation[grep(i, rownames(explanation)),])
+    }
+    rownames(explanation)[factor_ids[1L]] <- i
+  }
+  
+  if (plot) {
+    if (length(numeric_linear_terms) > 0L && intercept && center.linear) {
+      explanation["(Intercept)", ] <- explanation["(Intercept)", ] + 
+        sum((means[numeric_linear_terms] / object$x_scales[numeric_linear_terms]) * 
+        coefs[numeric_linear_terms])
+    }
+    plot_func <- function(explanation, plotname, pred, maxval) {
+      barplot(explanation,
+              col = ifelse(explanation < 0L, bar.col[1L], bar.col[2L]),
+              main = ifelse(is.null(plotname),  
+                            paste0("\n\npredicted value: ", pred),
+                            paste0(plotname, "\n\npredicted value: ", pred)),
+              xlab = ylab, xlim = maxval, horiz = TRUE, las = 1L,
+              cex.axis = cex, cex.names = cex, cex.main = cex, cex.lab = cex)
+    }
+    maxval <- c(min(explanation), max(explanation))
+  
+    if (is.null(plot.obs.names)) {
+      plot.obs.names <- paste("Observation", 1L:nrow(newdata))
+    } else if (is.logical(plot.obs.names)) {
+      if (plot.obs.names) {
+        plot.obs.names <- rownames(newdata)
+      } else {
+        plot.obs.names <- NULL
+      }
+    } else if (is.character(plot.obs.names)) {
+      plot.obs.names <- rep_len(plot.obs.names, length.out = nrow(newdata))
+    }
 
-  par(mfrow = plot.dim)
-  for (i in 1:min(nrow(newdata), plot.max.nobs)) {
-    midpoints <- plot_func(explanation[ , i], plot.obs.names[i], preds[i], maxval)
-    labels <- rules$description
-    if (length(linear_terms) > 0) {
-      linear_term_ids <- which(rules$rule %in% linear_terms)
-      for (j in linear_term_ids) {
-        if (center.linear) {
-          labels[j] <- paste0(rules$rule[j], " = ", 
-                              round(newdata[i, j], digits = digits), 
-                              " (centered)")          
-        } else {
-          labels[j] <- paste0(rules$rule[j], " = ", 
-                              round(newdata[i, j], digits = digits), 
-                              " (mean = ", 
-                              round(means[rules$rule[j]], digits = digits), ")")
-        }
+    par(mfrow = plot.dim)
+    labels <- coef(object, penalty.par.val = penalty.par.val)
+    rownames(labels) <- labels$rule
+    labels <- labels[rownames(explanation) , "description"]
+    if (length(factor_names) > 0L) {
+      if (all(rownames(explanation)[is.na(labels)] %in% factor_names)) {
+        labels[is.na(labels)] <- rownames(explanation)[is.na(labels)]
+      } else {
+        warning("Something may have gone wrong with the computing and coding of the following variables: ", 
+                paste(rownames(explanation)[!(rownames(explanation)[is.na(labels)] %in% factor_names)]))
       }
     }
-    if (!is.null(rule.col)) {
-      text(y = midpoints, x = -maxval, labels = labels, cex = cex,
-         col = rule.col, pos=4)
+
+    for (i in 1L:min(nrow(newdata), plot.max.nobs)) {
+      midpoints <- plot_func(explanation[ , i], plot.obs.names[i], preds[i], maxval)
+      if (length(numeric_linear_terms) > 0) {
+        for (j in numeric_linear_terms) {
+          label_id <- which(rownames(explanation) == j)
+          if (center.linear) {
+            labels[label_id] <- paste0(j, " = ", round(newdata[i, j], digits = digits), 
+                                " (centered)")          
+          } else {
+            labels[label_id] <- paste0(j, " = ", round(newdata[i, j], digits = digits), 
+                                " (mean = ", 
+                                round(means[j], digits = digits), ")")
+          }
+        }
+        for (j in factor_names) {
+          label_id <- which(rownames(explanation) == j)
+          labels[label_id] <- paste0(j, " = ", newdata[i, j], 
+                                     " (reference category = ", 
+                                     levels(object$data[ , j])[1L], ")")
+        }
+      }
+      if (!is.null(rule.col)) {
+        text(y = midpoints, x = maxval[1L], labels = labels, cex = cex, 
+             col = rule.col, pos = 4L)
+      }
     }
   }
+  if (intercept) newdata <- cbind(`(Intercept)` = 1L, newdata)
   
-  return(list(predictors = newdata, contribution = explanation))
+  return(list(predictors = newdata, contribution = t(explanation), predicted.value = preds))
 }

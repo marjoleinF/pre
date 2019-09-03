@@ -49,7 +49,7 @@
 
 @Article{Fokkema17,
   author  = {Fokkema, Marjolein},
-  title   = {{pre}: {A}n {R} package for fitting prediction rule ensembles},
+  title   = {{pre}: an {R} package for fitting prediction rule ensembles},
   journal = {arXiv:1707.07149},
   year    = {2017},
   url     = {https://arxiv.org/abs/1707.07149},
@@ -75,7 +75,7 @@
 }
 
 @Manual{Milb18,
-  title  = {{plotmo}: Plot a Model's Residuals, Response, and Partial Dependence Plots},
+  title  = {plotmo: Plot a Model's Residuals, Response, and Partial Dependence Plots},
   author = {Stephen Milborrow},
   year   = {2018},
   note   = {R package version 3.4.2},

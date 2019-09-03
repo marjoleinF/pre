@@ -3,9 +3,14 @@
 #' \code{caret_pre_model} provides a model setup for the train function of
 #' package caret
 #'  
-#' @details This is still somewhat experimental. Function pre will become
-#' availabel as a method in package caret in future versions, after additional 
-#' testing and finetuning; caret_pre_model will then become depracated.
+#' @details When tuning parameters of \code{pre()} with caret's \code{train()}
+#' function, always use the default S3 method (i.e., specify predictors and response
+#' variables through arguments \code{x} and \code{y}. When \code{train.formula()}, 
+#' is used (i.e., when \code{formula} and \code{data} arguments are specified),
+#' \code{train} will internally call \code{model.matrix()} on \code{data}, which 
+#' will code all categorical (factor)  predictor variables as dummy variables, and 
+#' will yield a different result than inputting the original factors, for most 
+#' tree-based methods. 
 #' 
 #' @examples \dontrun{
 #'  
@@ -19,19 +24,11 @@
 #' ## Apply caret with only pre's default settings (trControl and ntrees argument
 #' ## are employed here only to reduce computation time):
 #' 
-#' # use default S3 method of train:
 #' set.seed(42)
 #' prefit1 <- train(x = x, y = y, method = caret_pre_model,
 #'                  trControl = trainControl(number = 1),
 #'                  ntrees = 25L)
 #' prefit1
-#' 
-#' # use formula method for train:
-#' set.seed(42)
-#' prefit.f <- train(Ozone ~ ., data = airq, method = caret_pre_model,
-#'                   trControl = trainControl(number = 1),
-#'                   ntrees = 25L)
-#' prefit.f
 #' 
 #' ## Create custom tuneGrid:
 #' set.seed(42)

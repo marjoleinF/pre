@@ -17,14 +17,13 @@ knitr::opts_chunk$set(
 )
 ```
 
-**pre** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival outcome variables. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema17]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
+**pre** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema17]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
 
-1) The package is completely R based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
+1) The package is completely **R** based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2) The unbiased tree induction algorithms of [@Hothorn06] is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of [@Zeileis08] can be employed, or the classification and regression tree (CART) algorithm of [@Breiman84].
-3) The package supports a wider range of response variable types. 
-4) The package allows for plotting the final rule ensemble as a collection of simple decision trees.
+3) The package supports a wider range of response variable types.
 5) The initial ensembles may be generated as in bagging, boosting and/or random forests.
-6) Hinge functions of predictor variables may be included as baselearners, like in the multivariate adaptive regression splines method of [@Friedman91], using function `gpe()`.
+6) Hinge functions of predictor variables may be included as baselearners, as in the multivariate adaptive regression splines method of [@Friedman91], using function `gpe()`.
 
 Note that **pre** is under development, and much work still needs to be done. Below, a short introductory example is provided. [@Fokkema17] provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations. 
 
@@ -86,9 +85,12 @@ airq.cv <- cvpre(airq.ens)
 The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which observations were assigned are saved in `airq.cv$fold_indicators`.
 
 
-### Tools for interpretation
+## Tools for interpretation
 
 Package **pre** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for complex ensembles containing many rules and linear terms. 
+
+
+## Importances
 
 We can assess the relative importance of input variables as well as baselearners using the `importance()` function:
 
@@ -101,6 +103,9 @@ include_graphics(sprintf("%simportance-1.png", opts_current$get("fig.path")))
 ```
 
 As we already observed in the printed ensemble, the plotted variable importances indicate that Temperature and Wind are most strongly associated with Ozone levels. Solar.R and Day are also associated with Ozone levels, but much less strongly. Variable Month is not plotted, which means it obtained an importance of zero, indicating that it is not associated with Ozone levels. We already observed this in the printed ensemble: Month was not selected as a linear term and did not appear in any of the selected rules. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively. 
+
+
+## Partial dependence plots
 
 We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the `singleplot()` function:
 
@@ -126,13 +131,16 @@ Note that creating partial dependence plots is computationally intensive and com
 
 If the final ensemble does not contain a lot of terms, inspecting individual rules and linear terms through the `print` method may be (much) more informative than partial dependence plots. One of the main advantages of prediction rule ensembles is their interpretability: the predictive model contains only simple functions of the predictor variables (rules and linear terms), which are easy to grasp. Partial dependence plots are often much more useful for interpretation of complex models, like random forests for example.
 
+
+## Explaining individual predictions
+
 We can obtain explanations of the predictions for individual observations using function `explain()`:
 
 ```{r}
 expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .6)
 ```
 
-The values of the rules and linear terms for each observation are saved in `expl$predictors` and the contributions in `expl$contribution`.
+The values of the rules and linear terms for each observation are saved in `expl$predictors`, their contributions in `expl$contribution` and the predicted values in `expl$predicted.value`.
 
 We can assess correlations between the baselearners appearing in the ensemble using the `corplot()` function:
 
@@ -145,7 +153,7 @@ include_graphics(sprintf("%scorplot-1.png", opts_current$get("fig.path")))
 ```
 
 
-### Assessing presence of interactions
+## Assessing presence of interactions
 
 We can assess the presence of interactions between the input variables using the `interact()` and `bsnullinteract()` funtions. Function `bsnullinteract()` computes null-interaction models (10, by default) based on bootstrap-sampled and permuted datasets. Function `interact()` computes interaction test statistics for each predictor variables appearing in the specified ensemble. If null-interaction models are provided through the `nullmods` argument, interaction test statistics will also be computed for the null-interaction model, providing a reference null distribution. 
 
@@ -157,14 +165,14 @@ nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods)
 ```
 
-```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "400px"}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "350px"}
 include_graphics(sprintf("%sinteract-1.png", opts_current$get("fig.path")))
 ```
 
 The plotted variable interaction strengths indicate that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval (CI) of interaction stengths in the null interaction models (lighter grey bar represents the median, error bars represent the 90% CIs). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
 
 
-## Including hinge functions (multivariate adaptive regression splines)
+# Including hinge functions (multivariate adaptive regression splines)
 
 More complex prediction ensembles can be obtained using the `gpe()` function. Abbreviation gpe stands for generalized prediction ensembles, which can also include hinge functions of the predictor variables as described in [@Friedman91], in addition to rules and/or linear terms. Addition of hinge functions may further improve predictive accuracy. See the following example:
 
