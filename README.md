@@ -1,6 +1,3 @@
-pre: an R package for deriving prediction rule ensembles
-========================================================
-
 **pre** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in Fokkema (2017). The package largely implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
 
 1.  The package is completely **R** based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
@@ -113,8 +110,7 @@ Tools for interpretation
 
 Package **pre** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for complex ensembles containing many rules and linear terms.
 
-Importances
------------
+### Importances
 
 We can assess the relative importance of input variables as well as baselearners using the `importance()` function:
 
@@ -126,8 +122,27 @@ imps <- importance(airq.ens, round = 4)
 
 As we already observed in the printed ensemble, the plotted variable importances indicate that Temperature and Wind are most strongly associated with Ozone levels. Solar.R and Day are also associated with Ozone levels, but much less strongly. Variable Month is not plotted, which means it obtained an importance of zero, indicating that it is not associated with Ozone levels. We already observed this in the printed ensemble: Month was not selected as a linear term and did not appear in any of the selected rules. The variable and baselearner importances are saved in `imps$varimps` and `imps$baseimps`, respectively.
 
-Partial dependence plots
-------------------------
+### Explaining individual predictions
+
+We can obtain explanations of the predictions for individual observations using function `explain()`:
+
+``` r
+expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .6)
+```
+
+![](inst/README-figures/README-unnamed-chunk-9-1.png)
+
+The values of the rules and linear terms for each observation are saved in `expl$predictors`, their contributions in `expl$contribution` and the predicted values in `expl$predicted.value`.
+
+We can assess correlations between the baselearners appearing in the ensemble using the `corplot()` function:
+
+``` r
+corplot(airq.ens)
+```
+
+<img src="inst/README-figures/README-corplot-1.png" width="500px" />
+
+### Partial dependence plots
 
 We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the `singleplot()` function:
 
@@ -149,29 +164,7 @@ Note that creating partial dependence plots is computationally intensive and com
 
 If the final ensemble does not contain a lot of terms, inspecting individual rules and linear terms through the `print` method may be (much) more informative than partial dependence plots. One of the main advantages of prediction rule ensembles is their interpretability: the predictive model contains only simple functions of the predictor variables (rules and linear terms), which are easy to grasp. Partial dependence plots are often much more useful for interpretation of complex models, like random forests for example.
 
-Explaining individual predictions
----------------------------------
-
-We can obtain explanations of the predictions for individual observations using function `explain()`:
-
-``` r
-expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .6)
-```
-
-![](inst/README-figures/README-unnamed-chunk-11-1.png)
-
-The values of the rules and linear terms for each observation are saved in `expl$predictors`, their contributions in `expl$contribution` and the predicted values in `expl$predicted.value`.
-
-We can assess correlations between the baselearners appearing in the ensemble using the `corplot()` function:
-
-``` r
-corplot(airq.ens)
-```
-
-<img src="inst/README-figures/README-corplot-1.png" width="500px" />
-
-Assessing presence of interactions
-----------------------------------
+### Assessing presence of interactions
 
 We can assess the presence of interactions between the input variables using the `interact()` and `bsnullinteract()` funtions. Function `bsnullinteract()` computes null-interaction models (10, by default) based on bootstrap-sampled and permuted datasets. Function `interact()` computes interaction test statistics for each predictor variables appearing in the specified ensemble. If null-interaction models are provided through the `nullmods` argument, interaction test statistics will also be computed for the null-interaction model, providing a reference null distribution.
 
@@ -226,7 +219,7 @@ airq.gpe
 ```
 
 References
-----------
+==========
 
 Breiman, L., Friedman, J., Olshen, R., & Stone, C. (1984). Classification and regression trees. Boca Raton, FL: Chapman&Hall/CRC.
 
