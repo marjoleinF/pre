@@ -12,9 +12,9 @@
 
 \item{newdata}{optional new data to compute predictions for}
 
-\item{type}{argument passed to \code{\link{predict.cv.glmnet}}}
+\item{type}{argument passed to \code{\link[glmnet]{predict.cv.glmnet}}}
 
-\item{penalty.par.val}{argument passed to \code{s} argument of \code{\link{predict.cv.glmnet}}}
+\item{penalty.par.val}{argument passed to \code{s} argument of \code{\link[glmnet]{predict.cv.glmnet}}}
 
 \item{...}{Unused}
 }

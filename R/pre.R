@@ -1,4 +1,3 @@
-## TODO: Check whether explain makes proper use of coef and sds
 ## TODO: Implement foward selection based on AIC (and BIC)?
 ## TODO: Implement functionality for missing-in-attributes approach for missing values
 
@@ -605,8 +604,6 @@ pre <- function(formula, data, family = gaussian,
     }
   }
 
-
-
   ## Check specification of tree growing algorithms employed:
   if (!tree.unbiased) { # rpart is employed
     if (family == "mgaussian") {
@@ -725,9 +722,9 @@ pre <- function(formula, data, family = gaussian,
     
   }
 
-  #########################################################################
-  ## Prepare rules, linear terms, outcome variable and perform selection ##
-  #########################################################################
+  #################################################################
+  ## Prepare rules, linear terms, outcome variable for selection ##
+  #################################################################
   
   if (type == "rules" && length(rules) == 0) {
     warning("No prediction rules could be derived from the data.")
@@ -766,30 +763,6 @@ pre <- function(formula, data, family = gaussian,
   ### Fit regression model ###
   ############################
   
-  ### TODO: allow for forward selection:
-  ## Include additional argument regression = "glmnet"
-  ## which also takes argument "stepAIC"
-  ## then number of terms (i.e., steps argument) should be specified
-  ## But would be nice to always take e.g., 100 steps, 
-  ## and then select number of terms with penalty.par.val in print etc. 
-  ## would allow only for ""continuous
-  
-  #if (regression == "stepAIC") {
-  #  if (family %in% c("gaussian", "binomial")) {
-  #    data <- cbind(modmat_data$y, modmat_data$x)
-  #    lm_full <- lm()
-  #    lm_intercept <- lm()
-  #    MASS::stepAIC(object = lm_intercept, scope = list(upper = lm_full, lower = lm_intercept),
-  #                  direction = "forward", type)    
-  #    ## with stepAIC seems tricky to save intermediate models.
-  #    ## Create a loop with MASS::addterm
-  #    
-  #    
-  #  }
-  #  
-  #
-  #} else if (regression == "glmnet") {
-  
   y <- modmat_data$y
   x <- modmat_data$x  
 
@@ -798,6 +771,24 @@ pre <- function(formula, data, family = gaussian,
   } 
   if (!is.null(confirmatory)) {
     penalty.factor[which(colnames(x) %in% confirmatory)] <- 0L
+  }
+  
+  if (!is.null(cl$fit.final)) {
+    result <- list(call = cl, weights = weights, 
+                   data = data, normalize = normalize, x_scales = x_scales, 
+                   type = type, x_names = x_names, y_names = y_names, 
+                   modmat = x, wins_points = wins_points, family = family, 
+                   formula = formula)
+    if (type != "linear" & length(rules) > 0L) {
+      result$complements.removed <- rule_object$complements.removed
+      result$duplicates.removed <- rule_object$duplicates.removed
+      result$rules <- data.frame(rule = names(rules), 
+                                 description = rules, 
+                                 stringsAsFactors = FALSE)
+    } 
+    
+    class(result) <- "pre"
+    return(result)
   }
   
   # check whether there's duplicates in the variable names:
@@ -822,7 +813,6 @@ pre <- function(formula, data, family = gaussian,
         glmnet.fit$nzero[l1se_ind], "\n  mean cv error (se) = ", 
         glmnet.fit$cvm[l1se_ind], " (", glmnet.fit$cvsd[l1se_ind], ")\n", sep="")
   }
-  #}
   
   
   ####################
@@ -2022,7 +2012,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
 #' 
 #' @param object object of class \code{\link{pre}}
 #' @inheritParams print.pre
-#' @param ... additional arguments to be passed to \code{\link[glmnet]{coef.glmnet}}.
+#' @param ... additional arguments to be passed to \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @return returns a dataframe with 3 columns: coefficient, rule (rule or 
 #' variable name) and description (\code{NA} for linear terms, conditions for 
 #' rules).
@@ -2066,7 +2056,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   }
   
   if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
-    coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
+    coefs <- as(coef(object$glmnet.fit, s = penalty.par.val, ...), 
                 Class = "matrix")
   } else if (object$family %in% c("mgaussian", "multinomial")) {
     coefs <- sapply(coef(object$glmnet.fit, s = penalty.par.val, ...), as, 
@@ -2274,15 +2264,15 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   
   ## Get predictions:
   if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
-    preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, 
-                               s = penalty.par.val, type = type, ...)[,1]
+    preds <- predict(object$glmnet.fit, newx = newdata, 
+                     s = penalty.par.val, type = type, ...)[,1]
   } else if (object$family %in% c("mgaussian", "multinomial")) {
     if (object$family == "multinomial" && type == "class") {
-      preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, 
-                                 s = penalty.par.val, type = type, ...)[,1]
+      preds <- predict(object$glmnet.fit, newx = newdata, 
+                       s = penalty.par.val, type = type, ...)[,1]
     } else {
-      preds <- predict.cv.glmnet(object$glmnet.fit, newx = newdata, 
-                                 s = penalty.par.val, type = type, ...)[,,1]
+      preds <- predict(object$glmnet.fit, newx = newdata, 
+                       s = penalty.par.val, type = type, ...)[,,1]
     }
 
   }
@@ -2486,7 +2476,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @export
 pairplot <- function(object, varnames, type = "both", 
                      penalty.par.val = "lambda.1se", 
-                     nvals = c(20, 20), pred.type = "response", ...)
+                     nvals = c(20L, 20L), pred.type = "response", ...)
 {
   
   ## Check if proper object argument is specified: 
@@ -2523,7 +2513,7 @@ pairplot <- function(object, varnames, type = "both",
   }
   
   ## Check if proper nvals argument is specified: 
-  if (!(length(nvals) == 2 && nvals == as.integer(nvals))) {
+  if (!(length(nvals) == 2 && all(nvals == as.integer(nvals)))) {
     stop("Argument 'nvals' should be an integer vector of length 2.")
   }
   
@@ -3734,8 +3724,7 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
         "#FDDBC7", "#F4A582", "#D6604D", "#B2182B", "#67001F"))(200)
   }
   ## get coefficients:
-  coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val), 
-              Class = "matrix")
+  coefs <- as(coef(object$glmnet.fit, s = penalty.par.val), Class = "matrix")
   ## create correlation matrix of non-zero coefficient learners:
   cormat <- cor(object$modmat[,names(coefs[coefs != 0,])[-1]])
   ## set layout for plotting correlation matrix and legend::

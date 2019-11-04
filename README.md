@@ -1,3 +1,6 @@
+pre: an R package for deriving prediction rule ensembles
+========================================================
+
 **pre** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in Fokkema (2017). The package largely implements the algorithm for deriving prediction rule ensembles as described in Friedman & Popescu (2008), with several adjustments:
 
 1.  The package is completely **R** based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.

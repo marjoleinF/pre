@@ -6,7 +6,7 @@
 rule ensemble (pre)}
 \usage{
 pairplot(object, varnames, type = "both",
-  penalty.par.val = "lambda.1se", nvals = c(20, 20),
+  penalty.par.val = "lambda.1se", nvals = c(20L, 20L),
   pred.type = "response", ...)
 }
 \arguments{

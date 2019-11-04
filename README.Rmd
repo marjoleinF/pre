@@ -1,5 +1,4 @@
 ---
-title: 'pre: an R package for deriving prediction rule ensembles'
 output:
   md_document:
     variant: markdown_github
@@ -7,6 +6,7 @@ bibliography: README.bib
 csl: inst/bib_style.csl
 ---
 
+# pre: an R package for deriving prediction rule ensembles
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(

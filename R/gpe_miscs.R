@@ -5,7 +5,7 @@
 #' @param x An object of class \code{\link{gpe}}.
 #' @seealso \code{\link{gpe}} \code{\link{print.pre}}
 print.gpe <- function(
-  x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...){
+  x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...) {
   out <- print.pre(x, penalty.par.val, digits, ...)
   
   # Make comment about abbreviation of hinge function
@@ -76,7 +76,7 @@ summary.gpe <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' @seealso \code{\link{coef.pre}}
 coef.gpe <- function(object, penalty.par.val = "lambda.1se", ...)
 {
-  coefs <- as(coef.glmnet(object$glmnet.fit, s = penalty.par.val, ...), 
+  coefs <- as(coef(object$glmnet.fit, s = penalty.par.val, ...), 
               Class = "matrix")
   colnames(coefs) <- "coefficient"
   
@@ -117,8 +117,8 @@ gpe_pretty_labels <- function(term_labels){
 #' 
 #' @param object of class \code{\link{gpe}}
 #' @param newdata optional new data to compute predictions for
-#' @param type argument passed to \code{\link{predict.cv.glmnet}}
-#' @param penalty.par.val argument passed to \code{s} argument of \code{\link{predict.cv.glmnet}}
+#' @param type argument passed to \code{\link[glmnet]{predict.cv.glmnet}}
+#' @param penalty.par.val argument passed to \code{s} argument of \code{\link[glmnet]{predict.cv.glmnet}}
 #' @param ... Unused
 #' 
 #' @details 
