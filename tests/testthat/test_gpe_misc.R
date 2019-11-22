@@ -7,7 +7,6 @@ test_that("Print works for gpe", {
   
   #####
   # W/ linear terms
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(4825707)
   airq.ens <- gpe(
     Ozone ~ .,
@@ -42,7 +41,6 @@ test_that("Print works for gpe", {
 })
 
 test_that("Coef works for gpe", {
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(9116073)
   airq.ens <- gpe(
     Ozone ~ .,
@@ -58,7 +56,6 @@ test_that("Coef works for gpe", {
 test_that("Predict works for gpe and gives previous results", {
   #####
   # Regression problem
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(seed <- 9638602)
   airq.ens <- gpe(
     Ozone ~ .,
@@ -71,8 +68,7 @@ test_that("Predict works for gpe and gives previous results", {
   
   # save_to_test(preds, "gpe_predict_regression")
   expect_equal(preds, read_to_test("gpe_predict_regression"), tolerance = 1.49e-08)
-  
-  suppressWarnings(RNGversion("3.1.0"))
+
   set.seed(seed)
   airq.ens <- gpe(
     Ozone ~ .,
@@ -90,7 +86,6 @@ test_that("Predict works for gpe and gives previous results", {
   
   #####
   # Binary
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(seed)
   fit <- gpe(
     diabetes ~ ., data = PimaIndiansDiabetes,

@@ -1,6 +1,6 @@
 Package: pre
 Title: Prediction Rule Ensembles
-Version: 0.7.1
+Version: 0.7.2
 Authors@R: c(person("Marjolein", "Fokkema", role = c("aut", "cre"), email = 
   "m.fokkema@fsw.leidenuniv.nl"), person(given = "Benjamin", 
   family = "Christoffersen", role = "aut", email = "boennecd@gmail.com"))
@@ -17,7 +17,7 @@ Description: Derives prediction rule ensembles (PREs). Largely follows the
 URL: https://github.com/marjoleinF/pre
 BugReports: https://github.com/marjoleinF/pre/issues
 Depends:
-    R (>= 3.1.0)
+    R (>= 3.5.0)
 Imports:
     earth,
     Formula,
@@ -43,4 +43,4 @@ Suggests:
 License: GPL-2 | GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.0

@@ -3,21 +3,18 @@ context("Tests the pre functions with S3 methods and maxdepth sampler.")
 
 test_that("maxdepth.sampler gives previous results", {
   func1 <- maxdepth_sampler()
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   maxdepths <- func1(100)
   # save_to_test(maxdepths, "maxdepths_default")
   expect_equal(maxdepths, read_to_test("maxdepths_default"), tolerance = 1.490116e-08)
   
   func2 <- maxdepth_sampler(av.no.term.nodes = 16L)
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   maxdepths2 <- func2(100)
   # save_to_test(maxdepths2, "maxdepths_16_term_nodes")
   expect_equal(maxdepths2, read_to_test("maxdepths_16_term_nodes"), tolerance = 1.490116e-08)
   
   func3 <- maxdepth_sampler(av.tree.depth = 7)
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   maxdepths3 <- func3(100)
   # save_to_test(maxdepths3, "maxdepths_tree_depth_7")
@@ -26,7 +23,6 @@ test_that("maxdepth.sampler gives previous results", {
 
 
 test_that("summary.pre gives previous results", {
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   summar <- capture.output(summary(airq.ens))
@@ -36,11 +32,9 @@ test_that("summary.pre gives previous results", {
 
 
 test_that("gpe_rules_pre gives same results as pre with airquality data", {
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   gpe.mod <- gpe(Ozone ~ ., data = airquality,  
                  base_learners = list(gpe_rules_pre(ntrees = 25L, learnrate = .1, tree.unbiased = FALSE)))
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   pre.mod <- pre(Ozone ~ ., data = airquality, ntrees = 25L, learnrate = .1, tree.unbiased = FALSE, 
                  type = "rules")
@@ -50,7 +44,6 @@ test_that("gpe_rules_pre gives same results as pre with airquality data", {
 
 
 test_that("Importance gives previous results with airquality data",{
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   
@@ -74,7 +67,6 @@ test_that("Importance gives previous results with airquality data",{
 })
 
 test_that("Coef gives previous results with airquality data", {
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   coefs <- coef(airq.ens)
@@ -82,49 +74,39 @@ test_that("Coef gives previous results with airquality data", {
   expect_equal(coefs, read_to_test("airquality_w_pre_coef"), tolerance = 1.490116e-08)
 })
 
-## TODO:
-## 30-03-2019: Temporarily suppressed, because change in set.seed() function
-## as of R 3.5.4. Function cvpre() generates and sets seeds for every fold,
-## so that if parallel = TRUE or FALSE, the same results are obtained. With
-## new set.seed() function in R, should then call 
-## suppressWarnings(RNGversion("3.1.0"))
-## within cvpre() function, but probably better to just update test results
-## to check against later on.
+## TODO: parallel = TRUE and FALSE do not yield same result
 test_that("cvpre gives previous results with airquality data", {
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(7385056)
   airq.cv <- cvpre(airq.ens, k = 2, print = FALSE, parallel = FALSE)
   
   library("doParallel")
   cl <- makeCluster(2L)
   registerDoParallel(cl)
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(7385056)
   airq.cv.par <- cvpre(airq.ens, k = 2L, print = FALSE, parallel = TRUE)
   stopCluster(cl)
   
   #expect_equal(airq.cv, airq.cv.par, tolerance = 1.490116e-08)
   # save_to_test(airq.cv, "airquality_w_pre_cv")
-  #expect_equal(airq.cv, read_to_test("airquality_w_pre_cv"), tolerance = 1.490116e-08)
+  expect_equal(airq.cv, read_to_test("airquality_w_pre_cv"), tolerance = 1.490116e-08)
+  # save_to_test(airq.cv.par, "airquality_w_pre_cv_par")
+  expect_equal(airq.cv.par, read_to_test("airquality_w_pre_cv_par"), tolerance = 1.490116e-08)
 })
 
 test_that("bsnullinteract and interact gives previous results with airquality data", {
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(8969591)
   nullmods <- bsnullinteract(airq.ens, nsamp = 1)
   inter <- interact(airq.ens, c("Temp", "Wind"), nullmods = nullmods, plot = FALSE)
   
   for(i in 1:1) {
-    nullmods[[i]] <- nullmods[[i]][!names(nullmods[[i]]) %in%  c(
-      "glmnet.fit", "classify", "formula", "orig_data", "modmat_formula", "data")]
+    nullmods[[i]] <- nullmods[[i]][names(nullmods[[i]]) %in%  c(
+      "x_scales", "modmat", "wins_points", "modmat")]
   }
   # save_to_test(nullmods, "airquality_w_bsnullinteract")
   expect_equal(nullmods, read_to_test("airquality_w_bsnullinteract"), tolerance = 1.490116e-08)
@@ -137,7 +119,6 @@ test_that("Print gives previous results with airquality",{
   old <- getOption("digits")
   on.exit(options(digits = old))
   options(digits = 4)
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   
@@ -153,7 +134,6 @@ test_that("Print gives previous results with airquality",{
 })
 
 test_that("Predict gives previous results with airquality data", {
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
   preds <- predict(airq.ens, airquality)
@@ -169,7 +149,6 @@ test_that("Predict gives previous results with airquality data", {
 })
 
 test_that("`delete_duplicates_complements` gives the same regardless of `sparse` argument", {
-  suppressWarnings(RNGversion("3.1.0"))
   set.seed(25106787)
   X <- data.frame(
     matrix(runif(10 * 20), 10, dimnames = list(NULL, paste0("X", 1:20))))

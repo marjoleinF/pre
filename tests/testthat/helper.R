@@ -29,6 +29,7 @@ any_numeric <- function(x){
   if(!is.recursive(x))
     return(is.numeric(x))
   
+  
   for(i in x){
     out <- any_numeric(i)
     if(out)

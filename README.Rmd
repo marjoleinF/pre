@@ -109,8 +109,13 @@ As we already observed in the printed ensemble, the plotted variable importances
 
 We can obtain explanations of the predictions for individual observations using function `explain()`:
 
-```{r}
+```{r explain, fig.show = "hide"}
+par(mfrow = c(2, 2))
 expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .6)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "800px"}
+include_graphics(sprintf("%sexplain-1.png", opts_current$get("fig.path")))
 ```
 
 The values of the rules and linear terms for each observation are saved in `expl$predictors`, their contributions in `expl$contribution` and the predicted values in `expl$predicted.value`.
@@ -161,7 +166,7 @@ We can assess the presence of interactions between the input variables using the
 
 Note that computing null interaction models and interaction test statistics is computationally very intensive.
 
-```{r interact, eval=FALSE, fig.show = "hide"}
+```{r interact, fig.show = "hide"}
 set.seed(44)
 nullmods <- bsnullinteract(airq.ens)
 int <- interact(airq.ens, nullmods = nullmods)

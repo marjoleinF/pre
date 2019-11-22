@@ -1,3 +1,8 @@
+Changes in Version 0.7.2 (2019-11-11)
+
+  - Only minor internal changes required for comparibility with new
+      version of glmnet package.
+
 Changes in Version 0.7.1 (2019-04-24)
 
   - Bugs fixed in caret_pre_model: tuning of penalty.par.val argument

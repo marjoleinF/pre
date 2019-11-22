@@ -1894,7 +1894,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
     stop("Argument 'parallel' should be TRUE or FALSE")
   }
 
-  ## check is proper foldids argument is specified:
+  ## check if proper foldids argument is specified:
   if (!is.null(foldids)) {
     if (length(foldids) != nrow(object$data)) {
       stop("Argument 'foldids' has length ", length(foldids), ", but should have length ", nrow(object$data), ".")
@@ -4058,7 +4058,6 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
       plot.obs.names <- rep_len(plot.obs.names, length.out = nrow(newdata))
     }
 
-    par(mfrow = plot.dim)
     labels <- coef(object, penalty.par.val = penalty.par.val)
     rownames(labels) <- labels$rule
     labels <- labels[rownames(explanation) , "description"]
@@ -4100,5 +4099,5 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
   }
   if (intercept) newdata <- cbind(`(Intercept)` = 1L, newdata)
   
-  return(list(predictors = newdata, contribution = t(explanation), predicted.value = preds))
+  return(list(predictors = newdata[ , req_vars], contribution = t(explanation), predicted.value = preds))
 }
