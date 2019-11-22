@@ -191,8 +191,8 @@ We can obtain explanations of the predictions for individual
 observations using function `explain()`:
 
 ``` r
-par(mfrow = c(2, 2))
-expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .6)
+par(mfrow = c(1, 2))
+expl <- explain(airq.ens, newdata = airq[1:2, ], cex = .8)
 ```
 
 <img src="inst/README-figures/README-explain-1.png" width="800px" />
