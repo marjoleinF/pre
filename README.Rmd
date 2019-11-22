@@ -110,8 +110,8 @@ As we already observed in the printed ensemble, the plotted variable importances
 We can obtain explanations of the predictions for individual observations using function `explain()`:
 
 ```{r explain, fig.show = "hide"}
-par(mfrow = c(2, 2))
-expl <- explain(airq.ens, newdata = airq[1:4, ], cex = .6)
+par(mfrow = c(1, 2))
+expl <- explain(airq.ens, newdata = airq[1:2, ], cex = .8)
 ```
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "800px"}
