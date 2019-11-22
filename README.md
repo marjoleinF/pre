@@ -195,7 +195,7 @@ par(mfrow = c(1, 2))
 expl <- explain(airq.ens, newdata = airq[1:2, ], cex = .8)
 ```
 
-<img src="inst/README-figures/README-explain-1.png" width="800px" />
+<img src="inst/README-figures/README-explain-1.png" width="600px" />
 
 The values of the rules and linear terms for each observation are saved
 in `expl$predictors`, their contributions in `expl$contribution` and the
