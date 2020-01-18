@@ -170,7 +170,7 @@ test_that("pre gives almost the same rules with `sparse` set to `TRUE` and `FALS
   expect_equal(predict(airq.ens), predict(airq.ens.sparse))
   
   # check the classes of their model matrices
-  expect_equal(class(airq.ens$modmat), "matrix")
+  expect_equal(inherits(airq.ens$modmat, "matrix"), TRUE)
   expect_s4_class(airq.ens.sparse$modmat, "dgCMatrix")
 })
 

@@ -719,7 +719,6 @@ pre <- function(formula, data, family = gaussian,
     }
     rules <- rule_object$rules
     rulevars <- rule_object$rulevars
-    
   }
 
   #################################################################
@@ -3998,6 +3997,7 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
   linear_terms <- names(coefs)[!grepl("rule", names(coefs))]
   linear_terms <- linear_terms[!grepl("(Intercept)", linear_terms)]
   numeric_linear_terms <- linear_terms[linear_terms %in% object$x_names]
+  
   if (length(numeric_linear_terms) > 0L) {
     tmp <- scale(modmat[ , numeric_linear_terms], center = TRUE, scale = FALSE)
     means <- attr(tmp, "scaled:center")
@@ -4009,7 +4009,8 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
   
   ## Combine dummy indicators of categorical predictors:
   factor_names <- c()
-  for (i in linear_terms[!linear_terms %in% numeric_linear_terms]) {
+  for (i in linear_terms[!(linear_terms %in% numeric_linear_terms) & 
+                         !(linear_terms %in% object$call$confirmatory)]) {
     factor_names <- c(factor_names, 
                       unlist(sapply(object$x_names, function(x) grep(x, i))))
   }

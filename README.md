@@ -44,9 +44,9 @@ set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airq)
 ```
 
-Note that the random seed was set first, to allow for later replication
-of the results, as the fitting procedure depends on random sampling of
-training observations.
+Note that it is necessary to set the random seed, to allow for later
+replication of the results, because the fitting procedure depends on
+random sampling of training observations.
 
 We can print the resulting ensemble (alternatively, we could use the
 `print` method):
@@ -77,29 +77,33 @@ airq.ens
 #>       rule166   -0.04751152              Wind > 6.9 & Temp <= 82
 ```
 
-The cross-validated error printed here is calculated using the same data
-as was used for generating the rules and therefore may provide an overly
-optimistic estimate of future prediction error. To obtain a more
-realistic prediction error estimate, we will use function `cvpre()`
-later on.
+The firest few lines of the printed results provide the penalty
+parameter value (*λ*) employed for selecting the final ensemble. By
+default, the ‘1-SE’ rule is used for selecting *λ*; this default can be
+overridden by employing the `penalty.par.val` argument of the `print`
+method and other functions in the package. Note that the printed
+cross-validated error is calculated using the same data as was used for
+generating the rules and likely provides an overly optimistic estimate
+of future prediction error. To obtain a more realistic prediction error
+estimate, we will use function `cvpre()` later on.
 
-The table represents the rules and linear terms selected for the final
-ensemble, with the estimated coefficients. For rules, the `description`
-column provides the conditions. If all conditions of a rule apply to an
-observation, the predicted value of the response increases by the
-estimated coefficient, which is printed in the `coefficient` column. If
-linear terms were selected for the final ensemble (which is not the case
-here), the winsorizing points used to reduce the influence of outliers
-on the estimated coefficient would be printed in the `description`
-column. For linear terms, the estimated coefficient in `coefficient`
-reflects the increase in the predicted value of the response, for a unit
-increase in the predictor variable.
+Next, the printed results provide the rules and linear terms selected in
+the final ensemble, with their estimated coefficients. For rules, the
+`description` column provides the conditions. For linear terms (which
+were not selected in the current ensemble), the winsorizing points used
+to reduce the influence of outliers on the estimated coefficient would
+be printed in the `description` column. The `coefficient` column
+presents the estimated coefficient. These are regression coefficients,
+reflecting the expected increase in the response for a unit increase in
+the predictor, keeping all other predictors constant. For rules, the
+coefficient thus reflects the difference in the expected value of the
+response when the conditions of the rule are met, compared to when they
+are not.
 
-If we want to plot the rules in the ensemble as simple decision trees,
-we can use the `plot` method. Here, we request the nine most important
-baselearners are requested here through specification of the `nterms`
-argument. Through the `cex` argument, we specify the size of the node
-and path labels:
+Using the `plot` method, we can plot the rules in the ensemble as simple
+decision trees. Here, we will request the nine most important
+baselearners through specification of the `nterms` argument. Through the
+`cex` argument, we specify the size of the node and path labels:
 
 ``` r
 plot(airq.ens, nterms = 9, cex = .5)
@@ -107,37 +111,35 @@ plot(airq.ens, nterms = 9, cex = .5)
 
 <img src="inst/README-figures/README-treeplot-1.png" width="600px" />
 
-We can obtain the estimated coefficients for each of the baselearners
-using the `coef` method (only the first ten are printed here):
+Using the `coef` method, we can obtain the estimated coefficients for
+each of the baselearners (we only print the first six terms here for
+space considerations):
 
 ``` r
 coefs <- coef(airq.ens)
-coefs[1:10,]
-#>            rule coefficient                         description
-#> 201 (Intercept)   68.482704                                   1
-#> 167     rule191  -10.973682             Wind > 5.7 & Temp <= 87
-#> 150     rule173  -10.903855             Wind > 5.7 & Temp <= 82
-#> 39       rule42   -8.797155             Wind > 6.3 & Temp <= 84
-#> 179     rule204    7.161148        Wind <= 10.3 & Solar.R > 148
-#> 10       rule10   -4.686461             Temp <= 84 & Temp <= 77
-#> 168     rule192   -3.344600 Wind > 5.7 & Temp <= 87 & Day <= 23
-#> 48       rule51   -2.278643             Wind > 5.7 & Temp <= 84
-#> 84       rule93    2.184657             Temp > 77 & Wind <= 8.6
-#> 68       rule74   -1.364795             Wind > 6.9 & Temp <= 84
+coefs[1:6, ]
+#>            rule coefficient                  description
+#> 201 (Intercept)   68.482704                            1
+#> 167     rule191  -10.973682      Wind > 5.7 & Temp <= 87
+#> 150     rule173  -10.903855      Wind > 5.7 & Temp <= 82
+#> 39       rule42   -8.797155      Wind > 6.3 & Temp <= 84
+#> 179     rule204    7.161148 Wind <= 10.3 & Solar.R > 148
+#> 10       rule10   -4.686461      Temp <= 84 & Temp <= 77
 ```
 
 We can generate predictions for new observations using the `predict`
-method:
+method (only the first six predicted values are printed here for space
+considerations):
 
 ``` r
-predict(airq.ens, newdata = airq[1:4, ])
-#>        1        2        3        4 
-#> 32.53896 24.22456 24.22456 24.22456
+predict(airq.ens, newdata = airq[1:6, ])
+#>        1        2        3        4        7        8 
+#> 32.53896 24.22456 24.22456 24.22456 31.38570 24.22456
 ```
 
-We can assess the expected prediction error of the prediction rule
-ensemble through cross validation (10-fold, by default) using the
-`cvpre()` function:
+Using function `cvpre()`, we can assess the expected prediction error of
+the fitted PRE through *k*-fold cross validation (*k* = 10, by default,
+which can be overridden through specification of the `k` argument):
 
 ``` r
 set.seed(43)
@@ -152,19 +154,20 @@ airq.cv <- cvpre(airq.ens)
 ```
 
 The results provide the mean squared error (MSE) and mean absolute error
-(MAE) with their respective standard errors. The cross-validated
-predictions, which can be used to compute alternative estimates of
-predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which
-observations were assigned are saved in `airq.cv$fold_indicators`.
+(MAE) with their respective standard errors. These results are saved for
+later use in `aiq.cv$accuracy`. The cross-validated predictions, which
+can be used to compute alternative estimates of predictive accuracy, are
+saved in `airq.cv$cvpreds`. The folds to which observations were
+assigned are saved in `airq.cv$fold_indicators`.
 
-Tools for interpretation
-------------------------
+Additional tools for interpretation
+-----------------------------------
 
 Package **pre** provides several additional tools for interpretation of
 the final ensemble. These may be especially helpful for complex
 ensembles containing many rules and linear terms.
 
-### Importances
+### Importance measures
 
 We can assess the relative importance of input variables as well as
 baselearners using the `importance()` function:
@@ -181,9 +184,9 @@ associated with Ozone levels. Solar.R and Day are also associated with
 Ozone levels, but much less strongly. Variable Month is not plotted,
 which means it obtained an importance of zero, indicating that it is not
 associated with Ozone levels. We already observed this in the printed
-ensemble: Month was not selected as a linear term and did not appear in
-any of the selected rules. The variable and baselearner importances are
-saved in `imps$varimps` and `imps$baseimps`, respectively.
+ensemble: Month did not appear in any of the selected terms. The
+variable and baselearner importances are saved for later use in
+`imps$varimps` and `imps$baseimps`, respectively.
 
 ### Explaining individual predictions
 
@@ -200,15 +203,6 @@ expl <- explain(airq.ens, newdata = airq[1:2, ], cex = .8)
 The values of the rules and linear terms for each observation are saved
 in `expl$predictors`, their contributions in `expl$contribution` and the
 predicted values in `expl$predicted.value`.
-
-We can assess correlations between the baselearners appearing in the
-ensemble using the `corplot()` function:
-
-``` r
-corplot(airq.ens)
-```
-
-<img src="inst/README-figures/README-corplot-1.png" width="500px" />
 
 ### Partial dependence plots
 
@@ -232,18 +226,18 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 
 Note that creating partial dependence plots is computationally intensive
 and computation time will increase fast with increasing numbers of
-observations and numbers of variables. `R` package `plotmo` created by
-Stephen Milborrow (2018) provides more efficient functions for plotting
+observations and numbers of variables. `**R**` package `**plotmo**`
+(Milborrow (2018)) provides more efficient functions for plotting
 partial dependence, which also support `pre` models.
 
-If the final ensemble does not contain a lot of terms, inspecting
-individual rules and linear terms through the `print` method may be
-(much) more informative than partial dependence plots. One of the main
-advantages of prediction rule ensembles is their interpretability: the
-predictive model contains only simple functions of the predictor
-variables (rules and linear terms), which are easy to grasp. Partial
-dependence plots are often much more useful for interpretation of
-complex models, like random forests for example.
+If the final ensemble does not contain many terms, inspecting individual
+rules and linear terms through the `print` method may be more
+informative than partial dependence plots. One of the main advantages of
+prediction rule ensembles is their interpretability: the predictive
+model contains only simple functions of the predictor variables (rules
+and linear terms), which are easy to grasp. Partial dependence plots are
+often much more useful for interpretation of complex models, like random
+forests for example.
 
 ### Assessing presence of interactions
 
@@ -258,7 +252,8 @@ will also be computed for the null-interaction model, providing a
 reference null distribution.
 
 Note that computing null interaction models and interaction test
-statistics is computationally very intensive.
+statistics is computationally very intensive, so running the following
+code will take some time:
 
 ``` r
 set.seed(44)
@@ -279,6 +274,17 @@ computationally intensive. A more reliable result can be obtained by
 computing a larger number of boostrapped null interaction datasets, by
 setting the `nsamp` argument of function `bsnullinteract()` to a larger
 value (e.g., 100).
+
+### Correlations between selected terms
+
+We can assess correlations between the baselearners appearing in the
+ensemble using the `corplot()` function:
+
+``` r
+corplot(airq.ens)
+```
+
+<img src="inst/README-figures/README-corplot-1.png" width="500px" />
 
 Including hinge functions (multivariate adaptive regression splines)
 ====================================================================
