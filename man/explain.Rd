@@ -4,12 +4,24 @@
 \alias{explain}
 \title{Explain predictions from final prediction rule ensemble}
 \usage{
-explain(object, newdata, penalty.par.val = "lambda.1se", response = 1L,
-  plot = TRUE, intercept = FALSE, center.linear = FALSE,
-  plot.max.nobs = 4, plot.dim = c(2, 2), plot.obs.names = TRUE,
-  pred.type = "response", digits = 3L, cex = 0.8,
-  ylab = "Contribution to linear predictor", bar.col = c("#E495A5",
-  "#39BEB1"), rule.col = "darkgrey")
+explain(
+  object,
+  newdata,
+  penalty.par.val = "lambda.1se",
+  response = 1L,
+  plot = TRUE,
+  intercept = FALSE,
+  center.linear = FALSE,
+  plot.max.nobs = 4,
+  plot.dim = c(2, 2),
+  plot.obs.names = TRUE,
+  pred.type = "response",
+  digits = 3L,
+  cex = 0.8,
+  ylab = "Contribution to linear predictor",
+  bar.col = c("#E495A5", "#39BEB1"),
+  rule.col = "darkgrey"
+)
 }
 \arguments{
 \item{object}{object of class \code{\link{pre}}.}

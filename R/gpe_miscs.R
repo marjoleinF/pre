@@ -73,7 +73,7 @@ summary.gpe <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' @export
 #' @method coef gpe
 #' @inheritParams coef.pre
-#' @seealso \code{\link{coef.pre}}
+#' @seealso \code{\link{coef.pre}}, \code{\link{gpe}}
 coef.gpe <- function(object, penalty.par.val = "lambda.1se", ...)
 {
   coefs <- as(coef(object$glmnet.fit, s = penalty.par.val, ...), 
@@ -85,7 +85,7 @@ coef.gpe <- function(object, penalty.par.val = "lambda.1se", ...)
   
   # Return
   coefs <- coefs[coefs != 0, , drop = FALSE]
-  data.frame(description = row.names(coefs), coefs)
+  data.frame(description = row.names(coefs), coefs, stringsAsFactors = FALSE)
 }
 
 gpe_pretty_labels <- function(term_labels){

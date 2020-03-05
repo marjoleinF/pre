@@ -1,0 +1,15 @@
+bibentry(bibtype = "Article",
+  title        = "Fitting Prediction Rule Ensembles with {R} Package {pre}",
+  author       = person(given = "Marjolein",
+                        family = "Fokkema",
+                        email = "m.fokkema@fsw.leidenuniv.nl"),
+  journal      = "Journal of Statistical Software",
+  year         = "2020",
+  volume       = "92",
+  number       = "12",
+  pages        = "1--30",
+  doi          = "10.18637/jss.v092.i12",
+
+  header       = "To cite pre in publications use:"
+)
+

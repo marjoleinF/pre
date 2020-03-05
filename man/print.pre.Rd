@@ -4,8 +4,7 @@
 \alias{print.pre}
 \title{Print method for objects of class pre}
 \usage{
-\method{print}{pre}(x, penalty.par.val = "lambda.1se",
-  digits = getOption("digits"), ...)
+\method{print}{pre}(x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{pre}}.}

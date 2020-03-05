@@ -5,12 +5,24 @@
 \title{Calculate importances of baselearners and input variables in a prediction 
 rule ensemble (pre)}
 \usage{
-importance(object, standardize = FALSE, global = TRUE,
-  quantprobs = c(0.75, 1), penalty.par.val = "lambda.1se",
-  round = NA, plot = TRUE, ylab = "Importance",
-  main = "Variable importances", abbreviate = 10L, diag.xlab = TRUE,
-  diag.xlab.hor = 0, diag.xlab.vert = 2, cex.axis = 1,
-  legend = "topright", ...)
+importance(
+  object,
+  standardize = FALSE,
+  global = TRUE,
+  quantprobs = c(0.75, 1),
+  penalty.par.val = "lambda.1se",
+  round = NA,
+  plot = TRUE,
+  ylab = "Importance",
+  main = "Variable importances",
+  abbreviate = 10L,
+  diag.xlab = TRUE,
+  diag.xlab.hor = 0,
+  diag.xlab.vert = 2,
+  cex.axis = 1,
+  legend = "topright",
+  ...
+)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -101,8 +113,9 @@ importance(airq.ens, global = FALSE)
 importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 }
 \references{
-Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-\url{https://arxiv.org/abs/1707.07149}.
+Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+\url{https://doi.org/10.18637/jss.v092.i12}
 
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.

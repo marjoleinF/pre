@@ -6,15 +6,29 @@
 \alias{gpe_earth}
 \title{Learner Functions Generators for gpe}
 \usage{
-gpe_trees(..., remove_duplicates_complements = TRUE, mtry = Inf,
-  ntrees = 500, maxdepth = 3L, learnrate = 0.01, parallel = FALSE,
-  use_grad = TRUE, tree.control = ctree_control(mtry = mtry, maxdepth =
-  maxdepth))
+gpe_trees(
+  ...,
+  remove_duplicates_complements = TRUE,
+  mtry = Inf,
+  ntrees = 500,
+  maxdepth = 3L,
+  learnrate = 0.01,
+  parallel = FALSE,
+  use_grad = TRUE,
+  tree.control = ctree_control(mtry = mtry, maxdepth = maxdepth)
+)
 
 gpe_linear(..., winsfrac = 0.025, normalize = TRUE)
 
-gpe_earth(..., degree = 3, nk = 8, normalize = TRUE, ntrain = 100,
-  learnrate = 0.1, cor_thresh = 0.99)
+gpe_earth(
+  ...,
+  degree = 3,
+  nk = 8,
+  normalize = TRUE,
+  ntrain = 100,
+  learnrate = 0.1,
+  cor_thresh = 0.99
+)
 }
 \arguments{
 \item{...}{Currently not used.}

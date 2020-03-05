@@ -234,10 +234,9 @@ utils::globalVariables("%dopar%")
 #' @seealso \code{\link{print.pre}}, \code{\link{plot.pre}}, 
 #' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
-#' @references
-#' 
-#' Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-#' \url{https://arxiv.org/abs/1707.07149}.
+#' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+#' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+#' \url{https://doi.org/10.18637/jss.v092.i12}
 #' 
 #' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 #' machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
@@ -881,7 +880,8 @@ get_modmat <- function(
     if (winsfrac > 0) {
       
       if (miss_wins_points <- is.null(wins_points)) {
-        wins_points <- data.frame(varname = x_names, value = NA, lb = NA, ub = NA)
+        wins_points <- data.frame(varname = x_names, value = NA, lb = NA, ub = NA, 
+                                  stringsAsFactors = FALSE)
       }
       
       j <- 0L
@@ -1585,7 +1585,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
 }
 
 
-#' Sampling function generator for specifyinf varying maximum tree depth 
+#' Sampling function generator for specifying varying maximum tree depth 
 #' in a prediction rule ensemble (pre)
 #' 
 #' \code{maxdepth_sampler} generates a random sampling function, governed
@@ -2318,8 +2318,9 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' 
 #' See also section 8.1 of Friedman & Popescu (2008).
 #' 
-#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-#' \url{https://arxiv.org/abs/1707.07149}.
+#' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+#' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+#' \url{https://doi.org/10.18637/jss.v092.i12}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -2462,8 +2463,9 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
-#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-#' \url{https://arxiv.org/abs/1707.07149}.
+#' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+#' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+#' \url{https://doi.org/10.18637/jss.v092.i12}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -2642,8 +2644,9 @@ pairplot <- function(object, varnames, type = "both",
 #' importance(airq.ens, global = FALSE)
 #' # calculate local importances (custom: over 25% lowest predicted values):
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
-#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-#' \url{https://arxiv.org/abs/1707.07149}.
+#' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+#' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+#' \url{https://doi.org/10.18637/jss.v092.i12}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -2970,8 +2973,9 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 #' 
 #' See also section 8.3 of Friedman & Popescu (2008).
 #' 
-#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-#' \url{https://arxiv.org/abs/1707.07149}.
+#' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+#' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+#' \url{https://doi.org/10.18637/jss.v092.i12}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -3181,8 +3185,9 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' 
 #' See also section 8 of Friedman & Popescu (2008).
 #' 
-#' @references Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-#' \url{https://arxiv.org/abs/1707.07149}.
+#' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+#' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+#' \url{https://doi.org/10.18637/jss.v092.i12}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -3240,7 +3245,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
         }
         nullH
       }
-      nullH <- data.frame(nullH)
+      nullH <- data.frame(nullH, stringsAsFactors = FALSE)
       names(H) <- colnames(nullH) <- varnames
     }
   } else { # if not parallel computation:

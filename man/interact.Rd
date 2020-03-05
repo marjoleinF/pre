@@ -5,13 +5,23 @@
 \title{Calculate interaction statistics for variables in a prediction rule ensemble 
 (pre)}
 \usage{
-interact(object, varnames = NULL, nullmods = NULL,
-  penalty.par.val = "lambda.1se", quantprobs = c(0.05, 0.95),
-  plot = TRUE, col = c("darkgrey", "lightgrey"),
-  ylab = "Interaction strength", main = "Interaction test statistics",
-  se.linewidth = 0.05, legend.text = c("observed",
-  "null model median"), parallel = FALSE, k = 10, verbose = FALSE,
-  ...)
+interact(
+  object,
+  varnames = NULL,
+  nullmods = NULL,
+  penalty.par.val = "lambda.1se",
+  quantprobs = c(0.05, 0.95),
+  plot = TRUE,
+  col = c("darkgrey", "lightgrey"),
+  ylab = "Interaction strength",
+  main = "Interaction test statistics",
+  se.linewidth = 0.05,
+  legend.text = c("observed", "null model median"),
+  parallel = FALSE,
+  k = 10,
+  verbose = FALSE,
+  ...
+)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}.}
@@ -114,8 +124,9 @@ specified, in which case setting \verb{parallel = TRUE} may improve speed.
  interact(airq.ens, c("Temp", "Wind", "Solar.R"))}
 }
 \references{
-Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-\url{https://arxiv.org/abs/1707.07149}.
+Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+\url{https://doi.org/10.18637/jss.v092.i12}
 
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.

@@ -4,9 +4,16 @@
 \alias{gpe}
 \title{Derive a General Prediction Ensemble (gpe)}
 \usage{
-gpe(formula, data, base_learners = list(gpe_trees(), gpe_linear()),
-  weights = rep(1, times = nrow(data)), sample_func = gpe_sample(),
-  verbose = FALSE, penalized_trainer = gpe_cv.glmnet(), model = TRUE)
+gpe(
+  formula,
+  data,
+  base_learners = list(gpe_trees(), gpe_linear()),
+  weights = rep(1, times = nrow(data)),
+  sample_func = gpe_sample(),
+  verbose = FALSE,
+  penalized_trainer = gpe_cv.glmnet(),
+  model = TRUE
+)
 }
 \arguments{
 \item{formula}{Symbolic description of the model to be fit of the form 
@@ -61,7 +68,7 @@ custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
 }
 \examples{
 \dontrun{
-## Obtain similar fit to \\code{\\link{pre}}:
+## Obtain similar fit to \code{\link{pre}}:
 gpe.rules <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),], 
   base_learners = list(gpe_linear(), gpe_trees()))
 gpe.rules

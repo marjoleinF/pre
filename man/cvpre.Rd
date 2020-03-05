@@ -4,8 +4,16 @@
 \alias{cvpre}
 \title{Full k-fold cross validation of a prediction rule ensemble (pre)}
 \usage{
-cvpre(object, k = 10, penalty.par.val = "lambda.1se", pclass = 0.5,
-  foldids = NULL, verbose = FALSE, parallel = FALSE, print = TRUE)
+cvpre(
+  object,
+  k = 10,
+  penalty.par.val = "lambda.1se",
+  pclass = 0.5,
+  foldids = NULL,
+  verbose = FALSE,
+  parallel = FALSE,
+  print = TRUE
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{pre}}.}

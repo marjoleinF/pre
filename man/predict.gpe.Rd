@@ -4,8 +4,13 @@
 \alias{predict.gpe}
 \title{Predicted values based on gpe ensemble}
 \usage{
-\method{predict}{gpe}(object, newdata = NULL, type = "link",
-  penalty.par.val = "lambda.1se", ...)
+\method{predict}{gpe}(
+  object,
+  newdata = NULL,
+  type = "link",
+  penalty.par.val = "lambda.1se",
+  ...
+)
 }
 \arguments{
 \item{object}{of class \code{\link{gpe}}}

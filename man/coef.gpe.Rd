@@ -25,5 +25,5 @@ trade-off between accuracy and sparsity of the final ensemble, inspect
 coef function for \code{\link{gpe}}
 }
 \seealso{
-\code{\link{coef.pre}}
+\code{\link{coef.pre}}, \code{\link{gpe}}
 }

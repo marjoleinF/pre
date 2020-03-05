@@ -4,8 +4,7 @@
 \alias{print.gpe}
 \title{Print a General Prediction Ensemble (gpe)}
 \usage{
-\method{print}{gpe}(x, penalty.par.val = "lambda.1se",
-  digits = getOption("digits"), ...)
+\method{print}{gpe}(x, penalty.par.val = "lambda.1se", digits = getOption("digits"), ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{gpe}}.}

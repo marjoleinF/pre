@@ -2,7 +2,7 @@
 % Please edit documentation in R/pre.R
 \name{maxdepth_sampler}
 \alias{maxdepth_sampler}
-\title{Sampling function generator for specifyinf varying maximum tree depth 
+\title{Sampling function generator for specifying varying maximum tree depth 
 in a prediction rule ensemble (pre)}
 \usage{
 maxdepth_sampler(av.no.term.nodes = 4L, av.tree.depth = NULL)

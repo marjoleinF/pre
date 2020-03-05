@@ -4,8 +4,13 @@
 \alias{predict.pre}
 \title{Predicted values based on final prediction rule ensemble}
 \usage{
-\method{predict}{pre}(object, newdata = NULL, type = "link",
-  penalty.par.val = "lambda.1se", ...)
+\method{predict}{pre}(
+  object,
+  newdata = NULL,
+  type = "link",
+  penalty.par.val = "lambda.1se",
+  ...
+)
 }
 \arguments{
 \item{object}{object of class \code{\link{pre}}.}

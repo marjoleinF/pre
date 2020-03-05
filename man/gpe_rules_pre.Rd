@@ -4,10 +4,18 @@
 \alias{gpe_rules_pre}
 \title{Get rule learner for gpe which mimics behavior of pre}
 \usage{
-gpe_rules_pre(learnrate = 0.01, par.init = FALSE, mtry = Inf,
-  maxdepth = 3L, ntrees = 500, tree.control = ctree_control(),
-  use.grad = TRUE, removeduplicates = TRUE, removecomplements = TRUE,
-  tree.unbiased = TRUE)
+gpe_rules_pre(
+  learnrate = 0.01,
+  par.init = FALSE,
+  mtry = Inf,
+  maxdepth = 3L,
+  ntrees = 500,
+  tree.control = ctree_control(),
+  use.grad = TRUE,
+  removeduplicates = TRUE,
+  removecomplements = TRUE,
+  tree.unbiased = TRUE
+)
 }
 \arguments{
 \item{learnrate}{numeric value \eqn{> 0}. Learning rate or boosting parameter.}

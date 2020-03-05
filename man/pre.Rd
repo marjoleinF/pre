@@ -4,14 +4,34 @@
 \alias{pre}
 \title{Derive a prediction rule ensemble}
 \usage{
-pre(formula, data, family = gaussian, use.grad = TRUE, weights,
-  type = "both", sampfrac = 0.5, maxdepth = 3L, learnrate = 0.01,
-  mtry = Inf, ntrees = 500, confirmatory = NULL,
-  removecomplements = TRUE, removeduplicates = TRUE,
-  winsfrac = 0.025, normalize = TRUE, standardize = FALSE,
-  ordinal = TRUE, nfolds = 10L, tree.control, tree.unbiased = TRUE,
-  verbose = FALSE, par.init = FALSE, par.final = FALSE,
-  sparse = FALSE, ...)
+pre(
+  formula,
+  data,
+  family = gaussian,
+  use.grad = TRUE,
+  weights,
+  type = "both",
+  sampfrac = 0.5,
+  maxdepth = 3L,
+  learnrate = 0.01,
+  mtry = Inf,
+  ntrees = 500,
+  confirmatory = NULL,
+  removecomplements = TRUE,
+  removeduplicates = TRUE,
+  winsfrac = 0.025,
+  normalize = TRUE,
+  standardize = FALSE,
+  ordinal = TRUE,
+  nfolds = 10L,
+  tree.control,
+  tree.unbiased = TRUE,
+  verbose = FALSE,
+  par.init = FALSE,
+  par.final = FALSE,
+  sparse = FALSE,
+  ...
+)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
@@ -270,8 +290,9 @@ count.ens <- pre(counts ~ ., data = countdata, family = "poisson")
 count.ens}
 }
 \references{
-Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-\url{https://arxiv.org/abs/1707.07149}.
+Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+\url{https://doi.org/10.18637/jss.v092.i12}
 
 Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.

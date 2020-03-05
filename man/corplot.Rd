@@ -4,9 +4,14 @@
 \alias{corplot}
 \title{Plot correlations between baselearners in a prediction rule ensemble (pre)}
 \usage{
-corplot(object, penalty.par.val = "lambda.1se", colors = NULL,
-  fig.plot = c(0, 0.85, 0, 1), fig.legend = c(0.8, 0.95, 0, 1),
-  legend.breaks = seq(-1, 1, by = 0.1))
+corplot(
+  object,
+  penalty.par.val = "lambda.1se",
+  colors = NULL,
+  fig.plot = c(0, 0.85, 0, 1),
+  fig.legend = c(0.8, 0.95, 0, 1),
+  legend.breaks = seq(-1, 1, by = 0.1)
+)
 }
 \arguments{
 \item{object}{object of class pre}

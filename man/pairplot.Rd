@@ -5,9 +5,15 @@
 \title{Create partial dependence plot for a pair of predictor variables in a prediction 
 rule ensemble (pre)}
 \usage{
-pairplot(object, varnames, type = "both",
-  penalty.par.val = "lambda.1se", nvals = c(20L, 20L),
-  pred.type = "response", ...)
+pairplot(
+  object,
+  varnames,
+  type = "both",
+  penalty.par.val = "lambda.1se",
+  nvals = c(20L, 20L),
+  pred.type = "response",
+  ...
+)
 }
 \arguments{
 \item{object}{an object of class \code{\link{pre}}}
@@ -83,8 +89,9 @@ airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 pairplot(airq.ens, c("Temp", "Wind"))}
 }
 \references{
-Fokkema, M. (2018). Fitting prediction rule ensembles with R package pre.
-\url{https://arxiv.org/abs/1707.07149}.
+Fokkema, M. (2020). Fitting prediction rule ensembles with R 
+package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
+\url{https://doi.org/10.18637/jss.v092.i12}
 
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
