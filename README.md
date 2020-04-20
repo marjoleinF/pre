@@ -160,8 +160,8 @@ can be used to compute alternative estimates of predictive accuracy, are
 saved in `airq.cv$cvpreds`. The folds to which observations were
 assigned are saved in `airq.cv$fold_indicators`.
 
-Additional tools for interpretation
------------------------------------
+Tools for interpretation
+------------------------
 
 Package **pre** provides several additional tools for interpretation of
 the final ensemble. These may be especially helpful for complex
@@ -285,6 +285,137 @@ corplot(airq.ens)
 ```
 
 <img src="inst/README-figures/README-corplot-1.png" width="500px" />
+
+Tuning parameters
+-----------------
+
+To obtain an optimal set of model-fitting parameters, function `train()`
+from package **`caret`** can be employed. Package **`pre`** supports
+this through the `caret_pre_model` object (see also `?caret_pre_model`).
+Note that it’s best to specify the `x` and `y` arguments when using
+function `train()` to train the parameters of `pre()`; the use of the
+`formula` and `data` arguments may lead to unexpected results.
+
+``` r
+## Load library
+library("caret")
+#> Loading required package: lattice
+#> Loading required package: ggplot2
+## Prepare data
+airq <- airquality[complete.cases(airquality),]
+y <- airq$Ozone
+x <- airq[,-1]
+```
+
+The following parameters can be tuned:
+
+``` r
+caret_pre_model$parameters
+#>         parameter     class                          label
+#> 1        sampfrac   numeric           Subsampling Fraction
+#> 2        maxdepth   numeric                 Max Tree Depth
+#> 3       learnrate   numeric                      Shrinkage
+#> 4            mtry   numeric # Randomly Selected Predictors
+#> 5        use.grad   logical       Employ Gradient Boosting
+#> 6 penalty.par.val character       Regularization Parameter
+```
+
+Users can create a tuning grid manually, but it is probably easier to
+use the `caret_pre_model$grid` function, e.g.:
+
+``` r
+tuneGrid <- caret_pre_model$grid(x = x, y = y,
+                                 maxdepth = 3L:5L,
+                                 learnrate = c(.01, .1),
+                                 penalty.par.val = c("lambda.1se", "lambda.min"))
+tuneGrid
+#>    sampfrac maxdepth learnrate mtry use.grad penalty.par.val
+#> 1       0.5        3      0.01  Inf     TRUE      lambda.1se
+#> 2       0.5        4      0.01  Inf     TRUE      lambda.1se
+#> 3       0.5        5      0.01  Inf     TRUE      lambda.1se
+#> 4       0.5        3      0.10  Inf     TRUE      lambda.1se
+#> 5       0.5        4      0.10  Inf     TRUE      lambda.1se
+#> 6       0.5        5      0.10  Inf     TRUE      lambda.1se
+#> 7       0.5        3      0.01  Inf     TRUE      lambda.min
+#> 8       0.5        4      0.01  Inf     TRUE      lambda.min
+#> 9       0.5        5      0.01  Inf     TRUE      lambda.min
+#> 10      0.5        3      0.10  Inf     TRUE      lambda.min
+#> 11      0.5        4      0.10  Inf     TRUE      lambda.min
+#> 12      0.5        5      0.10  Inf     TRUE      lambda.min
+```
+
+Next, we apply function `train()`. Note that, in order to reduce
+computation time, I have specified the number of trees to be 50, but in
+real applications it should be left to the default value (i.e., not
+specified), unless you also want to tune the `ntrees` parameter:
+
+``` r
+set.seed(42)
+prefit2 <- train(x = x, y = y, method = caret_pre_model,
+                 trControl = trainControl(number = 1),
+                 tuneGrid = tuneGrid, ntrees = 50L)
+prefit2
+#> Prediction Rule Ensembles 
+#> 
+#> 111 samples
+#>   5 predictor
+#> 
+#> No pre-processing
+#> Resampling: Bootstrapped (1 reps) 
+#> Summary of sample sizes: 111 
+#> Resampling results across tuning parameters:
+#> 
+#>   maxdepth  learnrate  penalty.par.val  RMSE      Rsquared   MAE     
+#>   3         0.01       lambda.1se       19.83742  0.7310082  13.54601
+#>   3         0.01       lambda.min       20.00028  0.7120475  13.71055
+#>   3         0.10       lambda.1se       21.80688  0.6593462  14.81460
+#>   3         0.10       lambda.min       22.18347  0.6397186  15.96051
+#>   4         0.01       lambda.1se       21.26142  0.6716467  15.36146
+#>   4         0.01       lambda.min       21.77508  0.6543533  15.91652
+#>   4         0.10       lambda.1se       20.06575  0.7413488  13.61861
+#>   4         0.10       lambda.min       20.59871  0.7015281  14.01484
+#>   5         0.01       lambda.1se       22.03152  0.6612495  14.34614
+#>   5         0.01       lambda.min       22.82607  0.6233053  15.02192
+#>   5         0.10       lambda.1se       24.28906  0.5760883  16.47336
+#>   5         0.10       lambda.min       22.83246  0.6221208  15.34685
+#> 
+#> Tuning parameter 'sampfrac' was held constant at a value of 0.5
+#> 
+#> Tuning parameter 'mtry' was held constant at a value of Inf
+#> Tuning
+#>  parameter 'use.grad' was held constant at a value of TRUE
+#> RMSE was used to select the optimal model using the smallest value.
+#> The final values used for the model were sampfrac = 0.5, maxdepth =
+#>  3, learnrate = 0.01, mtry = Inf, use.grad = TRUE and penalty.par.val
+#>  = lambda.1se.
+```
+
+We can get the set of optimal parameter values:
+
+``` r
+prefit2$bestTune
+#>   sampfrac maxdepth learnrate mtry use.grad penalty.par.val
+#> 1      0.5        3      0.01  Inf     TRUE      lambda.1se
+```
+
+We can plot the effects of the tuning parameters:
+
+``` r
+plot(prefit2)
+```
+
+![](inst/README-figures/README-unnamed-chunk-19-1.png)
+
+And we can get predictions from the model with the best tuning
+parameters:
+
+``` r
+predict(prefit2, newdata = x[1:10, ])
+#>        1        2        3        4        7        8        9       12 
+#> 27.93810 27.86681 22.21110 22.64554 28.09927 22.06852 21.68236 22.85941 
+#>       13       14 
+#> 22.91882 22.71683
+```
 
 Including hinge functions (multivariate adaptive regression splines)
 ====================================================================

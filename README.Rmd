@@ -85,7 +85,7 @@ airq.cv <- cvpre(airq.ens)
 The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. These results are saved for later use in `aiq.cv$accuracy`. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which observations were assigned are saved in `airq.cv$fold_indicators`.
 
 
-## Additional tools for interpretation
+## Tools for interpretation
 
 Package **pre** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for complex ensembles containing many rules and linear terms. 
 
@@ -179,6 +179,64 @@ corplot(airq.ens)
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "500px"}
 include_graphics(sprintf("%scorplot-1.png", opts_current$get("fig.path")))
 ```
+
+
+## Tuning parameters
+
+To obtain an optimal set of model-fitting parameters, function `train()` from package **`caret`** can be employed. Package **`pre`** supports this through the `caret_pre_model` object (see also `?caret_pre_model`). Note that it's best to specify the `x` and `y` arguments when using function `train()` to train the parameters of `pre()`; the use of the `formula` and `data` arguments may lead to unexpected results.
+
+```{r}
+## Load library
+library("caret")
+## Prepare data
+airq <- airquality[complete.cases(airquality),]
+y <- airq$Ozone
+x <- airq[,-1]
+```
+
+The following parameters can be tuned:
+```{r}
+caret_pre_model$parameters
+```
+
+Users can create a tuning grid manually, but it is probably easier to use the `caret_pre_model$grid` function, e.g.:
+
+```{r}
+tuneGrid <- caret_pre_model$grid(x = x, y = y,
+                                 maxdepth = 3L:5L,
+                                 learnrate = c(.01, .1),
+                                 penalty.par.val = c("lambda.1se", "lambda.min"))
+tuneGrid
+```
+
+Next, we apply function `train()`. Note that, in order to reduce computation time, I have specified the number of trees to be 50, but in real applications it should be left to the default value (i.e., not specified), unless you also want to tune the `ntrees` parameter:
+
+```{r}
+set.seed(42)
+prefit2 <- train(x = x, y = y, method = caret_pre_model,
+                 trControl = trainControl(number = 1),
+                 tuneGrid = tuneGrid, ntrees = 50L)
+prefit2
+```
+
+We can get the set of optimal parameter values:
+
+```{r}
+prefit2$bestTune
+```
+
+We can plot the effects of the tuning parameters:
+
+```{r}
+plot(prefit2)
+```
+
+And we can get predictions from the model with the best tuning parameters:
+
+```{r}
+predict(prefit2, newdata = x[1:10, ])
+```
+
 
 
 
