@@ -9,18 +9,23 @@
 caret_pre_model
 }
 \description{
-\code{caret_pre_model} provides a model setup for the train function of
-package caret
+\code{caret_pre_model} provides a model setup for function \code{train} of
+package caret. It allows for tuning arguments sampfrac, maxdepth, learnrate, 
+mtry, use.grad and penalty.par.val.
 }
 \details{
 When tuning parameters of \code{pre()} with caret's \code{train()}
 function, always use the default S3 method (i.e., specify predictors and response
-variables through arguments \code{x} and \code{y}. When \code{train.formula()}, 
-is used (i.e., when \code{formula} and \code{data} arguments are specified),
+variables through arguments \code{x} and \code{y}). When \code{train.formula()}, 
+is used (i.e., if \code{formula} and \code{data} arguments are specified),
 \code{train} will internally call \code{model.matrix()} on \code{data}, which 
-will code all categorical (factor)  predictor variables as dummy variables, and 
-will yield a different result than inputting the original factors, for most 
+will code all categorical (factor) predictor variables as dummy variables,
+which will yield a different result than inputting the original factors, for most 
 tree-based methods.
+
+\code{caret_pre__model$parameters} provides an overview of the parameters that
+can be tuned for function \code{pre} using \code{caret}. \code{caret_pre_model$grid}
+provides a function for creating a tuning grid (see Examples below).
 }
 \examples{
 \dontrun{

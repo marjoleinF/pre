@@ -183,7 +183,7 @@ include_graphics(sprintf("%scorplot-1.png", opts_current$get("fig.path")))
 
 ## Tuning parameters
 
-To obtain an optimal set of model-fitting parameters, function `train()` from package **`caret`** can be employed. Package **`pre`** supports this through the `caret_pre_model` object (see also `?caret_pre_model`). Note that it's best to specify the `x` and `y` arguments when using function `train()` to train the parameters of `pre()`; the use of the `formula` and `data` arguments may lead to unexpected results.
+To obtain an optimal set of model-fitting parameters, function `train()` from package **`caret`** @Kuhn08 can be employed. Package **`pre`** supports this through the `caret_pre_model` object (see also `?caret_pre_model`). Note that it's best to specify the `x` and `y` arguments when using function `train()` to train the parameters of `pre()`; the use of the `formula` and `data` arguments may lead to unexpected results.
 
 ```{r}
 ## Load library
@@ -195,6 +195,7 @@ x <- airq[,-1]
 ```
 
 The following parameters can be tuned:
+
 ```{r}
 caret_pre_model$parameters
 ```

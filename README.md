@@ -290,11 +290,12 @@ Tuning parameters
 -----------------
 
 To obtain an optimal set of model-fitting parameters, function `train()`
-from package **`caret`** can be employed. Package **`pre`** supports
-this through the `caret_pre_model` object (see also `?caret_pre_model`).
-Note that it’s best to specify the `x` and `y` arguments when using
-function `train()` to train the parameters of `pre()`; the use of the
-`formula` and `data` arguments may lead to unexpected results.
+from package **`caret`** Kuhn (2008) can be employed. Package **`pre`**
+supports this through the `caret_pre_model` object (see also
+`?caret_pre_model`). Note that it’s best to specify the `x` and `y`
+arguments when using function `train()` to train the parameters of
+`pre()`; the use of the `formula` and `data` arguments may lead to
+unexpected results.
 
 ``` r
 ## Load library
@@ -477,6 +478,9 @@ Retrieved from <http://www.jstor.org/stable/30245114>
 Hothorn, T., Hornik, K., & Zeileis, A. (2006). Unbiased recursive
 partitioning: A conditional inference framework. *Journal of
 Computational and Graphical Statistics*, *15*(3), 651–674.
+
+Kuhn, M. (2008). Building predictive models in R using the caret
+package. *Journal of Statistical Software*, *28*(5), 1–26.
 
 Milborrow, S. (2018). *plotmo: Plot a model’s residuals, response, and
 partial dependence plots*. Retrieved from

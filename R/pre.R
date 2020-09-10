@@ -896,7 +896,7 @@ get_modmat <- function(
             ub <- lim[2L]
             if (ub - lb < tol) {
               ## If lower and upper bound are equal, do not winsorize and issue warning:
-              warning("Variable ", x_names[j], " will be winsozired employing winsfrac = 0, to prevent reducing the variance of its linear term to 0.", immediate. = TRUE)
+              warning("Variable ", x_names[j], " will be winsorized employing winsfrac = 0, to prevent reducing the variance of its linear term to 0.", immediate. = TRUE)
               wins_points$lb[j] <- min(data[ , i])
               wins_points$ub[j] <- max(data[ , i])
             } else {
@@ -927,7 +927,7 @@ get_modmat <- function(
         almost_zero_var_inds <- which(x_scales < tol)
         if (length(almost_zero_var_inds) > 0) {
           # print warning and set all those x_scales to 1
-          warning("Variable(s) ", needs_scaling[almost_zero_var_inds], " have sd < ", tol, " and will not be normalized.")  
+          warning("A total of ", length(almost_zero_var_inds), " variable(s) (e.g.,", paste0(head(needs_scaling[almost_zero_var_inds]), collapse = ", "), ") have sd < ", tol, " and will not be normalized.")  
           # omit from needs_scaling:
           x_scales[almost_zero_var_inds] <- 1
         }
@@ -2256,7 +2256,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
       x_names = object$x_names, 
       normalize = object$normalize,
       y_names = NULL,
-      confirmatory = object$call$confirmatory)
+      confirmatory = eval(object$call$confirmatory))
     
     newdata <- newdata$x
   }
