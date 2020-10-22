@@ -5,7 +5,7 @@ pre: an R package for deriving prediction rule ensembles
 binary, multinomial, (multivariate) continuous, count and survival
 responses. Input variables may be numeric, ordinal and categorical. An
 extensive description of the implementation and functionality is
-provided in Fokkema (2020). The package largely implements the algorithm
+provided in Fokkema (2020), an extensive introduction aimed at social scientists is procided in Fokkema & Strobl (2020). The package largely implements the algorithm
 for deriving prediction rule ensembles as described in Friedman &
 Popescu (2008), with several adjustments:
 
@@ -465,6 +465,8 @@ Breiman, L., Friedman, J., Olshen, R., & Stone, C. (1984).
 *Classification and regression trees.* Boca Raton, FL: Chapman&Hall/CRC.
 
 Fokkema, M. (2020). Fitting prediction rule ensembles with **R** package **pre**. *Journal of Statistical Software, 92*(1), 1-30. https://www.jstatsoft.org/article/view/v092i12
+
+Fokkema, M., & Strobl, C. (2020). Fitting prediction rule ensembles to psychological research data: An introduction and tutorial. *Psychological Methods, 25*(5), 636–652. https://doi.org/10.1037/met0000256
 
 Friedman, J. (1991). Multivariate adaptive regression splines. *The
 Annals of Statistics*, *19*(1), 1–67.
