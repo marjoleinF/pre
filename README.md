@@ -5,7 +5,7 @@ pre: an R package for deriving prediction rule ensembles
 binary, multinomial, (multivariate) continuous, count and survival
 responses. Input variables may be numeric, ordinal and categorical. An
 extensive description of the implementation and functionality is
-provided in Fokkema (2020), an extensive introduction aimed at social scientists is procided in Fokkema & Strobl (2020). The package largely implements the algorithm
+provided in Fokkema (2020), an extensive introduction aimed at social scientists is provided in Fokkema & Strobl (2020). The package largely implements the algorithm
 for deriving prediction rule ensembles as described in Friedman &
 Popescu (2008), with several adjustments:
 
