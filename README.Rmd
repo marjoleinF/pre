@@ -25,7 +25,7 @@ knitr::opts_chunk$set(
 5) The initial ensembles may be generated as in bagging, boosting and/or random forests.
 6) Hinge functions of predictor variables may be included as baselearners, as in the multivariate adaptive regression splines method of [@Friedman91], using function `gpe()`.
 
-Note that **pre** is under development, and much work still needs to be done. Below, a short introductory example is provided. [@Fokkema17] provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations. 
+Note that **pre** is under development, and much work still needs to be done. Below, a short introductory example is provided. [@Fokkema20] provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations. 
 
 
 ## Example: Predicting ozone levels
