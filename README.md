@@ -1,32 +1,32 @@
--   [pre: an R package for deriving prediction rule
-    ensembles](#pre-an-r-package-for-deriving-prediction-rule-ensembles)
-    -   [Example: Predicting ozone
-        levels](#example-predicting-ozone-levels)
-    -   [Tools for interpretation](#tools-for-interpretation)
-        -   [Importance measures](#importance-measures)
-        -   [Explaining individual
-            predictions](#explaining-individual-predictions)
-        -   [Partial dependence plots](#partial-dependence-plots)
-        -   [Assessing presence of
-            interactions](#assessing-presence-of-interactions)
-        -   [Correlations between selected
-            terms](#correlations-between-selected-terms)
-    -   [Tuning parameters](#tuning-parameters)
--   [Including hinge functions (combining multivariate adaptive
-    regression
-    splines)](#including-hinge-functions-combining-multivariate-adaptive-regression-splines)
--   [References](#references)
-
 pre: an R package for deriving prediction rule ensembles
 ========================================================
+
+Contents
+--------
+
+-   [Example: Predicting ozone levels](#example-predicting-ozone-levels)
+-   [Tools for interpretation](#tools-for-interpretation)
+    -   [Importance measures](#importance-measures)
+    -   [Explaining individual
+        predictions](#explaining-individual-predictions)
+    -   [Partial dependence plots](#partial-dependence-plots)
+    -   [Assessing presence of
+        interactions](#assessing-presence-of-interactions)
+    -   [Correlations between selected
+        terms](#correlations-between-selected-terms)
+    -   [Tuning parameters](#tuning-parameters)
+-   [Generalized Prediction Ensembles: Combining MARS, rules and linear
+    terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
+-   [References](#references)
 
 **pre** is an **R** package for deriving prediction rule ensembles for
 binary, multinomial, (multivariate) continuous, count and survival
 responses. Input variables may be numeric, ordinal and categorical. An
 extensive description of the implementation and functionality is
-provided in Fokkema (2017). The package largely implements the algorithm
-for deriving prediction rule ensembles as described in Friedman &
-Popescu (2008), with several adjustments:
+provided in <span class="citeproc-not-found"
+data-reference-id="Fokkema17">**???**</span>). The package largely
+implements the algorithm for deriving prediction rule ensembles as
+described in Friedman & Popescu (2008), with several adjustments:
 
 1.  The package is completely **R** based, allowing users better access
     to the results and more control over the parameters used for
@@ -44,7 +44,7 @@ Popescu (2008), with several adjustments:
     method of Friedman (1991), using function `gpe()`.
 
 Note that **pre** is under development, and much work still needs to be
-done. Below, a short introductory example is provided. Fokkema (2017)
+done. Below, a short introductory example is provided. Fokkema (2020)
 provides an extensive description of the fitting procedures implemented
 in function `pre()` and example analyses with more extensive
 explanations.
@@ -96,15 +96,15 @@ airq.ens
 #>       rule166   -0.04751152              Wind > 6.9 & Temp <= 82
 ```
 
-The firest few lines of the printed results provide the penalty
-parameter value (*λ*) employed for selecting the final ensemble. By
-default, the ‘1-SE’ rule is used for selecting *λ*; this default can be
-overridden by employing the `penalty.par.val` argument of the `print`
-method and other functions in the package. Note that the printed
-cross-validated error is calculated using the same data as was used for
-generating the rules and likely provides an overly optimistic estimate
-of future prediction error. To obtain a more realistic prediction error
-estimate, we will use function `cvpre()` later on.
+The first few lines of the printed results provide the penalty parameter
+value (*λ*) employed for selecting the final ensemble. By default, the
+‘1-SE’ rule is used for selecting *λ*; this default can be overridden by
+employing the `penalty.par.val` argument of the `print` method and other
+functions in the package. Note that the printed cross-validated error is
+calculated using the same data as was used for generating the rules and
+likely provides an overly optimistic estimate of future prediction
+error. To obtain a more realistic prediction error estimate, we will use
+function `cvpre()` later on.
 
 Next, the printed results provide the rules and linear terms selected in
 the final ensemble, with their estimated coefficients. For rules, the
@@ -437,8 +437,8 @@ predict(prefit2, newdata = x[1:10, ])
 #> 22.91882 22.71683
 ```
 
-Including hinge functions (combining multivariate adaptive regression splines)
-==============================================================================
+Generalized Prediction Ensembles: Combining MARS, rules and linear terms
+========================================================================
 
 More complex prediction ensembles can be obtained using the `gpe()`
 function. Abbreviation stands for generalized prediction ensembles,
@@ -484,9 +484,9 @@ References
 Breiman, L., Friedman, J., Olshen, R., & Stone, C. (1984).
 Classification and regression trees. Boca Raton, FL: Chapman&Hall/CRC.
 
-Fokkema, M. (2017). pre: An R package for fitting prediction rule
-ensembles. *arXiv:1707.07149*. Retrieved from
-<https://arxiv.org/abs/1707.07149>
+Fokkema, M. (2020). Fitting prediction rule ensembles with R package
+pre. *Journal of Statistical Software*, *92*(12), 1–30. Retrieved from
+<http://doi.org/10.18637/jss.v092.i12>
 
 Friedman, J. (1991). Multivariate adaptive regression splines. *The
 Annals of Statistics*, *19*(1), 1–67.

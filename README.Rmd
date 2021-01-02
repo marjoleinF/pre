@@ -2,12 +2,24 @@
 output:
   md_document:
     variant: markdown_github
-    toc: true
 bibliography: README.bib
 csl: inst/bib_style.csl
 ---
 
 # pre: an R package for deriving prediction rule ensembles
+
+## Contents
+
+-   [Example: Predicting ozone levels](#example-predicting-ozone-levels)
+-   [Tools for interpretation](#tools-for-interpretation)
+    -   [Importance measures](#importance-measures)
+    -   [Explaining individual predictions](#explaining-individual-predictions)
+    -   [Partial dependence plots](#partial-dependence-plots)
+    -   [Assessing presence of interactions](#assessing-presence-of-interactions)
+    -   [Correlations between selected terms](#correlations-between-selected-terms)
+    -   [Tuning parameters](#tuning-parameters)
+-   [Generalized Prediction Ensembles: Combining MARS, rules and linear terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
+-   [References](#references)
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
@@ -48,7 +60,7 @@ We can print the resulting ensemble (alternatively, we could use the `print` met
 airq.ens
 ```
 
-The firest few lines of the printed results provide the penalty parameter value ($\lambda$) employed for selecting the final ensemble. By default, the '1-SE' rule is used for selecting $\lambda$; this default can be overridden by employing the `penalty.par.val` argument of the `print` method and other functions in the package. Note that the printed cross-validated error is calculated using the same data as was used for generating the rules and likely provides an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function ```cvpre()``` later on.
+The first few lines of the printed results provide the penalty parameter value ($\lambda$) employed for selecting the final ensemble. By default, the '1-SE' rule is used for selecting $\lambda$; this default can be overridden by employing the `penalty.par.val` argument of the `print` method and other functions in the package. Note that the printed cross-validated error is calculated using the same data as was used for generating the rules and likely provides an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function ```cvpre()``` later on.
 
 Next, the printed results provide the rules and linear terms selected in the final ensemble, with their estimated coefficients. For rules, the `description` column provides the conditions. For linear terms (which were not selected in the current ensemble), the winsorizing points used to reduce the influence of outliers on the estimated coefficient would be printed in the `description` column. The `coefficient` column presents the estimated coefficient. These are regression coefficients, reflecting the expected increase in the response for a unit increase in the predictor, keeping all other predictors constant. For rules, the coefficient thus reflects the difference in the expected value of the response when the conditions of the rule are met, compared to when they are not.
 
@@ -246,7 +258,7 @@ predict(prefit2, newdata = x[1:10, ])
 
 
 
-# Including hinge functions (combining multivariate adaptive regression splines)
+# Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
 More complex prediction ensembles can be obtained using the `gpe()` function. Abbreviation stands for generalized prediction ensembles, which can also include hinge functions of the predictor variables as described in [@Friedman91], in addition to rules and/or linear terms. In other words, it combines the MARS and RuleFit algorithms in a single ensemble, which may further improve predictive accuracy. See the following example:
 
