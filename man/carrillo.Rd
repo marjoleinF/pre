@@ -4,7 +4,9 @@
 \name{carrillo}
 \alias{carrillo}
 \title{Data on personality characteristics and depressive symptom severity}
-\format{A data frame with 112 observations and 26 variables}
+\format{
+A data frame with 112 observations and 26 variables
+}
 \usage{
 data(carrillo)
 }

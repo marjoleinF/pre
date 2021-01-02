@@ -4,7 +4,9 @@
 \name{caret_pre_model}
 \alias{caret_pre_model}
 \title{Model set up for train function of package caret}
-\format{An object of class \code{list} of length 17.}
+\format{
+An object of class \code{list} of length 17.
+}
 \usage{
 caret_pre_model
 }

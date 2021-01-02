@@ -184,8 +184,8 @@ prediction of a continuous, binary, count, multinomial, multivariate
 continuous or survival response.
 }
 \details{
-Note that obervations with missing values will be removed prior to 
-analysis.
+Note: obervations with missing values will be removed prior to 
+analysis (and a warning issued).
 
 In some cases, duplicated variable names may appear in the model.
 For example, the first variable is a factor named 'V1' and there are also
@@ -293,6 +293,10 @@ count.ens}
 Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
 \url{https://doi.org/10.18637/jss.v092.i12}
+
+Fokkema, M. & Strobl, C. (2020). Fitting prediction rule ensembles to psychological 
+research data: An introduction and tutorial. \emph{Psychological Methods 25}(5), 
+636-652. \url{http://doi.org/10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
 
 Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.

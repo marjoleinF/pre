@@ -1,3 +1,22 @@
+-   [pre: an R package for deriving prediction rule
+    ensembles](#pre-an-r-package-for-deriving-prediction-rule-ensembles)
+    -   [Example: Predicting ozone
+        levels](#example-predicting-ozone-levels)
+    -   [Tools for interpretation](#tools-for-interpretation)
+        -   [Importance measures](#importance-measures)
+        -   [Explaining individual
+            predictions](#explaining-individual-predictions)
+        -   [Partial dependence plots](#partial-dependence-plots)
+        -   [Assessing presence of
+            interactions](#assessing-presence-of-interactions)
+        -   [Correlations between selected
+            terms](#correlations-between-selected-terms)
+    -   [Tuning parameters](#tuning-parameters)
+-   [Including hinge functions (combining multivariate adaptive
+    regression
+    splines)](#including-hinge-functions-combining-multivariate-adaptive-regression-splines)
+-   [References](#references)
+
 pre: an R package for deriving prediction rule ensembles
 ========================================================
 
@@ -5,7 +24,7 @@ pre: an R package for deriving prediction rule ensembles
 binary, multinomial, (multivariate) continuous, count and survival
 responses. Input variables may be numeric, ordinal and categorical. An
 extensive description of the implementation and functionality is
-provided in Fokkema (2020), an extensive introduction aimed at social scientists is provided in Fokkema & Strobl (2020). The package largely implements the algorithm
+provided in Fokkema (2017). The package largely implements the algorithm
 for deriving prediction rule ensembles as described in Friedman &
 Popescu (2008), with several adjustments:
 
@@ -405,7 +424,7 @@ We can plot the effects of the tuning parameters:
 plot(prefit2)
 ```
 
-![](inst/README-figures/README-unnamed-chunk-19-1.png)
+<img src="inst/README-figures/README-caretplot-1.png" width="600px" />
 
 And we can get predictions from the model with the best tuning
 parameters:
@@ -418,15 +437,16 @@ predict(prefit2, newdata = x[1:10, ])
 #> 22.91882 22.71683
 ```
 
-Including hinge functions (multivariate adaptive regression splines)
-====================================================================
+Including hinge functions (combining multivariate adaptive regression splines)
+==============================================================================
 
 More complex prediction ensembles can be obtained using the `gpe()`
-function. Abbreviation gpe stands for generalized prediction ensembles,
+function. Abbreviation stands for generalized prediction ensembles,
 which can also include hinge functions of the predictor variables as
 described in Friedman (1991), in addition to rules and/or linear terms.
-Addition of hinge functions may further improve predictive accuracy. See
-the following example:
+In other words, it combines the MARS and RuleFit algorithms in a single
+ensemble, which may further improve predictive accuracy. See the
+following example:
 
 ``` r
 set.seed(42)
@@ -462,11 +482,11 @@ References
 ==========
 
 Breiman, L., Friedman, J., Olshen, R., & Stone, C. (1984).
-*Classification and regression trees.* Boca Raton, FL: Chapman&Hall/CRC.
+Classification and regression trees. Boca Raton, FL: Chapman&Hall/CRC.
 
-Fokkema, M. (2020). Fitting prediction rule ensembles with **R** package **pre**. *Journal of Statistical Software, 92*(1), 1-30. https://www.jstatsoft.org/article/view/v092i12
-
-Fokkema, M., & Strobl, C. (2020). Fitting prediction rule ensembles to psychological research data: An introduction and tutorial. *Psychological Methods, 25*(5), 636–652. https://doi.org/10.1037/met0000256
+Fokkema, M. (2017). pre: An R package for fitting prediction rule
+ensembles. *arXiv:1707.07149*. Retrieved from
+<https://arxiv.org/abs/1707.07149>
 
 Friedman, J. (1991). Multivariate adaptive regression splines. *The
 Annals of Statistics*, *19*(1), 1–67.

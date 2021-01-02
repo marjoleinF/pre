@@ -144,6 +144,12 @@ explain(airq.ens2, newdata = airq[-train,][1:2,],
         penalty.par.val = "lambda.min", center.linear = TRUE)$contribution
 }
 }
+\references{
+Fokkema, M. & Strobl, C. (2020). Fitting prediction rule 
+ensembles to psychological research data: An introduction and tutorial. 
+\emph{Psychological Methods 25}(5), 636-652. \url{http://doi.org/10.1037/met0000256},
+\url{https://arxiv.org/abs/1907.05302}
+}
 \seealso{
 \code{\link{pre}}, \code{\link{plot.pre}},
 \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}},

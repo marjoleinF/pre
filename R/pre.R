@@ -1,4 +1,4 @@
-## TODO: Implement foward selection based on AIC (and BIC)?
+## TODO: Implement forward selection based on AIC (and BIC)?
 ## TODO: Implement functionality for missing-in-attributes approach for missing values
 
 utils::globalVariables("%dopar%")
@@ -119,8 +119,8 @@ utils::globalVariables("%dopar%")
 #' @param ... Additional arguments to be passed to
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' 
-#' @details Note that obervations with missing values will be removed prior to 
-#' analysis.
+#' @details Note: obervations with missing values will be removed prior to 
+#' analysis (and a warning issued).
 #' 
 #' In some cases, duplicated variable names may appear in the model.
 #' For example, the first variable is a factor named 'V1' and there are also
@@ -237,6 +237,10 @@ utils::globalVariables("%dopar%")
 #' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 #' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
 #' \url{https://doi.org/10.18637/jss.v092.i12}
+#' 
+#' Fokkema, M. & Strobl, C. (2020). Fitting prediction rule ensembles to psychological 
+#' research data: An introduction and tutorial. \emph{Psychological Methods 25}(5), 
+#' 636-652. \url{http://doi.org/10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
 #' 
 #' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 #' machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
@@ -699,7 +703,8 @@ pre <- function(formula, data, family = gaussian,
                                 removeduplicates = removeduplicates, 
                                 removecomplements = removecomplements)
     } else {
-      rule_object <- pre_rules(formula = formula, 
+
+      rule_object <- try(pre_rules(formula = formula, 
                                data = data,
                                weights = weights,
                                y_names = y_names,
@@ -718,7 +723,13 @@ pre <- function(formula, data, family = gaussian,
                                removecomplements = removecomplements,
                                tree.unbiased = tree.unbiased,
                                return.dupl.compl = TRUE, 
-                               sparse = sparse)
+                               sparse = sparse))
+      if (inherits(rule_object, "try-error")) {
+        if (grepl("has new levels", rule_object)) {
+          stop(rule_object[1], paste("\n Hint: There may be a predictor variable which is a factor with rare levels. See ?rare_level_sampler"))
+        }
+        stop(rule_object[1])
+      }
     }
     rules <- rule_object$rules
     rulevars <- rule_object$rulevars
@@ -2042,7 +2053,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 {
   
   ## TODO: Add argument on whether learners with zero coefficients should
-  ## be included ot not
+  ## be included or not
   
   ## check if proper object argument is specified:
   if(class(object) != "pre") {
@@ -2322,11 +2333,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' 
 #' See also section 8.1 of Friedman & Popescu (2008).
 #' 
-#' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
-#' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
-#' \url{https://doi.org/10.18637/jss.v092.i12}
-#' 
-#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' 
 #' Milborrow, S. (2019). plotmo: Plot a model's residuals, response, and partial 
@@ -2467,11 +2474,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' pairplot(airq.ens, c("Temp", "Wind"))}
 #' @export
-#' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
-#' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
-#' \url{https://doi.org/10.18637/jss.v092.i12}
-#' 
-#' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
 #' 
 #' Milborrow, S. (2019). plotmo: Plot a model's residuals, response, and partial 
@@ -2651,6 +2654,10 @@ pairplot <- function(object, varnames, type = "both",
 #' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 #' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
 #' \url{https://doi.org/10.18637/jss.v092.i12}
+#' 
+#' Fokkema, M. & Strobl, C. (2020). Fitting prediction rule ensembles to psychological 
+#' research data: An introduction and tutorial. \emph{Psychological Methods 25}(5), 
+#' 636-652. \url{http://doi.org/10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -3828,6 +3835,10 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
 #' for an observation in \code{newdata} equals (the value of the linear
 #' temr, minus the mean value of the linear term in the training data)
 #' times the estimated coefficient for the linear term.
+#' @references Fokkema, M. & Strobl, C. (2020). Fitting prediction rule 
+#' ensembles to psychological research data: An introduction and tutorial. 
+#' \emph{Psychological Methods 25}(5), 636-652. \url{http://doi.org/10.1037/met0000256},
+#' \url{https://arxiv.org/abs/1907.05302}
 #' @examples \donttest{airq <- airquality[complete.cases(airquality), ]
 #' set.seed(1)
 #' train <- sample(1:nrow(airq), size = 100)
@@ -4110,4 +4121,112 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
   if (intercept) newdata <- cbind(`(Intercept)` = 1L, newdata)
   
   return(list(predictors = newdata[ , req_vars], contribution = t(explanation), predicted.value = preds))
+}
+
+
+
+#' Dealing with rare factor levels in fitting prediction rule ensembles.
+#' 
+#' Provides a sampling function to be supplied to the \code{sampfrac}
+#' argument of function \code{pre}, making sure that each level of specified factor(s)
+#' are present in each sample.
+#' 
+#' @details Categorical predictor variables (factors) with rare levels may be problematic 
+#' in boosting algorithms employing sampling (which is employed by default in
+#' function \code{pre}).
+#' 
+#' If a sample in a given boosting iteration does not have any observations with a given
+#' (rare) level of a factor, while this level is present in the full training dataset, and 
+#' the factor is selected for splitting in the tree, then no prediction for that level of the factor
+#' can be generated, resulting in an error. Note that boosting methods other than \code{pre} that also 
+#' employ sampling (e.g., \code{gbm} or \code{xgboost}) might not generate an error in such cases, 
+#' but do not seem to document how intermediate predictions are generated in such a case.
+#' 
+#' With function \code{pre()}, the issue can be dealt with in one of several ways (in random order):
+#' 
+#' \itemize{
+#' \item Specify \code{learnrate = 0}. This results in a (su)bagging instead of boosting approach.
+#' Advantage: Eliminates the rare-factor-level issue completely, because intermediate predictions
+#' need not be computed. Disadvantage: Boosting with low learning rate often improves predictive accuracy.
+#' \item Data pre-processing: Before running function \code{pre()}, combine rare factor levels 
+#' with other levels of the factors. Advantage: Limited loss of information. Disadvantage: Likely, but 
+#' not guaranteed to solve the issue. 
+#' \item Data pre-processing: Remove observations with rare factor levels from the dataset
+#' before running function \code{pre()}. Advantage: Guaranteed to solve the error. Disadvantage: 
+#' Removing outliers results in a loss of information, and may bias the results.
+#' \item Increase the value of \code{sampfrac} argument of function \code{pre()}. Advantage: Easy to
+#' implement. Disadvantage: Larger samples are more likely, but not guaranteerd to contain all possible 
+#' factor levels, thus not guaranteed to solve the issue.
+#' \item Use a sampling function that guarantees inclusion of rare factor levels in each sample. E.g., 
+#' use \code{rare_level_sampler}, yielding a sampling function which creates training samples 
+#' guaranteed to include each level of specified factor(s). Advantage: No loss of information, easy to implement, 
+#' guaranteed to solve the issue. Disadvantage: May result in oversampling 
+#' of observations with rare factor levels, potentially biasing results. The bias is likely small though, and bias 
+#' will decrease with increasing sample size, sampling fraction and relative frequency of each of the rare factor 
+#' levels. Computational demand increases with the number of factors with rare levels specified, and with the 
+#' number of levels per such factor. 
+#' }
+#' @return A sampling function, which generates sub- or bootstrap samples as usual in function \code{pre}, but 
+#' checks if all levels of the specified factor(s) are present and adds observation with those levels if not. 
+#' If \code{warning = TRUE}, a warning is issued).
+#' 
+#' @param factors Character vector with name(s) of factors with rare levels. 
+#' @inheritParams pre
+#' @param warning logical. Whether a warning should be printed if observations with
+#' rare factor levels are added to the training sample of the current iteration.
+#' 
+#' @examples
+#' ## Create dataset with two factors containing rare levels
+#' dat <- iris[iris$Species != "versicolor", ]
+#' dat <- rbind(dat, iris[iris$Species == "versicolor", ][1:5, ])
+#' dat$factor2 <- factor(rep(1:21, times = 5))
+#' 
+#' ## Set up sampling function
+#' samp_func <- rare_level_sampler(c("Species", "factor2"), data = dat, 
+#'                                   sampfrac = .51, warning = TRUE)
+#' 
+#' ## Illustrate behavior of sampling function                                                                   
+#' N <- nrow(dat)
+#' wts <- rep(1, times = nrow(dat))
+#' set.seed(3)
+#' dat[samp_func(n = N, weights = wts), ] # single sample
+#' for (i in 1:500) dat[samp_func(n = N, weights = wts), ]
+#' warnings() # to illustrates warnings that may occur when fitting a full PRE
+#' 
+#' ## Illustrate use of function generator with function pre:
+#' ## (Note: low ntrees value merely to reduce computation time in this example)
+#' set.seed(42)
+#' iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 10, 
+#'   sampfrac = samp_func)
+#' @seealso \code{\link{pre}}
+#' @export
+rare_level_sampler <- function(factors, data, sampfrac = .5, warning = FALSE) {
+  if (sampfrac < 1) {
+    replace <- FALSE
+  }  else if (sampfrac == 1) {
+    replace <- TRUE
+  }
+  ids <- list()
+  for (i in factors) {
+    ids[[i]] <- lapply(unique(data[ , i]), function(x) which(data[ , i] == x))
+    names(ids[[i]]) <- unique(data[ , i])
+  }
+  ret <- function(n, weights, sampfrac. = sampfrac, replace. = replace, ids. = ids,
+                  warning. = warning) {
+    ## Generate initial random sample:
+    sample_ids <- sample(1:n, size = ceiling(sampfrac.*n), replace = replace., 
+                         prob = weights)
+    for (i in names(ids.)) {
+      ## For every factor, for all levels, check if present in sample
+      for (j in names(ids.[[i]])) {
+        if (!any(ids[[i]][[j]] %in% sample_ids)) {
+          ## If not present, add an observation with that level to the sample
+          sample_ids <- c(sample_ids, sample(ids[[i]][[j]], size = 1))
+          if (warning.) warning("Added observation with level ", j, " for variable ", i," to current sample.")
+        }
+      }
+    }
+    return(sample_ids)
+  }
+  ret
 }

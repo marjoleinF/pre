@@ -2,6 +2,7 @@
 output:
   md_document:
     variant: markdown_github
+    toc: true
 bibliography: README.bib
 csl: inst/bib_style.csl
 ---
@@ -228,8 +229,12 @@ prefit2$bestTune
 
 We can plot the effects of the tuning parameters:
 
-```{r}
+```{r caretplot, fig.show = "hide"}
 plot(prefit2)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "600px"}
+include_graphics(sprintf("%scaretplot-1.png", opts_current$get("fig.path")))
 ```
 
 And we can get predictions from the model with the best tuning parameters:
@@ -241,9 +246,9 @@ predict(prefit2, newdata = x[1:10, ])
 
 
 
-# Including hinge functions (multivariate adaptive regression splines)
+# Including hinge functions (combining multivariate adaptive regression splines)
 
-More complex prediction ensembles can be obtained using the `gpe()` function. Abbreviation gpe stands for generalized prediction ensembles, which can also include hinge functions of the predictor variables as described in [@Friedman91], in addition to rules and/or linear terms. Addition of hinge functions may further improve predictive accuracy. See the following example:
+More complex prediction ensembles can be obtained using the `gpe()` function. Abbreviation stands for generalized prediction ensembles, which can also include hinge functions of the predictor variables as described in [@Friedman91], in addition to rules and/or linear terms. In other words, it combines the MARS and RuleFit algorithms in a single ensemble, which may further improve predictive accuracy. See the following example:
 
 ```{r}
 set.seed(42)
