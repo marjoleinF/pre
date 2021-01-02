@@ -1,10 +1,11 @@
-pre: an R package for deriving prediction rule ensembles
-========================================================
+**`pre`**: an R package for deriving prediction rule ensembles
+==============================================================
 
 Contents
 --------
 
--   [Example: Predicting ozone levels](#example-predicting-ozone-levels)
+-   [Example: A rule ensemble for predicting ozone
+    levels](#example-a-rule-ensemble-for-predicting-ozone-levels)
 -   [Tools for interpretation](#tools-for-interpretation)
     -   [Importance measures](#importance-measures)
     -   [Explaining individual
@@ -23,10 +24,9 @@ Contents
 binary, multinomial, (multivariate) continuous, count and survival
 responses. Input variables may be numeric, ordinal and categorical. An
 extensive description of the implementation and functionality is
-provided in <span class="citeproc-not-found"
-data-reference-id="Fokkema17">**???**</span>). The package largely
-implements the algorithm for deriving prediction rule ensembles as
-described in Friedman & Popescu (2008), with several adjustments:
+provided in Fokkema (2020). The package largely implements the algorithm
+for deriving prediction rule ensembles as described in Friedman &
+Popescu (2008), with several adjustments:
 
 1.  The package is completely **R** based, allowing users better access
     to the results and more control over the parameters used for
@@ -37,20 +37,22 @@ described in Friedman & Popescu (2008), with several adjustments:
     Hornik (2008) can be employed, or the classification and regression
     tree (CART) algorithm of Breiman, Friedman, Olshen, & Stone (1984).
 3.  The package supports a wider range of response variable types.
-4.  The initial ensembles may be generated as in bagging, boosting
-    and/or random forests.
+4.  The initial ensemble may be generated as a bagged, boosted and/or
+    random forest ensemble.
 5.  Hinge functions of predictor variables may be included as
     baselearners, as in the multivariate adaptive regression splines
-    method of Friedman (1991), using function `gpe()`.
+    (MARS) approach of Friedman (1991), using function `gpe()`.
+6.  Tools for explaining individual predictions are provided.
 
 Note that **pre** is under development, and much work still needs to be
-done. Below, a short introductory example is provided. Fokkema (2020)
+done. Below, an introduction the the package is provided. Fokkema (2020)
 provides an extensive description of the fitting procedures implemented
 in function `pre()` and example analyses with more extensive
-explanations.
+explanations. An extensive introduction aimed at researchers in social
+sciences is provided in Fokkema & Strobl (2020).
 
-Example: Predicting ozone levels
---------------------------------
+Example: A rule ensemble for predicting ozone levels
+----------------------------------------------------
 
 To get a first impression of how function `pre()` works, we will fit a
 prediction rule ensemble to predict Ozone levels using the `airquality`
@@ -64,8 +66,8 @@ airq.ens <- pre(Ozone ~ ., data = airq)
 ```
 
 Note that it is necessary to set the random seed, to allow for later
-replication of the results, because the fitting procedure depends on
-random sampling of training observations.
+replication of results, because the fitting procedure depends on random
+sampling of training observations.
 
 We can print the resulting ensemble (alternatively, we could use the
 `print` method):
@@ -440,13 +442,13 @@ predict(prefit2, newdata = x[1:10, ])
 Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 ========================================================================
 
-More complex prediction ensembles can be obtained using the `gpe()`
-function. Abbreviation stands for generalized prediction ensembles,
-which can also include hinge functions of the predictor variables as
-described in Friedman (1991), in addition to rules and/or linear terms.
-In other words, it combines the MARS and RuleFit algorithms in a single
-ensemble, which may further improve predictive accuracy. See the
-following example:
+An even more flexible ensembling approach is implemented in function
+`gpe()`, which allows for fiting Generalized Prediction Ensembles: It
+combines the MARS (multivariate Adaptive Splines) approach of Friedman
+(1991) with the RuleFit approach of Friedman & Popescu (2008). In other
+words, `gpe()` fits an ensemble composed of hinge functions (possibly
+multivariate), prediction rules and linear functions of the predictor
+variables. See the following example:
 
 ``` r
 set.seed(42)
@@ -478,6 +480,12 @@ airq.gpe
 #>   'h' in the 'eTerm' indicates the hinge function
 ```
 
+The results indicate that several rules, a single hinge (linear spline)
+function, and no linear terms were selected for the final ensemble. The
+hinge function and its coefficient indicate that Ozone levels increase
+with increasing solar radiation and decreasing wind speeds. The
+prediction rules in the ensemble indicate a similar pattern.
+
 References
 ==========
 
@@ -487,6 +495,11 @@ Classification and regression trees. Boca Raton, FL: Chapman&Hall/CRC.
 Fokkema, M. (2020). Fitting prediction rule ensembles with R package
 pre. *Journal of Statistical Software*, *92*(12), 1–30. Retrieved from
 <http://doi.org/10.18637/jss.v092.i12>
+
+Fokkema, M., & Strobl, C. (2020). Fitting prediction rule ensembles to
+psychological research data: An introduction and tutorial.
+*Psychological Methods*, *25*(5), 636–652.
+<https://doi.org/10.1037/met0000256>
 
 Friedman, J. (1991). Multivariate adaptive regression splines. *The
 Annals of Statistics*, *19*(1), 1–67.
