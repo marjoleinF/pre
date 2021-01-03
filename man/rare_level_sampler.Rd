@@ -50,6 +50,13 @@ but do not seem to document how intermediate predictions are generated in such a
 With function \code{pre()}, the issue can be dealt with in one of several ways (in random order):
 
 \itemize{
+\item Use a sampling function that guarantees inclusion of rare factor levels in each sample. E.g., 
+use \code{rare_level_sampler}, yielding a sampling function which creates training samples 
+guaranteed to include each level of specified factor(s). Advantage: No loss of information, easy to implement, 
+guaranteed to solve the issue. Disadvantage: May result in oversampling 
+of observations with rare factor levels, potentially biasing results. The bias is likely small though, and 
+will be larger for smaller sample sizes and sampling fractions, and for larger numbers of rare
+levels. The latter will also increase computational demands. 
 \item Specify \code{learnrate = 0}. This results in a (su)bagging instead of boosting approach.
 Advantage: Eliminates the rare-factor-level issue completely, because intermediate predictions
 need not be computed. Disadvantage: Boosting with low learning rate often improves predictive accuracy.
@@ -62,14 +69,6 @@ Removing outliers results in a loss of information, and may bias the results.
 \item Increase the value of \code{sampfrac} argument of function \code{pre()}. Advantage: Easy to
 implement. Disadvantage: Larger samples are more likely, but not guaranteerd to contain all possible 
 factor levels, thus not guaranteed to solve the issue.
-\item Use a sampling function that guarantees inclusion of rare factor levels in each sample. E.g., 
-use \code{rare_level_sampler}, yielding a sampling function which creates training samples 
-guaranteed to include each level of specified factor(s). Advantage: No loss of information, easy to implement, 
-guaranteed to solve the issue. Disadvantage: May result in oversampling 
-of observations with rare factor levels, potentially biasing results. The bias is likely small though, and bias 
-will decrease with increasing sample size, sampling fraction and relative frequency of each of the rare factor 
-levels. Computational demand increases with the number of factors with rare levels specified, and with the 
-number of levels per such factor. 
 }
 }
 \examples{
@@ -91,10 +90,11 @@ for (i in 1:500) dat[samp_func(n = N, weights = wts), ]
 warnings() # to illustrates warnings that may occur when fitting a full PRE
 
 ## Illustrate use of function generator with function pre:
-## (Note: low ntrees value merely to reduce computation time in this example)
+## (Note: low ntrees value merely to reduce computation time for the example)
 set.seed(42)
-iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 10, 
-  sampfrac = samp_func)
+iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 20) # yields error
+iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 20, 
+  sampfrac = samp_func) # should work
 }
 \seealso{
 \code{\link{pre}}

@@ -237,6 +237,9 @@ TRUE \tab FALSE	\tab >0 \tab binomial	  \tab rpart \tab Single, factor with 2 le
 TRUE \tab FALSE	\tab >0 \tab poisson	  \tab rpart \tab Single, integer \cr
 TRUE \tab FALSE \tab >0 \tab cox         \tab rpart \tab Object of class 'Surv'
 }
+
+If an error along the lines of 'factor ... has new levels ...' is encountered, 
+consult \code{?rare_level_sampler} for explanation and solutions.
 }
 \note{
 Parts of the code for deriving rules from the nodes of trees was copied 

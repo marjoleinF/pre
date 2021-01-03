@@ -174,6 +174,9 @@ utils::globalVariables("%dopar%")
 #' TRUE \tab FALSE \tab >0 \tab cox         \tab rpart \tab Object of class 'Surv'
 #' }
 #' 
+#' If an error along the lines of 'factor ... has new levels ...' is encountered, 
+#' consult \code{?rare_level_sampler} for explanation and solutions.
+#' 
 #' @note Parts of the code for deriving rules from the nodes of trees was copied 
 #' with permission from an internal function of the \code{partykit} package, written
 #' by Achim Zeileis and Torsten Hothorn.
@@ -726,7 +729,7 @@ pre <- function(formula, data, family = gaussian,
                                sparse = sparse))
       if (inherits(rule_object, "try-error")) {
         if (grepl("has new levels", rule_object)) {
-          stop(rule_object[1], paste("\n Hint: There may be a predictor variable which is a factor with rare levels. See ?rare_level_sampler"))
+          stop(rule_object[1], paste("\n Hint: There may be a predictor variable which is a factor with rare levels. Consult ?rare_level_sampler"))
         }
         stop(rule_object[1])
       }
@@ -4145,6 +4148,13 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
 #' With function \code{pre()}, the issue can be dealt with in one of several ways (in random order):
 #' 
 #' \itemize{
+#' \item Use a sampling function that guarantees inclusion of rare factor levels in each sample. E.g., 
+#' use \code{rare_level_sampler}, yielding a sampling function which creates training samples 
+#' guaranteed to include each level of specified factor(s). Advantage: No loss of information, easy to implement, 
+#' guaranteed to solve the issue. Disadvantage: May result in oversampling 
+#' of observations with rare factor levels, potentially biasing results. The bias is likely small though, and 
+#' will be larger for smaller sample sizes and sampling fractions, and for larger numbers of rare
+#' levels. The latter will also increase computational demands. 
 #' \item Specify \code{learnrate = 0}. This results in a (su)bagging instead of boosting approach.
 #' Advantage: Eliminates the rare-factor-level issue completely, because intermediate predictions
 #' need not be computed. Disadvantage: Boosting with low learning rate often improves predictive accuracy.
@@ -4157,14 +4167,6 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
 #' \item Increase the value of \code{sampfrac} argument of function \code{pre()}. Advantage: Easy to
 #' implement. Disadvantage: Larger samples are more likely, but not guaranteerd to contain all possible 
 #' factor levels, thus not guaranteed to solve the issue.
-#' \item Use a sampling function that guarantees inclusion of rare factor levels in each sample. E.g., 
-#' use \code{rare_level_sampler}, yielding a sampling function which creates training samples 
-#' guaranteed to include each level of specified factor(s). Advantage: No loss of information, easy to implement, 
-#' guaranteed to solve the issue. Disadvantage: May result in oversampling 
-#' of observations with rare factor levels, potentially biasing results. The bias is likely small though, and bias 
-#' will decrease with increasing sample size, sampling fraction and relative frequency of each of the rare factor 
-#' levels. Computational demand increases with the number of factors with rare levels specified, and with the 
-#' number of levels per such factor. 
 #' }
 #' @return A sampling function, which generates sub- or bootstrap samples as usual in function \code{pre}, but 
 #' checks if all levels of the specified factor(s) are present and adds observation with those levels if not. 
@@ -4194,10 +4196,11 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
 #' warnings() # to illustrates warnings that may occur when fitting a full PRE
 #' 
 #' ## Illustrate use of function generator with function pre:
-#' ## (Note: low ntrees value merely to reduce computation time in this example)
+#' ## (Note: low ntrees value merely to reduce computation time for the example)
 #' set.seed(42)
-#' iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 10, 
-#'   sampfrac = samp_func)
+#' # iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 20) # would yield error
+#' iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 20, 
+#'   sampfrac = samp_func) # should work
 #' @seealso \code{\link{pre}}
 #' @export
 rare_level_sampler <- function(factors, data, sampfrac = .5, warning = FALSE) {

@@ -136,7 +136,6 @@ test_that("Get previous results with iris and pre function", {
 })
 
 test_that("Get previous results with lung survival data", {
-  if (packageVersion("glmnet") < "3.0.0") {
     set.seed(42)
     fit <- pre(Surv(time, status) ~ ., data = Lung, ntrees = 10, family = "cox")
     fit <- fit[names(fit) %in%  c("rules", "glmnet.fit")]
@@ -146,7 +145,6 @@ test_that("Get previous results with lung survival data", {
     fit$rules <- as.matrix(fit$rules)
     # save_to_test(fit, "lung_w_pre_surv")
     expect_equal(fit, read_to_test("lung_w_pre_surv"), tolerance = 1.490116e-06)
-  }
 })
 
 test_that("pre gives almost the same rules with `sparse` set to `TRUE` and `FALSE`", {
@@ -183,4 +181,21 @@ test_that("predict.pre works with `sparse` set to `TRUE`", {
   expect_equal(
     predict(airq.ens.sparse, type = "link", newdata = airquality[1:10, ]),
     predict(airq.ens.sparse, type = "link")[1:10])
+})
+
+test_that("Get previous results with iris and rare_level_sampler function", {
+  ## Create dataset with two factors containing rare levels
+  dat <- iris[iris$Species != "versicolor", ]
+  dat <- rbind(dat, iris[iris$Species == "versicolor", ][1:5, ])
+  dat$factor2 <- factor(rep(1:21, times = 5))
+  ## Obtain samples
+  samp_func <- rare_level_sampler(c("Species", "factor2"), data = dat, 
+                                  sampfrac = .2)
+  N <- nrow(dat)
+  wts <- rep(1, times = nrow(dat))
+  set.seed(3)
+  samples <- list()
+  for (i in 1:10) samples[[i]] <- dat[samp_func(n = N, weights = wts), ]
+  # save_to_test(samples, "rare_level_sampler")
+  expect_equal(samples, read_to_test("rare_level_sampler"), tolerance = 1.490116e-08)  
 })
