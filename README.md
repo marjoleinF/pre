@@ -1,9 +1,10 @@
-**`pre`**: an R package for deriving prediction rule ensembles
+**pre**: an R package for deriving prediction rule ensembles
 ==============================================================
 
 Contents
 --------
 
+-   [Introduction](#introduction)
 -   [Example: A rule ensemble for predicting ozone
     levels](#example-a-rule-ensemble-for-predicting-ozone-levels)
 -   [Tools for interpretation](#tools-for-interpretation)
@@ -19,6 +20,9 @@ Contents
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear
     terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [References](#references)
+
+Introduction
+------------
 
 **pre** is an **R** package for deriving prediction rule ensembles for
 binary, multinomial, (multivariate) continuous, count and survival
@@ -490,7 +494,8 @@ References
 ==========
 
 Breiman, L., Friedman, J., Olshen, R., & Stone, C. (1984).
-Classification and regression trees. Boca Raton, FL: Chapman&Hall/CRC.
+Classification and regression trees. Boca Raton, FL: Chapman & Hall /
+CRC.
 
 Fokkema, M. (2020). Fitting prediction rule ensembles with R package
 pre. *Journal of Statistical Software*, *92*(12), 1–30. Retrieved from

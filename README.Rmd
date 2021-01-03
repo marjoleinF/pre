@@ -6,10 +6,11 @@ bibliography: README.bib
 csl: inst/bib_style.csl
 ---
 
-# **`pre`**: an R package for deriving prediction rule ensembles
+# **pre**: an R package for deriving prediction rule ensembles
 
 ## Contents
 
+-   [Introduction](#introduction)
 -   [Example: A rule ensemble for predicting ozone levels](#example-a-rule-ensemble-for-predicting-ozone-levels)
 -   [Tools for interpretation](#tools-for-interpretation)
     -   [Importance measures](#importance-measures)
@@ -29,6 +30,8 @@ knitr::opts_chunk$set(
   dpi = 124
 )
 ```
+
+## Introduction
 
 **pre** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema20]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
 
