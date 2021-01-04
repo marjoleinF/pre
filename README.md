@@ -32,6 +32,22 @@ provided in Fokkema (2020). The package largely implements the algorithm
 for deriving prediction rule ensembles as described in Friedman &
 Popescu (2008), with several adjustments:
 
+1.  The package is completely **R** based, allowing users better access
+    to the results and more control over the parameters used for
+    generating the prediction rule ensemble.
+2.  The unbiased tree induction algorithms of Hothorn, Hornik, &
+    Zeileis (2006) is used for deriving prediction rules, by default.
+    Alternatively, the (g)lmtree algorithm of Zeileis, Hothorn, &
+    Hornik (2008) can be employed, or the classification and regression
+    tree (CART) algorithm of Breiman, Friedman, Olshen, & Stone (1984).
+3.  The package supports a wider range of response variable types.
+4.  The initial ensemble may be generated as a bagged, boosted and/or
+    random forest ensemble.
+5.  Hinge functions of predictor variables may be included as
+    baselearners, as in the multivariate adaptive regression splines
+    (MARS) approach of Friedman (1991), using function `gpe()`.
+6.  Tools for explaining individual predictions are provided.
+
 Note that **pre** is under development, and much work still needs to be
 done. Below, an introduction the the package is provided. Fokkema (2020)
 provides an extensive description of the fitting procedures implemented
@@ -477,6 +493,10 @@ prediction rules in the ensemble indicate a similar pattern.
 References
 ==========
 
+Breiman, L., Friedman, J., Olshen, R., & Stone, C. (1984).
+Classification and regression trees. Boca Raton, FL: Chapman & Hall /
+CRC.
+
 Fokkema, M. (2020). Fitting prediction rule ensembles with R package
 pre. *Journal of Statistical Software*, *92*(12), 1–30. Retrieved from
 <http://doi.org/10.18637/jss.v092.i12>
@@ -493,9 +513,17 @@ Friedman, J., & Popescu, B. (2008). Predictive learning via rule
 ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954.
 Retrieved from <http://www.jstor.org/stable/30245114>
 
+Hothorn, T., Hornik, K., & Zeileis, A. (2006). Unbiased recursive
+partitioning: A conditional inference framework. *Journal of
+Computational and Graphical Statistics*, *15*(3), 651–674.
+
 Kuhn, M. (2008). Building predictive models in R using the caret
 package. *Journal of Statistical Software*, *28*(5), 1–26.
 
 Milborrow, S. (2018). *plotmo: Plot a model’s residuals, response, and
 partial dependence plots*. Retrieved from
 <https://CRAN.R-project.org/package=plotmo>
+
+Zeileis, A., Hothorn, T., & Hornik, K. (2008). Model-based recursive
+partitioning. *Journal of Computational and Graphical Statistics*,
+*17*(2), 492–514.
