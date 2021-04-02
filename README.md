@@ -19,6 +19,7 @@ Contents
     -   [Tuning parameters](#tuning-parameters)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear
     terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
+-   [Credits](#credits)
 -   [References](#references)
 
 Introduction
@@ -489,6 +490,14 @@ function, and no linear terms were selected for the final ensemble. The
 hinge function and its coefficient indicate that Ozone levels increase
 with increasing solar radiation and decreasing wind speeds. The
 prediction rules in the ensemble indicate a similar pattern.
+
+Credits
+=======
+
+* Benjamin Chistoffersen : https://github.com/boennecd
+
+* Karl Holub: https://github.com/holub008
+
 
 References
 ==========
