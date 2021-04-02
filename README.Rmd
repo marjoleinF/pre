@@ -276,4 +276,11 @@ airq.gpe
 The results indicate that several rules, a single hinge (linear spline) function, and no linear terms were selected for the final ensemble. The hinge function and its coefficient indicate that Ozone levels increase with increasing solar radiation and decreasing wind speeds. The prediction rules in the ensemble indicate a similar pattern. 
 
 
+# Credits
+
+* Benjamin Chistoffersen : https://github.com/boennecd
+
+* Karl Holub: https://github.com/holub008
+
+
 # References
