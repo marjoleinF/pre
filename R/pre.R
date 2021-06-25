@@ -4142,10 +4142,13 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
 #' (rare) level of a factor, while this level is present in the full training dataset, and 
 #' the factor is selected for splitting in the tree, then no prediction for that level of the factor
 #' can be generated, resulting in an error. Note that boosting methods other than \code{pre} that also 
-#' employ sampling (e.g., \code{gbm} or \code{xgboost}) might not generate an error in such cases, 
-#' but do not seem to document how intermediate predictions are generated in such a case.
-#' 
-#' With function \code{pre()}, the issue can be dealt with in one of several ways (in random order):
+#' employ sampling (e.g., \code{gbm} or \code{xgboost}) may not generate an error in such cases, 
+#' but also do not document how intermediate predictions are generated in such a case. It is likely that
+#' these methods use one-hot-encoding of factors, which from a perspective of model interpretation 
+#' introduces new problems, especially when the aim is to obtain a sparse set of rules as in `pre`. 
+#'                               
+#' With function \code{pre()}, the rare-factor-level issue, if encountered, can be dealt with by the user 
+#' in one of the following ways (in random order):
 #' 
 #' \itemize{
 #' \item Use a sampling function that guarantees inclusion of rare factor levels in each sample. E.g., 
@@ -4161,11 +4164,15 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
 #' \item Data pre-processing: Before running function \code{pre()}, combine rare factor levels 
 #' with other levels of the factors. Advantage: Limited loss of information. Disadvantage: Likely, but 
 #' not guaranteed to solve the issue. 
+#' \item Data pre-processing: Apply one-hot encoding to the predictor matrix before applying function `pre()`. This can easily be 
+#' done through applying function \code{\link[stats]{model.matrix}}. Advantage: Guaranteed to solve the error,
+#' easy to implement. Disadvantage: One-hot-encoding increases the number of predictor variables 
+#' which may reduce interpretability and, but probably to a lesser extent, accuracy.                                     
 #' \item Data pre-processing: Remove observations with rare factor levels from the dataset
 #' before running function \code{pre()}. Advantage: Guaranteed to solve the error. Disadvantage: 
 #' Removing outliers results in a loss of information, and may bias the results.
 #' \item Increase the value of \code{sampfrac} argument of function \code{pre()}. Advantage: Easy to
-#' implement. Disadvantage: Larger samples are more likely, but not guaranteerd to contain all possible 
+#' implement. Disadvantage: Larger samples are more likely but not guaranteed to contain all possible 
 #' factor levels, thus not guaranteed to solve the issue.
 #' }
 #' @return A sampling function, which generates sub- or bootstrap samples as usual in function \code{pre}, but 
