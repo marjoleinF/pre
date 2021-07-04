@@ -1,7 +1,9 @@
-Changes in Version 1.0.1 (20..-..-..)
+Changes in Version 1.0.1 (2021-04-07)
 
   - Added function rare_level_sampler to deal with errors related to
       new factor levels.
+
+
 
 
 Changes in Version 1.0.0 (2020-05-03)
@@ -12,10 +14,14 @@ Changes in Version 1.0.0 (2020-05-03)
   - References to paper in Journal of Statistical Software included.
 
 
+
+
 Changes in Version 0.7.2 (2019-11-11)
 
   - Only minor internal changes, required for compatibility with new
       version of glmnet package.
+
+
 
 
 Changes in Version 0.7.1 (2019-04-24)
@@ -28,6 +34,7 @@ Changes in Version 0.7.1 (2019-04-24)
       "lambda.1se". 
 
   - Bugs fixed in explain(). 
+
 
 
 

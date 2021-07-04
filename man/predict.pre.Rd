@@ -15,7 +15,7 @@
 \arguments{
 \item{object}{object of class \code{\link{pre}}.}
 
-\item{newdata}{optional dataframe of new (test) observations, including all
+\item{newdata}{optional \code{data.frame} of new (test) observations, including all
 predictor variables used for deriving the prediction rule ensemble.}
 
 \item{type}{character string. The type of prediction required; the default

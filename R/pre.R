@@ -2153,7 +2153,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' ensemble, for training or new (test) observations
 #'
 #' @param object object of class \code{\link{pre}}.
-#' @param newdata optional dataframe of new (test) observations, including all
+#' @param newdata optional \code{data.frame} of new (test) observations, including all
 #' predictor variables used for deriving the prediction rule ensemble.
 #' @inheritParams print.pre
 #' @param type character string. The type of prediction required; the default
@@ -2241,8 +2241,9 @@ predict.pre <- function(object, newdata = NULL, type = "link",
     } else {
       (object$call)$ordinal
     }) {
-      if (any(ord_var_inds <- sapply(newdata, is.ordered))) {
-        newdata[ , ord_var_inds] <- sapply(newdata[ , ord_var_inds], as.numeric)
+      if (any(ordered_names <- sapply(newdata, is.ordered))) {
+        ordered_names <- names(newdata)[ordered_names]
+        newdata[ , ordered_names] <- sapply(newdata[ , ordered_names], as.numeric)
       }
     }
     
@@ -3971,8 +3972,9 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
   } else {
     (object$call)$ordinal
   }) {
-    if (any(ord_var_inds <- sapply(modmat, is.ordered))) {
-      modmat[ , ord_var_inds] <- sapply(modmat[ , ord_var_inds], as.numeric)
+    if (any(ordered_names <- sapply(modmat, is.ordered))) {
+      ordered_names <- names(modmat)[ordered_names]
+      modmat[ , ordered_names] <- sapply(modmat[ , ordered_names], as.numeric)
     }
   }
   

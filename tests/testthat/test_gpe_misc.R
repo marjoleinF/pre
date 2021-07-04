@@ -59,7 +59,7 @@ test_that("Predict works for gpe and gives previous results", {
   set.seed(seed <- 9638602)
   airq.ens <- gpe(
     Ozone ~ .,
-    data=airquality,
+    data = airquality,
     base_learners = list(gpe_trees(ntrees = 10)))
   
   preds <- predict(airq.ens)
@@ -80,8 +80,7 @@ test_that("Predict works for gpe and gives previous results", {
   expect_error(predict(airq.ens), 
                "Predict called with no new object and no saved data with gpe")
   
-  preds_new <- predict(
-    airq.ens, newdata = airquality)
+  preds_new <- predict(airq.ens, newdata = airquality)
   expect_equal(preds, preds_new)
   
   #####
