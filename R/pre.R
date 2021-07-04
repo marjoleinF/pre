@@ -2205,6 +2205,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   
   } else {
 
+    if (inherits(newdata, c("tbl_df", "tbl"))) newdata <- as.data.frame(newdata)
+    
     ## Have to prepare newdata for get_modmat():
     
     ## check if proper newdata argument is specified, if specified:    
