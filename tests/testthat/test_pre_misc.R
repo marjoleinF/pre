@@ -186,3 +186,20 @@ test_that("`.get_most_sparse_rule` gives the spares of rules", {
     c(`x > 1` = "!(x > 1)", `x > 2` = "!(x > 2)", `x > 3` = "x > 3", 
       `x > 4` = "x > 4"))
 })
+
+
+test_that("`list.rules` gives previous results", {
+  airct <- ctree(Ozone ~ ., data = airquality)
+  rules <- list()
+  rules[[1]] <- list.rules(airct, removecomplements = FALSE, singleconditions = TRUE)
+  rules[[2]] <- list.rules(airct, removecomplements = FALSE, singleconditions = FALSE)
+  rules[[3]] <- list.rules(airct, removecomplements = FALSE, singleconditions = "only")
+  rules[[4]] <- list.rules(airct, singleconditions = TRUE)
+  rules[[5]] <- list.rules(airct, singleconditions = "only")
+  rules[[6]] <- list.rules(airct, removecomplements = FALSE)
+  
+  # save_to_test(rules, "rules")
+  expect_equal(rules, read_to_test("rules"))
+})
+
+

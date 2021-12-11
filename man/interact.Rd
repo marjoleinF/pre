@@ -126,10 +126,11 @@ specified, in which case setting \verb{parallel = TRUE} may improve speed.
 \references{
 Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
-\url{https://doi.org/10.18637/jss.v092.i12}
+\doi{10.18637/jss.v092.i12}
 
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
-via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954,
+\doi{10.1214/07-AOAS148}.
 }
 \seealso{
 \code{\link{pre}}, \code{\link{bsnullinteract}}

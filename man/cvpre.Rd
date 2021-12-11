@@ -86,6 +86,6 @@ airq.cv <- cvpre(airq.ens)}
 }
 \seealso{
 \code{\link{pre}}, \code{\link{plot.pre}}, 
-\code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+\code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 \code{\link{interact}}, \code{\link{print.pre}}
 }

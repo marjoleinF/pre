@@ -1,4 +1,21 @@
-Changes in Version 1.0.1 (2021-04-07)
+Changes in Version 1.0.2 (...)
+
+  - Added progress bar indicating tree fitting progress.
+
+  - Added support for supplying tibbles.
+
+  - Function importance is now an S3method.
+
+  - Updated README to illustrate use of pre as a standard method in caret.
+
+  - Argument cex.axis of function (method) importance is now passed correctly.
+
+
+
+
+
+
+Changes in Version 1.0.1 (2021-07-04)
 
   - Added function rare_level_sampler to deal with errors related to
       new factor levels.

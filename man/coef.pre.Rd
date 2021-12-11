@@ -47,6 +47,6 @@ coefs <- coef(airq.ens)}
 }
 \seealso{
 \code{\link{pre}}, \code{\link{plot.pre}}, 
-\code{\link{cvpre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+\code{\link{cvpre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 \code{\link{interact}}, \code{\link{print.pre}}
 }

@@ -1,3 +1,6 @@
+## TODO: Shorten code for argument checking: 
+##          Group variables and check each group like: 
+##          L <- list(A, B, C) all(sapply(L, class) == "matrix") or any(is.na(unlist(L)))
 ## TODO: Implement forward selection based on AIC (and BIC)?
 ## TODO: Implement functionality for missing-in-attributes approach for missing values
 
@@ -10,7 +13,7 @@ utils::globalVariables("%dopar%")
 #' continuous or survival response.
 #' 
 #' @param formula a symbolic description of the model to be fit of the form 
-#' \code{y ~ x1 + x2 + ...+ xn}. Response (left-hand side of the formula) 
+#' \code{y ~ x1 + x2 + ... + xn}. Response (left-hand side of the formula) 
 #' should be of class numeric (for \code{family = "gaussian"} or
 #' \code{"mgaussian"}), integer (for \code{family = "poisson"}), factor (for 
 #' \code{family = "binomial"} or \code{"multinomial"}). See Examples below. 
@@ -71,6 +74,14 @@ utils::globalVariables("%dopar%")
 #' as, for example, \code{"x1 > 6 & x2 <= 8"}, where x1 and x2 should be names
 #' of variables in \code{data}. Terms thus specified will be included in the
 #' final ensemble, as their coefficients will not be penalized in the estimation.
+#' @param singleconditions \code{TRUE}, \code{FALSE} or \code{"only"}. Should 
+#' rules with multiple conditions be disaggregated? Node membership for all tree
+#' except the root are coded as multi-condition rules. The conditions of these
+#' rules can be disaggregated to avoid selection of multi-condition rules. If
+#' \code{FALSE} (the default), all non-root nodes will be included as multi-condition 
+#' rules in the initial ensemble. If \code{TRUE}, all nodes will additionally be 
+#' included as single-condition rules. If \code{"only"}, all nodes will be included 
+#' as single-condition rules only. 
 #' @param removeduplicates logical. Remove rules from the ensemble which are 
 #' identical to an earlier rule?
 #' @param removecomplements logical. Remove rules from the ensemble which are
@@ -83,7 +94,8 @@ utils::globalVariables("%dopar%")
 #' @param normalize logical. Normalize linear variables before estimating the 
 #' regression model? Normalizing gives linear terms the same a priori influence 
 #' as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
-#' SD.
+#' SD. \code{normalize = FALSE} will give more prefence to linear terms getting
+#' selected. 
 #' @param standardize logical. Should rules and linear terms be standardized to
 #' have SD equal to 1 before estimating the regression model? This will also 
 #' standardize the dummified factors, users are advised to use the default 
@@ -114,7 +126,7 @@ utils::globalVariables("%dopar%")
 #' (which suffers from biased variable selection) as implemented in 
 #' \code{\link[rpart]{rpart}}. See details below for possible combinations 
 #' with \code{family}, \code{use.grad} and \code{learnrate}.
-#' @param sparse logical. Should sparse design matrices be used? Likely improves
+#' @param sparse logical. Should sparse design matrices be used? May improve
 #' computation times for large datasets.
 #' @param ... Additional arguments to be passed to
 #' \code{\link[glmnet]{cv.glmnet}}.
@@ -235,21 +247,21 @@ utils::globalVariables("%dopar%")
 #' count.ens}
 #' @import glmnet partykit datasets
 #' @seealso \code{\link{print.pre}}, \code{\link{plot.pre}}, 
-#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 #' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
-#' \url{https://doi.org/10.18637/jss.v092.i12}
+#' \doi{10.18637/jss.v092.i12}
 #' 
 #' Fokkema, M. & Strobl, C. (2020). Fitting prediction rule ensembles to psychological 
 #' research data: An introduction and tutorial. \emph{Psychological Methods 25}(5), 
-#' 636-652. \url{http://doi.org/10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
+#' 636-652. \doi{10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
 #' 
 #' Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 #' machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
-#' ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954, \doi{10.1214/07-AOAS148}.
 #' 
 #' Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive 
 #' partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
@@ -258,10 +270,10 @@ utils::globalVariables("%dopar%")
 pre <- function(formula, data, family = gaussian,
                 use.grad = TRUE, weights, type = "both", sampfrac = .5, 
                 maxdepth = 3L, learnrate = .01, mtry = Inf, ntrees = 500,
-                confirmatory = NULL,
-                removecomplements = TRUE, removeduplicates = TRUE, 
+                confirmatory = NULL, singleconditions = FALSE,
                 winsfrac = .025, normalize = TRUE, standardize = FALSE,
                 ordinal = TRUE, nfolds = 10L, tree.control, tree.unbiased = TRUE, 
+                removecomplements = TRUE, removeduplicates = TRUE, 
                 verbose = FALSE, par.init = FALSE, par.final = FALSE, 
                 sparse = FALSE, ...) { 
   
@@ -703,6 +715,7 @@ pre <- function(formula, data, family = gaussian,
                                 use.grad = use.grad, 
                                 family = family, 
                                 verbose = verbose, 
+                                singleconditions = singleconditions,
                                 removeduplicates = removeduplicates, 
                                 removecomplements = removecomplements)
     } else {
@@ -722,6 +735,7 @@ pre <- function(formula, data, family = gaussian,
                                use.grad = use.grad, 
                                family = family, 
                                verbose = verbose, 
+                               singleconditions = singleconditions,
                                removeduplicates = removeduplicates, 
                                removecomplements = removecomplements,
                                tree.unbiased = tree.unbiased,
@@ -1072,7 +1086,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                       family = "gaussian", verbose = FALSE, 
                       removeduplicates = TRUE, removecomplements = TRUE,
                       tree.unbiased = TRUE, return.dupl.compl = FALSE, 
-                      sparse = FALSE) {
+                      sparse = FALSE, singleconditions = singleconditions) {
   
   n <- nrow(data)
   
@@ -1114,7 +1128,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       if (tree.unbiased) {
         if (use.grad) { # employ ctree
           tree <- ctree(formula = formula, data = data, control = tree.control)
-          return(list.rules(tree, removecomplements = removecomplements))
+          return(list.rules(tree, removecomplements = removecomplements, 
+                 singleconditions = singleconditions))
         } else { # employ (g)lmtree
           glmtree_args$data <- data
           if (family == "gaussian") {
@@ -1122,7 +1137,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           } else {
             tree <- do.call(glmtree, args = glmtree_args)
           }
-          return(list.rules(tree, removecomplements = removecomplements))
+          return(list.rules(tree, removecomplements = removecomplements, 
+                            singleconditions = singleconditions))
         }
       } else { # employ rpart
         tree <- rpart(formula = formula, data = data, control = tree.control)
@@ -1158,7 +1174,13 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     } else { # compute in serial:
       
       rules <- c()
+      if (verbose) {
+        cat("Fitting trees\n")
+        prog_bar <- txtProgressBar(min = 1, max = ntrees, style = 3)
+      }
       for (i in 1:ntrees) {
+        
+        if (verbose) setTxtProgressBar(prog_bar, i)
         
         if (length(maxdepth) > 1L) {
           if (use.grad) {
@@ -1237,9 +1259,16 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
         data_with_y_learn <- cbind(data[ , -which(names(data)== y_names)], y)
         data_with_y_learn$pseudo_y <- ngradient_CoxPH(y = y, f = eta, w = weights)
       }
+      
+      if (verbose) {
+        cat("Fitting trees\n")
+        prog_bar <- txtProgressBar(min = 1, max = ntrees, style = 3)
+      }
+      
+      for(i in 1L:ntrees) {
 
-      for(i in 1:ntrees) {
-
+        if (verbose) setTxtProgressBar(prog_bar, i)
+          
         if (length(maxdepth) > 1L) {
           tree.control$maxdepth <- maxdepth[i]
         }
@@ -1248,7 +1277,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           tree <- ctree(formula, control = tree.control,
                         data = data_with_y_learn[subsample[[i]], ])
           # Collect rules:
-          rules <- c(rules, list.rules(tree, removecomplements = removecomplements))
+          rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
+                                       singleconditions = singleconditions))
         } else {
           tree <- rpart(formula, control = tree.control,
                         data = data_with_y_learn[subsample[[i]], ])
@@ -1296,7 +1326,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           tree <- do.call(glmtree, args = glmtree_args) 
         }
         # Collect rules:
-        rules <- c(rules, list.rules(tree, removecomplements = removecomplements))
+        rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
+                                     singleconditions = singleconditions))
         # Update offset (note: do not use a dataset which includes the offset for prediction!!!):
         if (learnrate > 0) {
           if (family == "gaussian") {
@@ -1310,10 +1341,12 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       }
     }
   }
+  if (verbose) try(close(prog_bar), silent = TRUE)
   
   if (length(rules) > 0) {
     # Keep unique, non-empty rules only:
     rules <- unique(rules[!rules==""])
+    rules <- rules[!is.na(rules)]
     if (sparse) {
       rules <- .get_most_sparse_rule(rules, data)
     }
@@ -1361,7 +1394,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     #rulevars <- rules_obj$rulevars
   
     if (verbose && (removeduplicates || removecomplements)) 
-      cat("\n\nA total of", length(rules_obj$duplicates.removed) + length(rules_obj$complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
+      cat("\n\nA total of", length(rules_obj$duplicates.removed) + length(rules_obj$complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n(fit$duplicates.removed and fit$complements.removed show which, if any).")
     
     if (verbose)
       cat("\n\nAn initial ensemble consisting of", length(rules_obj$rules), "rules was successfully created.")  
@@ -1504,6 +1537,7 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
                                     use.grad = TRUE, verbose = FALSE, 
                                     removeduplicates = TRUE, 
                                     removecomplements = TRUE, 
+                                    singleconditions = singleconditions,
                                     par.init = FALSE, sparse = FALSE) {
   
   n <- nrow(data)
@@ -1547,7 +1581,8 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
         tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
       }
       # Collect rules:
-      list.rules(tree, removecomplements = removecomplements)
+      list.rules(tree, removecomplements = removecomplements, 
+                 singleconditions = singleconditions)
         
     } 
   } else { # do not compute in parallel:
@@ -1567,7 +1602,8 @@ pre_rules_mixed_effects <- function(formula, data, family = "gaussian",
         tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
       }
       # Collect rules:
-      rules <- c(rules, list.rules(tree, removecomplements = removecomplements))
+      rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
+                                   singleconditions = singleconditions))
     
     }
   } 
@@ -1697,7 +1733,7 @@ maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
 #' print(airq.ens)}
 #' @method print pre
 #' @seealso \code{\link{pre}}, \code{\link{summary.pre}}, \code{\link{plot.pre}}, 
-#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' @export
 print.pre <- function(x, penalty.par.val = "lambda.1se", 
@@ -1784,7 +1820,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' summary(airq.ens)}
 #' @method summary pre
 #' @seealso \code{\link{pre}}, \code{\link{print.pre}}, \code{\link{plot.pre}}, 
-#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' @export
 summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
@@ -1870,7 +1906,7 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' airq.cv <- cvpre(airq.ens)}
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
-#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{print.pre}} 
 #' @export
 cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5, 
@@ -2049,7 +2085,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
 #' coefs <- coef(airq.ens)}
 #' @method coef pre
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
-#' \code{\link{cvpre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+#' \code{\link{cvpre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{print.pre}} 
 #' @export
 coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
@@ -2174,7 +2210,7 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
 #' @import Matrix
 #' @method predict pre
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}}, 
-#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}}, 
+#' \code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{cvpre}}, 
 #' \code{\link{interact}}, \code{\link{print.pre}}, 
 #' \code{\link[glmnet]{predict.cv.glmnet}}
 #' @export
@@ -2598,14 +2634,20 @@ pairplot <- function(object, varnames, type = "both",
 }
 
 
+
+
+##' @export
+importance <- function(x, ...)  UseMethod("importance")
+
+
 #' Calculate importances of baselearners and input variables in a prediction 
 #' rule ensemble (pre)
 #'
-#' \code{importance} calculates importances for rules, linear terms and input
+#' \code{importance.pre} calculates importances for rules, linear terms and input
 #' variables in the prediction rule ensemble (pre), and creates a bar plot 
 #' of variable importances.
 #'
-#' @param object an object of class \code{\link{pre}}
+#' @param x an object of class \code{\link{pre}}
 #' @param standardize logical. Should baselearner importances be standardized 
 #' with respect to the outcome variable? If \code{TRUE}, baselearner importances 
 #' have a minimum of 0 and a maximum of 1. Only used for ensembles with 
@@ -2659,36 +2701,39 @@ pairplot <- function(object, varnames, type = "both",
 #' importance(airq.ens, global = FALSE, quantprobs = c(0, .25))}
 #' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 #' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
-#' \url{https://doi.org/10.18637/jss.v092.i12}
+#' \doi{10.18637/jss.v092.i12}
 #' 
 #' Fokkema, M. & Strobl, C. (2020). Fitting prediction rule ensembles to psychological 
 #' research data: An introduction and tutorial. \emph{Psychological Methods 25}(5), 
-#' 636-652. \url{http://doi.org/10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
+#' 636-652. \doi{10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
-#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954 
+#' \doi{10.1214/07-AOAS148}.
 #' @seealso \code{\link{pre}}
 #' @export
-importance <- function(object, standardize = FALSE, global = TRUE,
-                       quantprobs = c(.75, 1), penalty.par.val = "lambda.1se", 
-                       round = NA, plot = TRUE, ylab = "Importance",
-                       main = "Variable importances", abbreviate = 10L,
-                       diag.xlab = TRUE, diag.xlab.hor = 0, diag.xlab.vert = 2,
-                       cex.axis = 1, legend = "topright", ...)
+#' @aliases importance
+
+importance.pre <- function(x, standardize = FALSE, global = TRUE,
+                           quantprobs = c(.75, 1), penalty.par.val = "lambda.1se", 
+                           round = NA, plot = TRUE, ylab = "Importance",
+                           main = "Variable importances", abbreviate = 10L,
+                           diag.xlab = TRUE, diag.xlab.hor = 0, diag.xlab.vert = 2,
+                           cex.axis = 1, legend = "topright", ...)
 {
 
-  if (!inherits(object, what = "pre")) {
+  if (!inherits(x, what = "pre")) {
     stop("Specified object is not of class 'pre'.")
   }
   
   if (!global) {
-    if (object$family %in% c("mgaussian", "multinomial")) {
+    if (x$family %in% c("mgaussian", "multinomial")) {
       warning("Local importances cannot be calculated for multivariate and multinomial outcomes. Global importances will be returned.")
       global <- TRUE 
     }
   }
   
-  if (standardize && object$family %in% c("multinomial", "binomial", "cox")) {
+  if (standardize && x$family %in% c("multinomial", "binomial", "cox")) {
     warning("Standardized importances cannot be calculated for binary, multinomial or survival responses. Unstandardized importances will be returned.")
     standardize <- FALSE
   }
@@ -2696,17 +2741,17 @@ importance <- function(object, standardize = FALSE, global = TRUE,
   ## Step 1: Calculate the importances of the base learners:
   
   # get base learner coefficients:
-  coefs <- coef(object, penalty.par.val = penalty.par.val)
-  if (object$family %in% c("mgaussian", "multinomial")) {
+  coefs <- coef(x, penalty.par.val = penalty.par.val)
+  if (x$family %in% c("mgaussian", "multinomial")) {
     coef_inds <- names(coefs)[!names(coefs) %in% c("rule", "description")]
   }
 
   # only continue when there are nonzero terms besides intercept:
-  if ((object$family %in% c("gaussian", "binomial", "poisson") && 
+  if ((x$family %in% c("gaussian", "binomial", "poisson") && 
       sum(coefs$coefficient != 0) > 1L ) || 
-      (object$family %in% c("mgaussian", "multinomial") && 
+      (x$family %in% c("mgaussian", "multinomial") && 
        sum(rowSums(coefs[,coef_inds]) != 0) > 1L) ||
-      (object$family == "cox" && sum(coefs$coefficient != 0) > 0)) { 
+      (x$family == "cox" && sum(coefs$coefficient != 0) > 0)) { 
     # give factors a description:
     if (any(is.na(coefs$description))) {
       coefs$description[is.na(coefs$description)] <-
@@ -2715,27 +2760,27 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     coefs <- coefs[order(coefs$rule),]
     # Get sds for every baselearner:
     if (global) {
-      # object$x_scales should be used to get correct SDs for linear terms:
-      if (object$family == "cox") {
-        sds <- apply(object$modmat, 2, sd, na.rm = TRUE)  
+      # x$x_scales should be used to get correct SDs for linear terms:
+      if (x$family == "cox") {
+        sds <- apply(x$modmat, 2, sd, na.rm = TRUE)  
       } else {
-        sds <- c(0, apply(object$modmat, 2, sd, na.rm = TRUE))          
+        sds <- c(0, apply(x$modmat, 2, sd, na.rm = TRUE))          
       }
       if (standardize) {
-        if (object$family == "mgaussian") {
-          sd_y <- sapply(object$data[ , object$y_names], sd)
-        } else if (object$family %in% c("gaussian", "poisson")) { 
-          sd_y <- sd(as.numeric(object$data[ , object$y_names]))
+        if (x$family == "mgaussian") {
+          sd_y <- sapply(x$data[ , x$y_names], sd)
+        } else if (x$family %in% c("gaussian", "poisson")) { 
+          sd_y <- sd(as.numeric(x$data[ , x$y_names]))
         }
       }
     } else {
-      preds <- predict.pre(object, newdata = object$data, type = "response",
+      preds <- predict.pre(x, newdata = x$data, type = "response",
                            penalty.par.val = penalty.par.val)
-      local_modmat <- object$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
+      local_modmat <- x$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
                                       preds <= quantile(preds, probs = quantprobs[2]),]
       if (nrow(local_modmat) < 2) {stop("Selected subregion contains less than 2 observations, importances cannot be calculated")}
-      # object$x_scales should be used to get correct SDs for linear terms:
-      if (object$family == "cox") {
+      # x$x_scales should be used to get correct SDs for linear terms:
+      if (x$family == "cox") {
         ## cox prop haz model has no intercept, so should be omitted
         sds <- apply(local_modmat, 2, sd, na.rm = TRUE)
       } else {
@@ -2743,9 +2788,9 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       }
 
       if (standardize) {
-        sd_y <- sd(object$data[preds >= quantile(preds, probs = quantprobs[1]) & 
+        sd_y <- sd(x$data[preds >= quantile(preds, probs = quantprobs[1]) & 
                                  preds <= quantile(preds, probs = quantprobs[2]),
-                               object$y_names])
+                               x$y_names])
       }
     }
     
@@ -2754,11 +2799,11 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       names(sds) <- gsub("`", "", names(sds), fixed = TRUE)
     }
     
-    if(object$normalize) {
-      sds[names(object$x_scales)] <- sds[names(object$x_scales)] * object$x_scales
+    if(x$normalize) {
+      sds[names(x$x_scales)] <- sds[names(x$x_scales)] * x$x_scales
     }
     
-    if (object$family != "cox") {
+    if (x$family != "cox") {
       names(sds)[1] <- "(Intercept)"
     }
     
@@ -2769,7 +2814,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
     
     # baselearner importance is given by abs(coef*SD) (F&P section 6):
-    if (object$family %in% c("multinomial", "mgaussian")) {
+    if (x$family %in% c("multinomial", "mgaussian")) {
       baseimps <- data.frame(coefs, sd = sds)
       baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) {x*sds}))
     } else {
@@ -2777,17 +2822,17 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     }
     
     if (standardize) {
-      if (object$family == "mgaussian") {
+      if (x$family == "mgaussian") {
         for (i in gsub("coefficient", "importance", coef_inds)) {
           baseimps[,i] <- baseimps[,i] / sd_y[gsub("importance.", "", i)]
         }
-      } else if (object$family %in% c("gaussian", "poisson")) {
+      } else if (x$family %in% c("gaussian", "poisson")) {
         baseimps$imp <- baseimps$imp / sd_y
       }
     }
 
     ## Remove nonzero terms:
-    if (object$family %in% c("mgaussian", "multinomial")) {
+    if (x$family %in% c("mgaussian", "multinomial")) {
       baseimps <- baseimps[rowSums(baseimps[,coef_inds]) != 0, ]   
     } else {
       baseimps <- baseimps[baseimps$coefficient != 0,]
@@ -2811,11 +2856,11 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     
     ## Step 2: Calculate variable importances:
     
-    if (object$family %in% c("mgaussian", "multinomial")) {
-      varimps <- data.frame(varname = object$x_names, stringsAsFactors = FALSE)
+    if (x$family %in% c("mgaussian", "multinomial")) {
+      varimps <- data.frame(varname = x$x_names, stringsAsFactors = FALSE)
       varimps[,gsub("coefficient", "importance", coef_inds)] <- 0
     } else {
-      varimps <- data.frame(varname = object$x_names, imp = 0,
+      varimps <- data.frame(varname = x$x_names, imp = 0,
                             stringsAsFactors = FALSE)
     }
     
@@ -2832,7 +2877,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
           n_occ <- length(gregexpr(paste0(" ", varimps$varname[i], " "),
                                    paste0(" ", baseimps$description[j]), fixed = TRUE)[[1]])
           # add it to the importance of the variable:
-          if (object$family %in% c("mgaussian", "multinomial")) {
+          if (x$family %in% c("mgaussian", "multinomial")) {
             varimps[i, gsub("coefficient", "importance", coef_inds)] <- 
               varimps[i, gsub("coefficient", "importance", coef_inds)] + 
               (n_occ * baseimps[j, gsub("coefficient", "importance", coef_inds)] / baseimps$nterms[j])
@@ -2843,10 +2888,10 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       }
         
       ## Get imps from factors:
-      if (is.factor(object$data[ , varimps$varname[i]])) { # && 
-          # !is.ordered(object$data[ , varimps$varname[i]])) {
+      if (is.factor(x$data[ , varimps$varname[i]])) { # && 
+          # !is.ordered(x$data[ , varimps$varname[i]])) {
         ## Sum those baseimps$imp for which baseimps$rule has varimps$varname[i] as part of its name
-        if (object$family %in% c("mgaussian", "multinomial")) {
+        if (x$family %in% c("mgaussian", "multinomial")) {
           varimps[i, gsub("coefficient", "importance", coef_inds)] <-
             varimps[i, gsub("coefficient", "importance", coef_inds)] +
             colSums(baseimps[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE), 
@@ -2863,7 +2908,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
     
 
     
-    if (object$family %in% c("mgaussian", "multinomial")) {
+    if (x$family %in% c("mgaussian", "multinomial")) {
       varimps <- varimps[rowSums(varimps[ , gsub("coefficient", "importance", coef_inds)]) != 0, ]
       ord <- order(rowSums(varimps[ , gsub("coefficient", "importance", coef_inds)]), 
                    decreasing = TRUE, method = "radix")
@@ -2882,7 +2927,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
         legend.text <- NULL
         args.legend <- NULL
       }
-      if (object$family %in% c("mgaussian", "multinomial")) {
+      if (x$family %in% c("mgaussian", "multinomial")) {
         plot_varimps <- t(varimps[ , gsub("coefficient", "importance" , coef_inds)])
         colnames(plot_varimps) <- abbreviate(varimps$varname, minlength = abbreviate)
         rownames(plot_varimps) <- gsub("coefficient.", "" , coef_inds)
@@ -2908,7 +2953,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
         } else {
           barplot(plot_varimps, beside = TRUE, main = main, ylab = ylab, 
                   legend.text = legend.text, args.legend = args.legend,
-                  ...)
+                  cex.axis = cex.axis, ...)
         }
       } else {
         if (diag.xlab) {
@@ -2942,7 +2987,7 @@ importance <- function(object, standardize = FALSE, global = TRUE,
       varimps[,sapply(varimps, is.numeric)] <- round(varimps[,sapply(varimps, is.numeric)], digits = round)
     }
     
-    if (object$family %in% c("mgaussian","multinomial")) {
+    if (x$family %in% c("mgaussian","multinomial")) {
       keep <- c("rule", "description", gsub("coefficient", "importance", coef_inds), 
                 coef_inds, "sd")
     } else {
@@ -2992,10 +3037,11 @@ importance <- function(object, standardize = FALSE, global = TRUE,
 #' 
 #' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 #' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
-#' \url{https://doi.org/10.18637/jss.v092.i12}
+#' \doi{10.18637/jss.v092.i12}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
-#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954,
+#' \doi{10.1214/07-AOAS148}.
 #' @seealso \code{\link{pre}}, \code{\link{interact}} 
 #' @export
 bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
@@ -3204,10 +3250,11 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' 
 #' @references Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 #' package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
-#' \url{https://doi.org/10.18637/jss.v092.i12}
+#' \doi{10.18637/jss.v092.i12}
 #' 
 #' Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
-#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954,
+#' \doi{10.1214/07-AOAS148}.
 #' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
 #' @export
 interact <- function(object, varnames = NULL, nullmods = NULL, 
@@ -3343,7 +3390,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' @param exit.label character string. Label to be printed in nodes to which 
 #' the rule does not apply (``exit nodes'')?
 #' @param standardize logical. Should printed importances be standardized? See
-#' \code{\link{importance}}.
+#' \code{\link{importance.pre}}.
 #' @param ... Arguments to be passed to \code{\link[grid]{gpar}}.
 #' @examples
 #' \donttest{set.seed(42)
@@ -3843,7 +3890,7 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
 #' times the estimated coefficient for the linear term.
 #' @references Fokkema, M. & Strobl, C. (2020). Fitting prediction rule 
 #' ensembles to psychological research data: An introduction and tutorial. 
-#' \emph{Psychological Methods 25}(5), 636-652. \url{http://doi.org/10.1037/met0000256},
+#' \emph{Psychological Methods 25}(5), 636-652. \doi{10.1037/met0000256},
 #' \url{https://arxiv.org/abs/1907.05302}
 #' @examples \donttest{airq <- airquality[complete.cases(airquality), ]
 #' set.seed(1)
@@ -3870,7 +3917,7 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
 #'         penalty.par.val = "lambda.min", center.linear = TRUE)$contribution
 #' }
 #' @seealso \code{\link{pre}}, \code{\link{plot.pre}},
-#' \code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}},
+#' \code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{cvpre}},
 #' \code{\link{interact}}, \code{\link{print.pre}}
 #' @export
 explain <- function(object, newdata, penalty.par.val = "lambda.1se",

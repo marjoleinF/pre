@@ -55,7 +55,7 @@ predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}
 }
 \seealso{
 \code{\link{pre}}, \code{\link{plot.pre}}, 
-\code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{cvpre}}, 
+\code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{cvpre}}, 
 \code{\link{interact}}, \code{\link{print.pre}}, 
 \code{\link[glmnet]{predict.cv.glmnet}}
 }

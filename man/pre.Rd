@@ -17,8 +17,7 @@ pre(
   mtry = Inf,
   ntrees = 500,
   confirmatory = NULL,
-  removecomplements = TRUE,
-  removeduplicates = TRUE,
+  singleconditions = FALSE,
   winsfrac = 0.025,
   normalize = TRUE,
   standardize = FALSE,
@@ -26,6 +25,8 @@ pre(
   nfolds = 10L,
   tree.control,
   tree.unbiased = TRUE,
+  removecomplements = TRUE,
+  removeduplicates = TRUE,
   verbose = FALSE,
   par.init = FALSE,
   par.final = FALSE,
@@ -35,7 +36,7 @@ pre(
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be fit of the form 
-\code{y ~ x1 + x2 + ...+ xn}. Response (left-hand side of the formula) 
+\code{y ~ x1 + x2 + ... + xn}. Response (left-hand side of the formula) 
 should be of class numeric (for \code{family = "gaussian"} or
 \code{"mgaussian"}), integer (for \code{family = "poisson"}), factor (for 
 \code{family = "binomial"} or \code{"multinomial"}). See Examples below. 
@@ -108,11 +109,14 @@ as, for example, \code{"x1 > 6 & x2 <= 8"}, where x1 and x2 should be names
 of variables in \code{data}. Terms thus specified will be included in the
 final ensemble, as their coefficients will not be penalized in the estimation.}
 
-\item{removecomplements}{logical. Remove rules from the ensemble which are
-identical to (1 - an earlier rule)?}
-
-\item{removeduplicates}{logical. Remove rules from the ensemble which are 
-identical to an earlier rule?}
+\item{singleconditions}{\code{TRUE}, \code{FALSE} or \code{"only"}. Should 
+rules with multiple conditions be disaggregated? Node membership for all tree
+except the root are coded as multi-condition rules. The conditions of these
+rules can be disaggregated to avoid selection of multi-condition rules. If
+\code{FALSE} (the default), all non-root nodes will be included as multi-condition 
+rules in the initial ensemble. If \code{TRUE}, all nodes will additionally be 
+included as single-condition rules. If \code{"only"}, all nodes will be included 
+as single-condition rules only.}
 
 \item{winsfrac}{numeric value \eqn{> 0} and \eqn{\le 0.5}. Quantiles of data 
 distribution to be used for 
@@ -123,7 +127,8 @@ regression model and will also be winsorized.}
 \item{normalize}{logical. Normalize linear variables before estimating the 
 regression model? Normalizing gives linear terms the same a priori influence 
 as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
-SD.}
+SD. \code{normalize = FALSE} will give more prefence to linear terms getting
+selected.}
 
 \item{standardize}{logical. Should rules and linear terms be standardized to
 have SD equal to 1 before estimating the regression model? This will also 
@@ -151,6 +156,12 @@ be employed for rule generation? Defaults to \code{TRUE}, if set to
 \code{\link[rpart]{rpart}}. See details below for possible combinations 
 with \code{family}, \code{use.grad} and \code{learnrate}.}
 
+\item{removecomplements}{logical. Remove rules from the ensemble which are
+identical to (1 - an earlier rule)?}
+
+\item{removeduplicates}{logical. Remove rules from the ensemble which are 
+identical to an earlier rule?}
+
 \item{verbose}{logical. Should progress be printed to the command line?}
 
 \item{par.init}{logical. Should parallel \code{foreach} be used to generate 
@@ -163,7 +174,7 @@ datasets.}
 validation for selecting the final ensemble? Must register parallel beforehand, 
 such as doMC or others.}
 
-\item{sparse}{logical. Should sparse design matrices be used? Likely improves
+\item{sparse}{logical. Should sparse design matrices be used? May improve
 computation times for large datasets.}
 
 \item{...}{Additional arguments to be passed to
@@ -295,23 +306,23 @@ count.ens}
 \references{
 Fokkema, M. (2020). Fitting prediction rule ensembles with R 
 package pre. \emph{Journal of Statistical Software, 92}(12), 1-30.
-\url{https://doi.org/10.18637/jss.v092.i12}
+\doi{10.18637/jss.v092.i12}
 
 Fokkema, M. & Strobl, C. (2020). Fitting prediction rule ensembles to psychological 
 research data: An introduction and tutorial. \emph{Psychological Methods 25}(5), 
-636-652. \url{http://doi.org/10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
+636-652. \doi{10.1037/met0000256}, \url{https://arxiv.org/abs/1907.05302}
 
 Friedman, J. H. (2001). Greedy function approximation: a gradient boosting 
 machine. \emph{The Annals of Applied Statistics, 29}(5), 1189-1232.
 
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning via rule 
-ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954, \doi{10.1214/07-AOAS148}.
 
 Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive 
 partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
 }
 \seealso{
 \code{\link{print.pre}}, \code{\link{plot.pre}}, 
-\code{\link{coef.pre}}, \code{\link{importance}}, \code{\link{predict.pre}}, 
+\code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 \code{\link{interact}}, \code{\link{cvpre}}
 }

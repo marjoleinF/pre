@@ -7,6 +7,7 @@ S3method("print", "gpe")
 S3method("plot", "pre")
 S3method("summary", "pre")
 S3method("summary", "gpe")
+S3method("importance", "pre")
 
 
 export("bsnullinteract")
@@ -42,13 +43,11 @@ import("rpart")
 import("survival")
 
 
-importFrom("methods", "as")
-importFrom("utils", "head", "tail", "object.size", "capture.output")
+importFrom("methods", "as", "slot")
+importFrom("utils", "head", "tail", "object.size", "capture.output", "setTxtProgressBar", "txtProgressBar")
 importFrom("earth", "earth")
 importFrom("stringr", "str_match", "str_replace_all")
 importFrom("Matrix", "sparseMatrix")
 importFrom("MatrixModels", "model.Matrix")
-importFrom("methods", "slot")
-
 
 importClassesFrom("Matrix", "sparseMatrix")

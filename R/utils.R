@@ -213,7 +213,13 @@ is_almost_eq <- function(x, y, tolerance = sqrt(.Machine$double.eps)) {
 #   ensembles. The Annals of Applied Statistics, 916-954.
 
 
-list.rules <- function (x, i = NULL, removecomplements = TRUE, ...) {
+list.rules <- function (x, i = NULL, removecomplements = TRUE, 
+                        singleconditions = FALSE, ...) {
+  
+  ## singleconditions can take values FALSE (rules code only node membership);
+  ##   TRUE (rules code both node membership and all individual splits; 
+  ##   "only" (rules code only individual splits)
+  
   if (is.null(i)) 
     i <- partykit::nodeids(x, terminal = TRUE)
   if (length(i) > 1) {
@@ -221,7 +227,16 @@ list.rules <- function (x, i = NULL, removecomplements = TRUE, ...) {
     # TODO: Benjamin Christoffersen changed this part. This can be done smarter
     # than finding all and then removing duplicates. I guess the computational
     # cost is low, though
-    ret <- lapply(i, list.rules, x = x, simplify = FALSE)
+    if (isTRUE(singleconditions)) {
+      ret <- lapply(i, list.rules, x = x, simplify = FALSE)
+      ret <- c(ret, lapply(i, list.rules, x = x, simplify = FALSE, 
+                           singleconditions = TRUE))
+    } else if (singleconditions == "only") {
+      ret <- lapply(i, list.rules, x = x, simplify = FALSE, 
+                           singleconditions = TRUE)
+    } else {
+      ret <- lapply(i, list.rules, x = x, simplify = FALSE)
+    }
     
     # Find the first rules. We will only keep one of these
     
@@ -245,6 +260,17 @@ list.rules <- function (x, i = NULL, removecomplements = TRUE, ...) {
     if (removecomplements) {
       ret <- ret[ret != first_rule_remove]
     }
+    ## of rules with only single conditions, retain one of each pair
+    if (isTRUE(singleconditions) && removecomplements) {
+      mcrs <- ret[grep(" & ", ret)] ## multi-condition rules
+      scrs <- ret[-grep(" & ", ret)] ## single-condition rules
+      ## keep only odd numbered of those 
+      ret <- c(mcrs, scrs[1:length(scrs) %% 2 == 1])
+    } else if (singleconditions == "only" && removecomplements) {
+      ## keep only odd numbered rules 
+      ret <- c(ret[1:length(ret) %% 2 == 1])      
+    }
+    
     # TODO: this still leaves us with complements for non-terminal rules
     # names(ret) <- if (is.character(i)) 
     #   i else names(x)[i]
@@ -330,8 +356,16 @@ list.rules <- function (x, i = NULL, removecomplements = TRUE, ...) {
   if(is.null(rule))
     return(character())
   
-  sapply(seq_along(rule), function(r) paste(rule[1:r], collapse = " & "))
+  if (isTRUE(singleconditions) || singleconditions == "only") {
+    ## keep conditions separate
+    rule
+  } else {
+    ## combine conditions into single rule
+    sapply(seq_along(rule), function(r) paste(rule[1:r], collapse = " & "))
+  }
+  
 }
+
 
 
 

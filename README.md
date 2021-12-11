@@ -1,8 +1,6 @@
-**pre**: an R package for deriving prediction rule ensembles
-============================================================
+# **pre**: an R package for deriving prediction rule ensembles
 
-Contents
---------
+## Contents
 
 -   [Introduction](#introduction)
 -   [Example: A rule ensemble for predicting ozone
@@ -19,11 +17,9 @@ Contents
     -   [Tuning parameters](#tuning-parameters)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear
     terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
--   [Credits](#credits)
 -   [References](#references)
 
-Introduction
-------------
+## Introduction
 
 **pre** is an **R** package for deriving prediction rule ensembles for
 binary, multinomial, (multivariate) continuous, count and survival
@@ -56,8 +52,7 @@ in function `pre()` and example analyses with more extensive
 explanations. An extensive introduction aimed at researchers in social
 sciences is provided in Fokkema & Strobl (2020).
 
-Example: A rule ensemble for predicting ozone levels
-----------------------------------------------------
+## Example: A rule ensemble for predicting ozone levels
 
 To get a first impression of how function `pre()` works, we will fit a
 prediction rule ensemble to predict Ozone levels using the `airquality`
@@ -186,8 +181,7 @@ can be used to compute alternative estimates of predictive accuracy, are
 saved in `airq.cv$cvpreds`. The folds to which observations were
 assigned are saved in `airq.cv$fold_indicators`.
 
-Tools for interpretation
-------------------------
+## Tools for interpretation
 
 Package **pre** provides several additional tools for interpretation of
 the final ensemble. These may be especially helpful for complex
@@ -312,32 +306,26 @@ corplot(airq.ens)
 
 <img src="inst/README-figures/README-corplot-1.png" width="500px" />
 
-Tuning parameters
------------------
+## Tuning parameters
 
-To obtain an optimal set of model-fitting parameters, function `train()`
-from package **`caret`** Kuhn (2008) can be employed. Package **`pre`**
-supports this through the `caret_pre_model` object (see also
-`?caret_pre_model`). Note that it’s best to specify the `x` and `y`
-arguments when using function `train()` to train the parameters of
-`pre()`; the use of the `formula` and `data` arguments may lead to
-unexpected results.
+To obtain an optimal set of model-fitting parameters, package
+**`caret`** Kuhn (2008) provides a method `"pre"`. Note that it’s best
+to specify the `x` and `y` arguments when using function `train()` to
+train the parameters of `pre()`; the use of the `formula` and `data`
+arguments may lead to unexpected results.
 
 ``` r
 ## Load library
 library("caret")
-#> Loading required package: lattice
+#> Warning: package 'caret' was built under R version 4.1.1
 #> Loading required package: ggplot2
-## Prepare data
-airq <- airquality[complete.cases(airquality),]
-y <- airq$Ozone
-x <- airq[,-1]
+#> Loading required package: lattice
 ```
 
 The following parameters can be tuned:
 
 ``` r
-caret_pre_model$parameters
+getModelInfo("pre")[[1]]$parameters
 #>         parameter     class                          label
 #> 1        sampfrac   numeric           Subsampling Fraction
 #> 2        maxdepth   numeric                 Max Tree Depth
@@ -347,88 +335,58 @@ caret_pre_model$parameters
 #> 6 penalty.par.val character       Regularization Parameter
 ```
 
-Users can create a tuning grid manually, but it is probably easier to
-use the `caret_pre_model$grid` function, e.g.:
+You can manually create a tuning grid, which needs to specify at least
+one value for each parameter. It is probably easier use the
+grid-generating function included in the `caret` method itself. Then you
+can e.g., abbreviate argument names, and arguments not specified will be
+set to their default values:
 
 ``` r
-tuneGrid <- caret_pre_model$grid(x = x, y = y,
-                                 maxdepth = 3L:5L,
-                                 learnrate = c(.01, .1),
-                                 penalty.par.val = c("lambda.1se", "lambda.min"))
+tuneGrid <- getModelInfo("pre")[[1]]$grid(
+  maxd = 1L:3L, 
+  learn = c(.01, .1),
+  pen = c("lambda.1se", "lambda.min"))
 tuneGrid
 #>    sampfrac maxdepth learnrate mtry use.grad penalty.par.val
-#> 1       0.5        3      0.01  Inf     TRUE      lambda.1se
-#> 2       0.5        4      0.01  Inf     TRUE      lambda.1se
-#> 3       0.5        5      0.01  Inf     TRUE      lambda.1se
-#> 4       0.5        3      0.10  Inf     TRUE      lambda.1se
-#> 5       0.5        4      0.10  Inf     TRUE      lambda.1se
-#> 6       0.5        5      0.10  Inf     TRUE      lambda.1se
-#> 7       0.5        3      0.01  Inf     TRUE      lambda.min
-#> 8       0.5        4      0.01  Inf     TRUE      lambda.min
-#> 9       0.5        5      0.01  Inf     TRUE      lambda.min
-#> 10      0.5        3      0.10  Inf     TRUE      lambda.min
-#> 11      0.5        4      0.10  Inf     TRUE      lambda.min
-#> 12      0.5        5      0.10  Inf     TRUE      lambda.min
+#> 1       0.5        1      0.01  Inf     TRUE      lambda.1se
+#> 2       0.5        2      0.01  Inf     TRUE      lambda.1se
+#> 3       0.5        3      0.01  Inf     TRUE      lambda.1se
+#> 4       0.5        1      0.10  Inf     TRUE      lambda.1se
+#> 5       0.5        2      0.10  Inf     TRUE      lambda.1se
+#> 6       0.5        3      0.10  Inf     TRUE      lambda.1se
+#> 7       0.5        1      0.01  Inf     TRUE      lambda.min
+#> 8       0.5        2      0.01  Inf     TRUE      lambda.min
+#> 9       0.5        3      0.01  Inf     TRUE      lambda.min
+#> 10      0.5        1      0.10  Inf     TRUE      lambda.min
+#> 11      0.5        2      0.10  Inf     TRUE      lambda.min
+#> 12      0.5        3      0.10  Inf     TRUE      lambda.min
 ```
 
-Next, we apply function `train()`. Note that, in order to reduce
-computation time, I have specified the number of trees to be 50, but in
-real applications it should be left to the default value (i.e., not
-specified), unless you also want to tune the `ntrees` parameter:
+Next, we apply function `train()`. Further arguments of `pre`, not
+included in the tuning grid, can simply be passed to the train function.
+Below, I specify that 10 repeats of 10-fold cross validation should be
+performed to evaluate performance of the settings (see help for function
+`train()` and function `trainControl()` from `caret` for more info):
 
 ``` r
+trCtrl <- trainControl(method = "repeatedcv", number = 10, repeats = 10)
 set.seed(42)
-prefit2 <- train(x = x, y = y, method = caret_pre_model,
-                 trControl = trainControl(number = 1),
-                 tuneGrid = tuneGrid, ntrees = 50L)
-prefit2
-#> Prediction Rule Ensembles 
-#> 
-#> 111 samples
-#>   5 predictor
-#> 
-#> No pre-processing
-#> Resampling: Bootstrapped (1 reps) 
-#> Summary of sample sizes: 111 
-#> Resampling results across tuning parameters:
-#> 
-#>   maxdepth  learnrate  penalty.par.val  RMSE      Rsquared   MAE     
-#>   3         0.01       lambda.1se       19.83742  0.7310082  13.54601
-#>   3         0.01       lambda.min       20.00028  0.7120475  13.71055
-#>   3         0.10       lambda.1se       21.80688  0.6593462  14.81460
-#>   3         0.10       lambda.min       22.18347  0.6397186  15.96051
-#>   4         0.01       lambda.1se       21.26142  0.6716467  15.36146
-#>   4         0.01       lambda.min       21.77508  0.6543533  15.91652
-#>   4         0.10       lambda.1se       20.06575  0.7413488  13.61861
-#>   4         0.10       lambda.min       20.59871  0.7015281  14.01484
-#>   5         0.01       lambda.1se       22.03152  0.6612495  14.34614
-#>   5         0.01       lambda.min       22.82607  0.6233053  15.02192
-#>   5         0.10       lambda.1se       24.28906  0.5760883  16.47336
-#>   5         0.10       lambda.min       22.83246  0.6221208  15.34685
-#> 
-#> Tuning parameter 'sampfrac' was held constant at a value of 0.5
-#> 
-#> Tuning parameter 'mtry' was held constant at a value of Inf
-#> Tuning
-#>  parameter 'use.grad' was held constant at a value of TRUE
-#> RMSE was used to select the optimal model using the smallest value.
-#> The final values used for the model were sampfrac = 0.5, maxdepth =
-#>  3, learnrate = 0.01, mtry = Inf, use.grad = TRUE and penalty.par.val
-#>  = lambda.1se.
+prefit <- train(Ozone ~ ., data = airq, method = caret_pre_model,
+                 trControl = trCtrl, tuneGrid = tuneGrid)
 ```
 
 We can get the set of optimal parameter values:
 
 ``` r
-prefit2$bestTune
-#>   sampfrac maxdepth learnrate mtry use.grad penalty.par.val
-#> 1      0.5        3      0.01  Inf     TRUE      lambda.1se
+prefit$bestTune
+#>    sampfrac maxdepth learnrate mtry use.grad penalty.par.val
+#> 10      0.5        3      0.01  Inf     TRUE      lambda.min
 ```
 
 We can plot the effects of the tuning parameters:
 
 ``` r
-plot(prefit2)
+plot(prefit)
 ```
 
 <img src="inst/README-figures/README-caretplot-1.png" width="600px" />
@@ -437,15 +395,14 @@ And we can get predictions from the model with the best tuning
 parameters:
 
 ``` r
-predict(prefit2, newdata = x[1:10, ])
+predict(prefit, newdata = airq[1:10, ])
 #>        1        2        3        4        7        8        9       12 
-#> 27.93810 27.86681 22.21110 22.64554 28.09927 22.06852 21.68236 22.85941 
+#> 30.53062 19.54138 17.87498 20.64717 21.10746 17.87498 12.66824 21.10746 
 #>       13       14 
-#> 22.91882 22.71683
+#> 21.10746 20.64717
 ```
 
-Generalized Prediction Ensembles: Combining MARS, rules and linear terms
-========================================================================
+# Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
 An even more flexible ensembling approach is implemented in function
 `gpe()`, which allows for fiting Generalized Prediction Ensembles: It
@@ -491,48 +448,88 @@ hinge function and its coefficient indicate that Ozone levels increase
 with increasing solar radiation and decreasing wind speeds. The
 prediction rules in the ensemble indicate a similar pattern.
 
-Credits
-=======
+# Credits
 
-* Benjamin Chistoffersen : https://github.com/boennecd
+I am grateful to Benjamin Chistoffersen: <https://github.com/boennecd>,
+who developed `gpe` and contributed tremendously by improved functions,
+code and computational aspects. Furthermore, bug fixes were implemented
+by Karl Holub (<https://github.com/holub008>) and Advik Shreekumar
+(<https://github.com/adviksh>).
 
-* Karl Holub: https://github.com/holub008
+# References
 
+<div id="refs" class="references csl-bib-body hanging-indent"
+line-spacing="2">
 
-References
-==========
+<div id="ref-Breiman84" class="csl-entry">
 
 Breiman, L., Friedman, J., Olshen, R., & Stone, C. (1984).
 Classification and regression trees. Boca Raton, FL: Chapman & Hall /
 CRC.
 
+</div>
+
+<div id="ref-Fokkema20" class="csl-entry">
+
 Fokkema, M. (2020). Fitting prediction rule ensembles with R package
 pre. *Journal of Statistical Software*, *92*(12), 1–30. Retrieved from
 <http://doi.org/10.18637/jss.v092.i12>
 
-Fokkema, M., & Strobl, C. (2020). Fitting prediction rule ensembles to
-psychological research data: An introduction and tutorial.
-*Psychological Methods*, *25*(5), 636–652.
-<https://doi.org/10.1037/met0000256>
+</div>
+
+<div id="ref-FokkemaStrobl20" class="csl-entry">
+
+Fokkema, M., & Strobl, C. (2020). <span class="nocase">Fitting
+prediction rule ensembles to psychological research data: An
+introduction and tutorial</span>. *Psychological Methods*, *25*(5),
+636–652. <https://doi.org/10.1037/met0000256>
+
+</div>
+
+<div id="ref-Friedman91" class="csl-entry">
 
 Friedman, J. (1991). Multivariate adaptive regression splines. *The
-Annals of Statistics*, *19*(1), 1–67.
+Annals of Statistics*, *19*, 1–67.
+
+</div>
+
+<div id="ref-Friedman08" class="csl-entry">
 
 Friedman, J., & Popescu, B. (2008). Predictive learning via rule
 ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954.
 Retrieved from <http://www.jstor.org/stable/30245114>
 
+</div>
+
+<div id="ref-Hothorn06" class="csl-entry">
+
 Hothorn, T., Hornik, K., & Zeileis, A. (2006). Unbiased recursive
 partitioning: A conditional inference framework. *Journal of
 Computational and Graphical Statistics*, *15*(3), 651–674.
 
+</div>
+
+<div id="ref-Kuhn08" class="csl-entry">
+
 Kuhn, M. (2008). Building predictive models in R using the caret
 package. *Journal of Statistical Software*, *28*(5), 1–26.
 
-Milborrow, S. (2018). *plotmo: Plot a model’s residuals, response, and
-partial dependence plots*. Retrieved from
-<https://CRAN.R-project.org/package=plotmo>
+</div>
+
+<div id="ref-Milb18" class="csl-entry">
+
+Milborrow, S. (2018). *<span class="nocase">plotmo</span>: Plot a
+model’s residuals, response, and partial dependence plots*. Retrieved
+from <https://CRAN.R-project.org/package=plotmo>
+
+</div>
+
+<div id="ref-Zeileis08" class="csl-entry">
 
 Zeileis, A., Hothorn, T., & Hornik, K. (2008). Model-based recursive
 partitioning. *Journal of Computational and Graphical Statistics*,
 *17*(2), 492–514.
+
+</div>
+
+</div>

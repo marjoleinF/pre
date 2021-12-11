@@ -50,7 +50,7 @@ plots?}
 the rule does not apply (``exit nodes'')?}
 
 \item{standardize}{logical. Should printed importances be standardized? See
-\code{\link{importance}}.}
+\code{\link{importance.pre}}.}
 
 \item{plot.dim}{integer vector of length two. Specifies the number of rows
 and columns in the plot. The default yields a plot with three rows and three 

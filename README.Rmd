@@ -200,53 +200,57 @@ include_graphics(sprintf("%scorplot-1.png", opts_current$get("fig.path")))
 
 ## Tuning parameters
 
-To obtain an optimal set of model-fitting parameters, function `train()` from package **`caret`** @Kuhn08 can be employed. Package **`pre`** supports this through the `caret_pre_model` object (see also `?caret_pre_model`). Note that it's best to specify the `x` and `y` arguments when using function `train()` to train the parameters of `pre()`; the use of the `formula` and `data` arguments may lead to unexpected results.
+To obtain an optimal set of model-fitting parameters, package **`caret`** @Kuhn08 provides a method `"pre"`.  Note that it's best to specify the `x` and `y` arguments when using function `train()` to train the parameters of `pre()`; the use of the `formula` and `data` arguments may lead to unexpected results.
 
 ```{r}
 ## Load library
 library("caret")
-## Prepare data
-airq <- airquality[complete.cases(airquality),]
-y <- airq$Ozone
-x <- airq[,-1]
 ```
 
 The following parameters can be tuned:
-
+  
 ```{r}
-caret_pre_model$parameters
+getModelInfo("pre")[[1]]$parameters
 ```
 
-Users can create a tuning grid manually, but it is probably easier to use the `caret_pre_model$grid` function, e.g.:
-
+You can manually create a tuning grid, which needs to specify at least one value for each parameter. It is probably easier use the grid-generating function included in the `caret` method itself. Then you can e.g., abbreviate argument names, and arguments not specified will be set to their default values:
+  
 ```{r}
-tuneGrid <- caret_pre_model$grid(x = x, y = y,
-                                 maxdepth = 3L:5L,
-                                 learnrate = c(.01, .1),
-                                 penalty.par.val = c("lambda.1se", "lambda.min"))
+tuneGrid <- getModelInfo("pre")[[1]]$grid(
+  maxd = 1L:3L, 
+  learn = c(.01, .1),
+  pen = c("lambda.1se", "lambda.min"))
 tuneGrid
 ```
 
-Next, we apply function `train()`. Note that, in order to reduce computation time, I have specified the number of trees to be 50, but in real applications it should be left to the default value (i.e., not specified), unless you also want to tune the `ntrees` parameter:
+Next, we apply function `train()`. Further arguments of `pre`, not included in the tuning grid, can simply be passed to the train function. Below, I specify that 10 repeats of 10-fold cross validation should be performed to evaluate performance of the settings (see help for function `train()` and function `trainControl()` from `caret` for more info):
 
-```{r}
+```{r, eval=FALSE}
+trCtrl <- trainControl(method = "repeatedcv", number = 10, repeats = 10)
 set.seed(42)
-prefit2 <- train(x = x, y = y, method = caret_pre_model,
-                 trControl = trainControl(number = 1),
-                 tuneGrid = tuneGrid, ntrees = 50L)
-prefit2
+prefit <- train(Ozone ~ ., data = airq, method = caret_pre_model,
+                 trControl = trCtrl, tuneGrid = tuneGrid)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+save(prefit, file = "prefit.Rda")
+## Save manually to inst/README-figures
+```
+
+```{r, eval=TRUE, echo=FALSE}
+load("./inst/README-figures/prefit.Rda")
 ```
 
 We can get the set of optimal parameter values:
 
 ```{r}
-prefit2$bestTune
+prefit$bestTune
 ```
 
 We can plot the effects of the tuning parameters:
 
 ```{r caretplot, fig.show = "hide"}
-plot(prefit2)
+plot(prefit)
 ```
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "600px"}
@@ -256,10 +260,8 @@ include_graphics(sprintf("%scaretplot-1.png", opts_current$get("fig.path")))
 And we can get predictions from the model with the best tuning parameters:
 
 ```{r}
-predict(prefit2, newdata = x[1:10, ])
+predict(prefit, newdata = airq[1:10, ])
 ```
-
-
 
 
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms
@@ -278,9 +280,7 @@ The results indicate that several rules, a single hinge (linear spline) function
 
 # Credits
 
-* Benjamin Chistoffersen : https://github.com/boennecd
-
-* Karl Holub: https://github.com/holub008
+I am grateful to Benjamin Chistoffersen: https://github.com/boennecd, who developed `gpe` and contributed tremendously by improved functions, code and computational aspects. Furthermore, bug fixes were implemented by Karl Holub (https://github.com/holub008) and Advik Shreekumar (https://github.com/adviksh).
 
 
 # References
