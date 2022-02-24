@@ -21,6 +21,7 @@ csl: inst/bib_style.csl
 -   [Tuning parameters of function pre](#tuning-parameters)
 -   [Dealing with missing data](#missing-data)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
+-   [Credits](#credits)
 -   [References](#references)
 
 ```{r, echo = FALSE}

@@ -18,6 +18,7 @@
 -   [Dealing with missing data](#missing-data)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear
     terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
+-   [Credits](#credits)
 -   [References](#references)
 
 ## Introduction
@@ -345,7 +346,7 @@ in a browser.
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
 An even more flexible ensembling approach is implemented in function
-`gpe()`, which allows for fiting Generalized Prediction Ensembles: It
+`gpe()`, which allows for fitting Generalized Prediction Ensembles: It
 combines the MARS (multivariate Adaptive Splines) approach of Friedman
 (1991) with the RuleFit approach of Friedman & Popescu (2008). In other
 words, `gpe()` fits an ensemble composed of hinge functions (possibly
