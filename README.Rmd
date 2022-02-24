@@ -36,7 +36,7 @@ knitr::opts_chunk$set(
 
 **`pre`** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema20]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
 
-1. The package is completely **R** based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
+1. The package is completely **`R`** based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2. The unbiased tree induction algorithms of [@Hothorn06] is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of [@Zeileis08] can be employed, or the classification and regression tree (CART) algorithm of [@Breiman84].
 3. The package supports a wider range of response variable types.
 4. The initial ensemble may be generated as a bagged, boosted and/or random forest ensemble.
@@ -107,7 +107,7 @@ For tuning the parameters of function `pre()` so as to obtain optimal predictive
 
 ## Tools for interpretation
 
-Package **pre** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for complex ensembles containing many rules and linear terms. 
+Package **`pre`** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for complex ensembles containing many rules and linear terms. 
 
 
 ### Importance measures
@@ -163,7 +163,7 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 include_graphics(sprintf("%spairplot-1.png", opts_current$get("fig.path")))
 ```
 
-Note that creating partial dependence plots is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. `**R**` package `**plotmo**` (@Milb18) provides more efficient functions for plotting partial dependence, which also support `pre` models. 
+Note that creating partial dependence plots is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. **`R`** package **`plotmo`** (@Milb18) provides more efficient functions for plotting partial dependence, which also support `pre` models. 
 
 If the final ensemble does not contain many terms, inspecting individual rules and linear terms through the `print` method may be more informative than partial dependence plots. One of the main advantages of prediction rule ensembles is their interpretability: the predictive model contains only simple functions of the predictor variables (rules and linear terms), which are easy to grasp. Partial dependence plots are often much more useful for interpretation of complex models, like random forests for example.
 
@@ -212,9 +212,9 @@ vignette("Tuning", package = "pre")
 or go to https://cran.r-project.org/web/packages/pre/vignettes/Tuning.html in a browser.
 
 
-## Dealing with missing data
+## Dealing with missing values
 
-Some suggestions on how to best deal with missing data are provided in the following vignette:
+Some suggestions on how to deal with missing values are provided in the following vignette:
 
 ```{r, eval=FALSE}
 vignette("Missingness", package = "pre")
@@ -224,7 +224,7 @@ or go to https://cran.r-project.org/web/packages/pre/vignettes/Missingness.html 
 
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
-An even more flexible ensembling approach is implemented in function `gpe()`, which allows for fiting Generalized Prediction Ensembles: It combines the MARS (multivariate Adaptive Splines) approach of [@Friedman91] with the RuleFit approach of [@Friedman08]. In other words, `gpe()` fits an ensemble composed of hinge functions (possibly multivariate), prediction rules and linear functions of the predictor variables. See the following example:
+An even more flexible ensembling approach is implemented in function `gpe()`, which allows for fitting Generalized Prediction Ensembles: It combines the MARS (multivariate Adaptive Splines) approach of [@Friedman91] with the RuleFit approach of [@Friedman08]. In other words, `gpe()` fits an ensemble composed of hinge functions (possibly multivariate), prediction rules and linear functions of the predictor variables. See the following example:
 
 ```{r}
 set.seed(42)

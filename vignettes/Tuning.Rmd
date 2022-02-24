@@ -126,13 +126,11 @@ pre_tune2 <- train(sexo ~ ., data = carrillo[train_ids, ], method = "pre",
 Some warnings (`Warning: from glmnet Fortran code (error code -83)`) will be reported, but these are not worrying; for some models, computations for some values in the $\lambda$ path could not be completed. 
 
 ```{r, echo=FALSE, eval=FALSE}
-save(pre_tune, file = "pre_tune.Rda")
-save(pre_tune2, file = "pre_tune2.Rda")
+save(pre_tune, pre_tune2, file = "Tuning_results.Rda")
 ```
 
 ```{r, echo=FALSE}
-load("pre_tune.Rda")
-load("pre_tune2.Rda")
+load("Tuning_results.Rda")
 ```
 
 We inspect the results:

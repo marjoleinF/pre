@@ -30,8 +30,8 @@ provided in Fokkema (2020). The package largely implements the algorithm
 for deriving prediction rule ensembles as described in Friedman &
 Popescu (2008), with several adjustments:
 
-1.  The package is completely **R** based, allowing users better access
-    to the results and more control over the parameters used for
+1.  The package is completely **`R`** based, allowing users better
+    access to the results and more control over the parameters used for
     generating the prediction rule ensemble.
 2.  The unbiased tree induction algorithms of Hothorn, Hornik, &
     Zeileis (2006) is used for deriving prediction rules, by default.
@@ -79,23 +79,23 @@ airq.ens
 #> Final ensemble with cv error within 1se of minimum: 
 #>   lambda =  3.543968
 #>   number of terms = 12
-#>   mean cv error (se) = 352.3834 (99.13981)
+#>   mean cv error (se) = 352.395 (99.13754)
 #> 
 #>   cv error type : Mean-Squared Error
 #> 
 #>          rule   coefficient                          description
-#>   (Intercept)   68.48270406                                    1
-#>       rule191  -10.97368179              Wind > 5.7 & Temp <= 87
-#>       rule173  -10.90385520              Wind > 5.7 & Temp <= 82
+#>   (Intercept)   68.48270407                                    1
+#>       rule191  -10.97368180              Wind > 5.7 & Temp <= 87
+#>       rule173  -10.90385519              Wind > 5.7 & Temp <= 82
 #>        rule42   -8.79715538              Wind > 6.3 & Temp <= 84
-#>       rule204    7.16114780         Wind <= 10.3 & Solar.R > 148
-#>        rule10   -4.68646144              Temp <= 84 & Temp <= 77
-#>       rule192   -3.34460037  Wind > 5.7 & Temp <= 87 & Day <= 23
+#>       rule204    7.16114781         Wind <= 10.3 & Solar.R > 148
+#>        rule10   -4.68646145              Temp <= 84 & Temp <= 77
+#>       rule192   -3.34460038  Wind > 5.7 & Temp <= 87 & Day <= 23
 #>        rule51   -2.27864287              Wind > 5.7 & Temp <= 84
 #>        rule93    2.18465676              Temp > 77 & Wind <= 8.6
-#>        rule74   -1.36479546              Wind > 6.9 & Temp <= 84
+#>        rule74   -1.36479545              Wind > 6.9 & Temp <= 84
 #>        rule28   -1.15326093              Temp <= 84 & Wind > 7.4
-#>        rule25   -0.70818399              Wind > 6.3 & Temp <= 82
+#>        rule25   -0.70818400              Wind > 6.3 & Temp <= 82
 #>       rule166   -0.04751152              Wind > 6.9 & Temp <= 82
 ```
 
@@ -167,12 +167,12 @@ which can be overridden through specification of the `k` argument):
 set.seed(43)
 airq.cv <- cvpre(airq.ens)
 #> $MSE
-#>      MSE       se 
-#> 369.2010  88.7574 
+#>       MSE        se 
+#> 369.92747  88.65343 
 #> 
 #> $MAE
-#>      MAE       se 
-#> 13.64524  1.28985
+#>       MAE        se 
+#> 13.666860  1.290329
 ```
 
 The results provide the mean squared error (MSE) and mean absolute error
@@ -191,8 +191,8 @@ browser.
 
 ## Tools for interpretation
 
-Package **pre** provides several additional tools for interpretation of
-the final ensemble. These may be especially helpful for complex
+Package **`pre`** provides several additional tools for interpretation
+of the final ensemble. These may be especially helpful for complex
 ensembles containing many rules and linear terms.
 
 ### Importance measures
@@ -254,7 +254,7 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 
 Note that creating partial dependence plots is computationally intensive
 and computation time will increase fast with increasing numbers of
-observations and numbers of variables. `**R**` package `**plotmo**`
+observations and numbers of variables. **`R`** package **`plotmo`**
 (Milborrow (2018)) provides more efficient functions for plotting
 partial dependence, which also support `pre` models.
 
@@ -329,10 +329,10 @@ or go to
 <https://cran.r-project.org/web/packages/pre/vignettes/Tuning.html> in a
 browser.
 
-## Dealing with missing data
+## Dealing with missing values
 
-Some suggestions on how to best deal with missing data are provided in
-the following vignette:
+Some suggestions on how to deal with missing values are provided in the
+following vignette:
 
 ``` r
 vignette("Missingness", package = "pre")
@@ -361,23 +361,23 @@ airq.gpe
 #> Final ensemble with cv error within 1se of minimum: 
 #>   lambda =  3.229132
 #>   number of terms = 11
-#>   mean cv error (se) = 361.2152 (110.9785)
+#>   mean cv error (se) = 359.2623 (110.8863)
 #> 
 #>   cv error type : Mean-squared Error
 #> 
 #>                                   description  coefficient
-#>                                   (Intercept)  65.52169487
-#>                                    Temp <= 77  -6.20973854
-#>                  Wind <= 10.3 & Solar.R > 148   5.46410965
-#>                       Wind > 5.7 & Temp <= 82  -8.06127416
+#>                                   (Intercept)  65.52169488
+#>                                    Temp <= 77  -6.20973855
+#>                  Wind <= 10.3 & Solar.R > 148   5.46410966
+#>                       Wind > 5.7 & Temp <= 82  -8.06127415
 #>                       Wind > 5.7 & Temp <= 84  -7.16921733
-#>                       Wind > 5.7 & Temp <= 87  -8.04255470
+#>                       Wind > 5.7 & Temp <= 87  -8.04255471
 #>           Wind > 5.7 & Temp <= 87 & Day <= 23  -3.40525575
 #>                       Wind > 6.3 & Temp <= 82  -2.71925536
 #>                       Wind > 6.3 & Temp <= 84  -5.99085126
 #>                       Wind > 6.9 & Temp <= 82  -0.04406376
 #>                       Wind > 6.9 & Temp <= 84  -0.55827336
-#>   eTerm(Solar.R * h(9.7 - Wind), scale = 410)   9.91783318
+#>   eTerm(Solar.R * h(9.7 - Wind), scale = 410)   9.91783320
 #> 
 #>   'h' in the 'eTerm' indicates the hinge function
 ```

@@ -1,0 +1,77 @@
+
+Final ensemble with cv error within 1se of minimum: 
+  lambda =  0.3487307
+  number of terms = 4
+  mean cv error (se) = 10.07155 (0.7511217)
+
+  cv error type : Mean-Squared Error
+
+         rule  coefficient                  description
+  (Intercept)  10.79387224                            1
+       rule32  -0.71413657       Temp > 73 & Ozone > 23
+        rule3   0.61252866                  Ozone <= 45
+        rule7  -0.47091959  Ozone > 14 & Solar.R <= 238
+        Ozone  -0.01553892          7 <= Ozone <= 115.6
+
+Final ensemble with cv error within 1se of minimum: 
+  lambda =  0.3868961
+  number of terms = 5
+  mean cv error (se) = 9.824374 (1.147607)
+
+  cv error type : Mean-Squared Error
+
+         rule  coefficient             description
+  (Intercept)    8.9178397                       1
+        rule5    1.5914603             Ozone <= 45
+        rule6    0.3741768             Ozone <= 59
+       rule26   -0.3388599  Temp > 63 & Ozone > 14
+       rule17   -0.1904616  Temp > 75 & Ozone > 47
+        rule1    0.1419154             Ozone <= 21
+
+Final ensemble with cv error within 1se of minimum: 
+  lambda =  0.446074
+  number of terms = 5
+  mean cv error (se) = 10.19931 (1.625583)
+
+  cv error type : Mean-Squared Error
+
+         rule  coefficient          description
+  (Intercept)   9.72292424                    1
+        rule9   0.72699744          Ozone <= 45
+        rule7   0.38030686          Ozone <= 37
+       rule13   0.07553935          Ozone <= 21
+       rule32   0.06377709          Ozone <= 47
+        Ozone  -0.01333064  7 <= Ozone <= 115.6
+
+Final ensemble with cv error within 1se of minimum: 
+  lambda =  0.3525573
+  number of terms = 6
+  mean cv error (se) = 9.425574 (1.401225)
+
+  cv error type : Mean-Squared Error
+
+         rule  coefficient                  description
+  (Intercept)   9.62615649                            1
+       rule62  -1.38755122  Ozone > 45 & Solar.R <= 275
+        rule2   1.13699964                  Ozone <= 47
+       rule39  -0.23469016  Ozone > 14 & Solar.R <= 201
+       rule43  -0.17606716   Temp > 72 & Solar.R <= 255
+        rule5   0.15910726                  Ozone <= 52
+       rule22   0.02327822                  Ozone <= 37
+
+Final ensemble with cv error within 1se of minimum: 
+  lambda =  0.2890609
+  number of terms = 7
+  mean cv error (se) = 9.626951 (1.052512)
+
+  cv error type : Mean-Squared Error
+
+         rule   coefficient                  description
+  (Intercept)   8.107067274                            1
+        rule1   1.912743735                  Ozone <= 45
+       rule10   0.350281834                   Temp <= 73
+       rule22   0.334811655                  Ozone <= 63
+        rule5   0.269873560                  Ozone <= 37
+       rule36   0.236291582                  Ozone <= 21
+       rule15   0.005220367  Ozone <= 45 & Solar.R > 212
+        Ozone  -0.001579225          7 <= Ozone <= 118.8
