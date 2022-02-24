@@ -43,6 +43,21 @@ test_that("Get previous results with airquality and pre function", {
   airq.ens$glmnet.fit <- airq.ens$glmnet.fit["glmnet.fit"]
   # save_to_test(airq.ens, "airquality_w_pre_with_multivariate_response")
   expect_equal(airq.ens, read_to_test("airquality_w_pre_with_multivariate_response"), tolerance = 1.49e-08)
+
+  
+  #####
+  # Works with rpart
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data = airquality, tree.unbiased = FALSE, ntrees = 10)
+  # save_to_test(airq.ens, "airquality_w_pre_with_rpart")
+  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_rpart"), tolerance = 1.49e-08)
+  
+  #####
+  # Works with glmtree
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data = airquality, use.grad = FALSE, ntrees = 10)
+  # save_to_test(airq.ens, "airquality_w_pre_with_glmtree")
+  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_glmtree"), tolerance = 1.49e-08)
 })
 
 

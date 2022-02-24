@@ -68,7 +68,7 @@ custom sampling function. See \code{\link{gpe_sample}} for details of the setup.
 }
 \examples{
 \dontrun{
-## Obtain similar fit to \code{\link{pre}}:
+## Obtain similar fit to function pre:
 gpe.rules <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),], 
   base_learners = list(gpe_linear(), gpe_trees()))
 gpe.rules

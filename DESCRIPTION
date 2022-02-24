@@ -1,6 +1,6 @@
 Package: pre
 Title: Prediction Rule Ensembles
-Version: 1.0.1
+Version: 1.0.2
 Authors@R: c(person("Marjolein", "Fokkema", role = c("aut", "cre"), email = 
   "m.fokkema@fsw.leidenuniv.nl"), person(given = "Benjamin", 
   family = "Christoffersen", role = "aut", email = "boennecd@gmail.com"))
@@ -39,8 +39,15 @@ Suggests:
     grid,
     mlbench,
     testthat,
-    mboost
+    mboost,
+    ggplot2,
+    caret,
+    pROC,
+    knitr,
+    rmarkdown,
+    mice
 License: GPL-2 | GPL-3
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.1
+VignetteBuilder: knitr

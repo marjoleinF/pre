@@ -127,8 +127,8 @@ regression model and will also be winsorized.}
 \item{normalize}{logical. Normalize linear variables before estimating the 
 regression model? Normalizing gives linear terms the same a priori influence 
 as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
-SD. \code{normalize = FALSE} will give more prefence to linear terms getting
-selected.}
+SD. \code{normalize = FALSE} will give more preference to linear terms for 
+selection.}
 
 \item{standardize}{logical. Should rules and linear terms be standardized to
 have SD equal to 1 before estimating the regression model? This will also 
@@ -190,13 +190,13 @@ methods for objects of class \code{pre} take a \code{penalty.parameter.val}
 argument, which can be used to select a different criterion.
 }
 \description{
-\code{pre} derives a sparse ensemble of rules and/or linear functions for 
+Function \code{pre} derives a sparse ensemble of rules and/or linear functions for 
 prediction of a continuous, binary, count, multinomial, multivariate 
 continuous or survival response.
 }
 \details{
 Note: obervations with missing values will be removed prior to 
-analysis (and a warning issued).
+analysis (and a warning printed).
 
 In some cases, duplicated variable names may appear in the model.
 For example, the first variable is a factor named 'V1' and there are also

@@ -6,7 +6,7 @@ bibliography: README.bib
 csl: inst/bib_style.csl
 ---
 
-# **pre**: an R package for deriving prediction rule ensembles
+# **`pre`**: an R package for deriving prediction rule ensembles
 
 ## Contents
 
@@ -18,7 +18,8 @@ csl: inst/bib_style.csl
     -   [Partial dependence plots](#partial-dependence-plots)
     -   [Assessing presence of interactions](#assessing-presence-of-interactions)
     -   [Correlations between selected terms](#correlations-between-selected-terms)
-    -   [Tuning parameters](#tuning-parameters)
+-   [Tuning parameters of function pre](#tuning-parameters)
+-   [Dealing with missing data](#missing-data)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [References](#references)
 
@@ -33,7 +34,7 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-**pre** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema20]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
+**`pre`** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema20]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
 
 1. The package is completely **R** based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2. The unbiased tree induction algorithms of [@Hothorn06] is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of [@Zeileis08] can be employed, or the classification and regression tree (CART) algorithm of [@Breiman84].
@@ -42,7 +43,7 @@ knitr::opts_chunk$set(
 5. Hinge functions of predictor variables may be included as baselearners, as in the multivariate adaptive regression splines (MARS) approach of [@Friedman91], using function `gpe()`.
 6. Tools for explaining individual predictions are provided.  
 
-Note that **pre** is under development, and much work still needs to be done. Below, an introduction the the package is provided. [@Fokkema20] provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations. An extensive introduction aimed at researchers in social sciences is provided in [@FokkemaStrobl20].  
+Note that **`pre`** is under development, and much work still needs to be done. Below, an introduction the the package is provided. [@Fokkema20] provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations. An extensive introduction aimed at researchers in social sciences is provided in [@FokkemaStrobl20].  
 
 
 ## Example: A rule ensemble for predicting ozone levels
@@ -100,6 +101,8 @@ airq.cv <- cvpre(airq.ens)
 ```
 
 The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. These results are saved for later use in `aiq.cv$accuracy`. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which observations were assigned are saved in `airq.cv$fold_indicators`.
+
+For tuning the parameters of function `pre()` so as to obtain optimal predictive accuracy, users are advised to use **`R`** package **`caret`**. A tutorial is provided as a vignette, accessible by typing `vignette("Tuning", package = "pre")` or going to https://cran.r-project.org/web/packages/pre/vignettes/Tuning.html in a browser.
 
 
 ## Tools for interpretation
@@ -200,69 +203,24 @@ include_graphics(sprintf("%scorplot-1.png", opts_current$get("fig.path")))
 
 ## Tuning parameters
 
-To obtain an optimal set of model-fitting parameters, package **`caret`** @Kuhn08 provides a method `"pre"`.  Note that it's best to specify the `x` and `y` arguments when using function `train()` to train the parameters of `pre()`; the use of the `formula` and `data` arguments may lead to unexpected results.
-
-```{r}
-## Load library
-library("caret")
-```
-
-The following parameters can be tuned:
-  
-```{r}
-getModelInfo("pre")[[1]]$parameters
-```
-
-You can manually create a tuning grid, which needs to specify at least one value for each parameter. It is probably easier use the grid-generating function included in the `caret` method itself. Then you can e.g., abbreviate argument names, and arguments not specified will be set to their default values:
-  
-```{r}
-tuneGrid <- getModelInfo("pre")[[1]]$grid(
-  maxd = 1L:3L, 
-  learn = c(.01, .1),
-  pen = c("lambda.1se", "lambda.min"))
-tuneGrid
-```
-
-Next, we apply function `train()`. Further arguments of `pre`, not included in the tuning grid, can simply be passed to the train function. Below, I specify that 10 repeats of 10-fold cross validation should be performed to evaluate performance of the settings (see help for function `train()` and function `trainControl()` from `caret` for more info):
+To obtain an optimal set of model-fitting parameters, package **`caret`** @Kuhn08 provides a method `"pre"`. For a manual on how to optimize the parameters of function `pre` using  **`caret`**'s `train` function, see the vignette on tuning:
 
 ```{r, eval=FALSE}
-trCtrl <- trainControl(method = "repeatedcv", number = 10, repeats = 10)
-set.seed(42)
-prefit <- train(Ozone ~ ., data = airq, method = caret_pre_model,
-                 trControl = trCtrl, tuneGrid = tuneGrid)
+vignette("Tuning", package = "pre")
 ```
 
-```{r, eval=FALSE, echo=FALSE}
-save(prefit, file = "prefit.Rda")
-## Save manually to inst/README-figures
+or go to https://cran.r-project.org/web/packages/pre/vignettes/Tuning.html in a browser.
+
+
+## Dealing with missing data
+
+Some suggestions on how to best deal with missing data are provided in the following vignette:
+
+```{r, eval=FALSE}
+vignette("Missingness", package = "pre")
 ```
 
-```{r, eval=TRUE, echo=FALSE}
-load("./inst/README-figures/prefit.Rda")
-```
-
-We can get the set of optimal parameter values:
-
-```{r}
-prefit$bestTune
-```
-
-We can plot the effects of the tuning parameters:
-
-```{r caretplot, fig.show = "hide"}
-plot(prefit)
-```
-
-```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "600px"}
-include_graphics(sprintf("%scaretplot-1.png", opts_current$get("fig.path")))
-```
-
-And we can get predictions from the model with the best tuning parameters:
-
-```{r}
-predict(prefit, newdata = airq[1:10, ])
-```
-
+or go to https://cran.r-project.org/web/packages/pre/vignettes/Missingness.html in a browser.
 
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
@@ -280,7 +238,7 @@ The results indicate that several rules, a single hinge (linear spline) function
 
 # Credits
 
-I am grateful to Benjamin Chistoffersen: https://github.com/boennecd, who developed `gpe` and contributed tremendously by improved functions, code and computational aspects. Furthermore, bug fixes were implemented by Karl Holub (https://github.com/holub008) and Advik Shreekumar (https://github.com/adviksh).
+I am very grateful to package co-author Benjamin Chistoffersen: https://github.com/boennecd, who developed `gpe` and contributed tremendously by improving functions, code and computational aspects. Furthermore, I am grateful for the many helpful suggestions of Stephen Milborrow, and for the contributions of Karl Holub (https://github.com/holub008) and Advik Shreekumar (https://github.com/adviksh).
 
 
 # References

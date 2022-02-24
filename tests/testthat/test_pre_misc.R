@@ -43,6 +43,14 @@ test_that("gpe_rules_pre gives same results as pre with airquality data", {
 })
 
 
+test_that("function explain gives previous results", {
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)
+  expl <- explain(airq.ens, newdata = airquality)
+  # save_to_test(expl, "explain")
+  expect_equal(expl, read_to_test("explain"))
+})
+
 test_that("Importance gives previous results with airquality data",{
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data=airquality, ntrees = 10)

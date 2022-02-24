@@ -1,4 +1,4 @@
-# **pre**: an R package for deriving prediction rule ensembles
+# **`pre`**: an R package for deriving prediction rule ensembles
 
 ## Contents
 
@@ -14,14 +14,15 @@
         interactions](#assessing-presence-of-interactions)
     -   [Correlations between selected
         terms](#correlations-between-selected-terms)
-    -   [Tuning parameters](#tuning-parameters)
+-   [Tuning parameters of function pre](#tuning-parameters)
+-   [Dealing with missing data](#missing-data)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear
     terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [References](#references)
 
 ## Introduction
 
-**pre** is an **R** package for deriving prediction rule ensembles for
+**`pre`** is an **R** package for deriving prediction rule ensembles for
 binary, multinomial, (multivariate) continuous, count and survival
 responses. Input variables may be numeric, ordinal and categorical. An
 extensive description of the implementation and functionality is
@@ -45,10 +46,10 @@ Popescu (2008), with several adjustments:
     (MARS) approach of Friedman (1991), using function `gpe()`.
 6.  Tools for explaining individual predictions are provided.
 
-Note that **pre** is under development, and much work still needs to be
-done. Below, an introduction the the package is provided. Fokkema (2020)
-provides an extensive description of the fitting procedures implemented
-in function `pre()` and example analyses with more extensive
+Note that **`pre`** is under development, and much work still needs to
+be done. Below, an introduction the the package is provided. Fokkema
+(2020) provides an extensive description of the fitting procedures
+implemented in function `pre()` and example analyses with more extensive
 explanations. An extensive introduction aimed at researchers in social
 sciences is provided in Fokkema & Strobl (2020).
 
@@ -181,6 +182,13 @@ can be used to compute alternative estimates of predictive accuracy, are
 saved in `airq.cv$cvpreds`. The folds to which observations were
 assigned are saved in `airq.cv$fold_indicators`.
 
+For tuning the parameters of function `pre()` so as to obtain optimal
+predictive accuracy, users are advised to use **`R`** package
+**`caret`**. A tutorial is provided as a vignette, accessible by typing
+`vignette("Tuning", package = "pre")` or going to
+<https://cran.r-project.org/web/packages/pre/vignettes/Tuning.html> in a
+browser.
+
 ## Tools for interpretation
 
 Package **pre** provides several additional tools for interpretation of
@@ -309,98 +317,30 @@ corplot(airq.ens)
 ## Tuning parameters
 
 To obtain an optimal set of model-fitting parameters, package
-**`caret`** Kuhn (2008) provides a method `"pre"`. Note that it’s best
-to specify the `x` and `y` arguments when using function `train()` to
-train the parameters of `pre()`; the use of the `formula` and `data`
-arguments may lead to unexpected results.
+**`caret`** Kuhn (2008) provides a method `"pre"`. For a manual on how
+to optimize the parameters of function `pre` using **`caret`**’s `train`
+function, see the vignette on tuning:
 
 ``` r
-## Load library
-library("caret")
-#> Warning: package 'caret' was built under R version 4.1.1
-#> Loading required package: ggplot2
-#> Loading required package: lattice
+vignette("Tuning", package = "pre")
 ```
 
-The following parameters can be tuned:
+or go to
+<https://cran.r-project.org/web/packages/pre/vignettes/Tuning.html> in a
+browser.
+
+## Dealing with missing data
+
+Some suggestions on how to best deal with missing data are provided in
+the following vignette:
 
 ``` r
-getModelInfo("pre")[[1]]$parameters
-#>         parameter     class                          label
-#> 1        sampfrac   numeric           Subsampling Fraction
-#> 2        maxdepth   numeric                 Max Tree Depth
-#> 3       learnrate   numeric                      Shrinkage
-#> 4            mtry   numeric # Randomly Selected Predictors
-#> 5        use.grad   logical       Employ Gradient Boosting
-#> 6 penalty.par.val character       Regularization Parameter
+vignette("Missingness", package = "pre")
 ```
 
-You can manually create a tuning grid, which needs to specify at least
-one value for each parameter. It is probably easier use the
-grid-generating function included in the `caret` method itself. Then you
-can e.g., abbreviate argument names, and arguments not specified will be
-set to their default values:
-
-``` r
-tuneGrid <- getModelInfo("pre")[[1]]$grid(
-  maxd = 1L:3L, 
-  learn = c(.01, .1),
-  pen = c("lambda.1se", "lambda.min"))
-tuneGrid
-#>    sampfrac maxdepth learnrate mtry use.grad penalty.par.val
-#> 1       0.5        1      0.01  Inf     TRUE      lambda.1se
-#> 2       0.5        2      0.01  Inf     TRUE      lambda.1se
-#> 3       0.5        3      0.01  Inf     TRUE      lambda.1se
-#> 4       0.5        1      0.10  Inf     TRUE      lambda.1se
-#> 5       0.5        2      0.10  Inf     TRUE      lambda.1se
-#> 6       0.5        3      0.10  Inf     TRUE      lambda.1se
-#> 7       0.5        1      0.01  Inf     TRUE      lambda.min
-#> 8       0.5        2      0.01  Inf     TRUE      lambda.min
-#> 9       0.5        3      0.01  Inf     TRUE      lambda.min
-#> 10      0.5        1      0.10  Inf     TRUE      lambda.min
-#> 11      0.5        2      0.10  Inf     TRUE      lambda.min
-#> 12      0.5        3      0.10  Inf     TRUE      lambda.min
-```
-
-Next, we apply function `train()`. Further arguments of `pre`, not
-included in the tuning grid, can simply be passed to the train function.
-Below, I specify that 10 repeats of 10-fold cross validation should be
-performed to evaluate performance of the settings (see help for function
-`train()` and function `trainControl()` from `caret` for more info):
-
-``` r
-trCtrl <- trainControl(method = "repeatedcv", number = 10, repeats = 10)
-set.seed(42)
-prefit <- train(Ozone ~ ., data = airq, method = caret_pre_model,
-                 trControl = trCtrl, tuneGrid = tuneGrid)
-```
-
-We can get the set of optimal parameter values:
-
-``` r
-prefit$bestTune
-#>    sampfrac maxdepth learnrate mtry use.grad penalty.par.val
-#> 10      0.5        3      0.01  Inf     TRUE      lambda.min
-```
-
-We can plot the effects of the tuning parameters:
-
-``` r
-plot(prefit)
-```
-
-<img src="inst/README-figures/README-caretplot-1.png" width="600px" />
-
-And we can get predictions from the model with the best tuning
-parameters:
-
-``` r
-predict(prefit, newdata = airq[1:10, ])
-#>        1        2        3        4        7        8        9       12 
-#> 30.53062 19.54138 17.87498 20.64717 21.10746 17.87498 12.66824 21.10746 
-#>       13       14 
-#> 21.10746 20.64717
-```
+or go to
+<https://cran.r-project.org/web/packages/pre/vignettes/Missingness.html>
+in a browser.
 
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
@@ -450,10 +390,12 @@ prediction rules in the ensemble indicate a similar pattern.
 
 # Credits
 
-I am grateful to Benjamin Chistoffersen: <https://github.com/boennecd>,
-who developed `gpe` and contributed tremendously by improved functions,
-code and computational aspects. Furthermore, bug fixes were implemented
-by Karl Holub (<https://github.com/holub008>) and Advik Shreekumar
+I am very grateful to package co-author Benjamin Chistoffersen:
+<https://github.com/boennecd>, who developed `gpe` and contributed
+tremendously by improving functions, code and computational aspects.
+Furthermore, I am grateful for the many helpful suggestions of Stephen
+Milborrow, and for the contributions of Karl Holub
+(<https://github.com/holub008>) and Advik Shreekumar
 (<https://github.com/adviksh>).
 
 # References

@@ -707,7 +707,7 @@ gpe_sample <- function(sampfrac = .5){
 #' An object of class \code{gpe}.
 #' 
 #' @examples \dontrun{
-#' ## Obtain similar fit to \code{\link{pre}}:
+#' ## Obtain similar fit to function pre:
 #' gpe.rules <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),], 
 #'   base_learners = list(gpe_linear(), gpe_trees()))
 #' gpe.rules

@@ -1,14 +1,19 @@
 ## TODO: Shorten code for argument checking: 
 ##          Group variables and check each group like: 
 ##          L <- list(A, B, C) all(sapply(L, class) == "matrix") or any(is.na(unlist(L)))
+
 ## TODO: Implement forward selection based on AIC (and BIC)?
+
 ## TODO: Implement functionality for missing-in-attributes approach for missing values
+## MIA is supported by ctree. Can then do mean imputation before glmnet. 
+## Will need some work with predict method?
+
 
 utils::globalVariables("%dopar%")
 
 #' Derive a prediction rule ensemble
 #'
-#' \code{pre} derives a sparse ensemble of rules and/or linear functions for 
+#' Function \code{pre} derives a sparse ensemble of rules and/or linear functions for 
 #' prediction of a continuous, binary, count, multinomial, multivariate 
 #' continuous or survival response.
 #' 
@@ -94,8 +99,8 @@ utils::globalVariables("%dopar%")
 #' @param normalize logical. Normalize linear variables before estimating the 
 #' regression model? Normalizing gives linear terms the same a priori influence 
 #' as a typical rule, by dividing the (winsorized) linear term by 2.5 times its 
-#' SD. \code{normalize = FALSE} will give more prefence to linear terms getting
-#' selected. 
+#' SD. \code{normalize = FALSE} will give more preference to linear terms for 
+#' selection. 
 #' @param standardize logical. Should rules and linear terms be standardized to
 #' have SD equal to 1 before estimating the regression model? This will also 
 #' standardize the dummified factors, users are advised to use the default 
@@ -132,7 +137,7 @@ utils::globalVariables("%dopar%")
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' 
 #' @details Note: obervations with missing values will be removed prior to 
-#' analysis (and a warning issued).
+#' analysis (and a warning printed).
 #' 
 #' In some cases, duplicated variable names may appear in the model.
 #' For example, the first variable is a factor named 'V1' and there are also
@@ -286,38 +291,23 @@ pre <- function(formula, data, family = gaussian,
   cl <- match.call()
   
   ## Check if proper formula argument is specified 
-  ## and check if glmertree should be employed:
   if (!(inherits(formula, "formula"))) {
     stop("Argument 'formula' should specify and object of class 'formula'.\n")
-  } else {
-    if (length(as.Formula(formula))[[2]] == 3L) { # then right-hand side of regression formula consists of three parts and glmertree should be employed
-      formula <- as.Formula(formula)
-      use_glmertree <- TRUE
-      if (formula[[3]][[2]][[2]] == 1) { # check if intercept is specified as regressor for linear model
-          if (use.grad || learnrate > 0) {
-            stop("When specifying a formula with three-part right-hand side, argument 'use.grad' should be set to FALSE and 'learnrate' to 0.\n", immediate. = TRUE)
-          }
-        } else {
-          stop("When specifying a three-part right-hand side, the first part of the right-hand side should consist of an intercept only, e.g., y ~ 1 | cluster | x1 + x2 + x3.\n")
-        }
-      } else {
-      use_glmertree <- FALSE
-      }
-    ## Check if dot and functions are simultaneously used in formula
-    form <- as.character(formula[3])
-    for (i in names(data)) {
-      form <- gsub(pattern = i, replacement = "", x = form)
-    }
-    if (any(grepl(".", form, fixed = TRUE))) {
-      if (any(grepl("(", form, fixed = TRUE))) {
-        if (any(grepl(")", form, fixed = TRUE))) {
-          warning("Argument 'formula' contains both one or more functions of predictor variables, as well as a dot ('.'), which should be avoided. Model fitting may fail, and/or both the original variable(s) and their functions may be included as predictor variables.\n", immediate. = TRUE)  
-        }
+  }
+  ## Check if dot and functions are simultaneously used in formula
+  form <- as.character(formula[3])
+  for (i in names(data)) {
+    form <- gsub(pattern = i, replacement = "", x = form)
+  }
+  if (any(grepl(".", form, fixed = TRUE))) {
+    if (any(grepl("(", form, fixed = TRUE))) {
+      if (any(grepl(")", form, fixed = TRUE))) {
+        warning("Argument 'formula' contains both one or more functions of predictor variables, as well as a dot ('.'), which should be avoided. Model fitting may fail, and/or both the original variable(s) and their functions may be included as predictor variables.\n", immediate. = TRUE)  
       }
     }
-    if (any(grepl("-", as.character(formula), fixed = TRUE))) {
-      warning("Argument 'formula' contains a minus sign. Note that the minus sign should not be used to omit the intercept or variables from the ensemble.\n", immediate. = TRUE)
-    }
+  }
+  if (any(grepl("-", as.character(formula), fixed = TRUE))) {
+    warning("Argument 'formula' contains a minus sign. Note that the minus sign should not be used to omit the intercept or variables from the ensemble. To omit the intercept from the final ensemble, specify intercept = FALSE\n", immediate. = TRUE)
   }
 
   ## Check if proper data argument is specified:
@@ -431,7 +421,7 @@ pre <- function(formula, data, family = gaussian,
               standardize, ordinal, verbose, tree.unbiased, par.init, 
               par.final)) {
     if (!is_logical_and_length_one(i)) {
-      stop("Argument ", i, "should be TRUE of FALSE.\n")
+      stop("Argument ", i, "should be TRUE or FALSE.\n")
     }
   }
   
@@ -444,7 +434,7 @@ pre <- function(formula, data, family = gaussian,
 
   ## Check if proper tree.control argument is specified:
   if (missing(tree.control)) {
-    if (tree.unbiased && (use.grad || !use_glmertree)) {
+    if (tree.unbiased && use.grad) {
       tree.control <- ctree_control(maxdepth = maxdepth[1], mtry = mtry)
     } else if (tree.unbiased && !use.grad) {
       tree.control <- mob_control(maxdepth = maxdepth[1] + 1, mtry = mtry)
@@ -462,7 +452,7 @@ pre <- function(formula, data, family = gaussian,
     if (!is.list(tree.control)) {
       stop("Argument 'tree.control' should be a list of control parameters.\n")
     }
-    if (use.grad && tree.unbiased && !use_glmertree) {
+    if (use.grad && tree.unbiased) {
       if (!setequal(names(ctree_control()), names(tree.control))) {
         stop("Argument 'tree.control' should be a list containing named elements ", paste(names(ctree_control()), collapse = ', '), "\n")
       }
@@ -522,9 +512,6 @@ pre <- function(formula, data, family = gaussian,
   ## get predictor variable names:
   if (family == "cox" || is.Surv(data[ , y_names])) {
     x_names <- attr(attr(data, "terms"), "term.labels")
-  } else if (use_glmertree) {
-    ## TODO: This does, but should not, remove all functions used in formula:
-    x_names <- all.vars(formula[[3L]][[3L]])
   } else {
     x_names <- attr(terms(Formula(formula), lhs = 0, data = data), "term.labels")
   }
@@ -537,9 +524,9 @@ pre <- function(formula, data, family = gaussian,
   }
   
   ## expand dot and put ticks around variables within functions, if present:
-  if (!(use_glmertree || family == "mgaussian")) {
+  if (family != "mgaussian") {
     formula <- formula(data)
-  } else if (family == "mgaussian") {
+  } else {
     formula <- Formula(formula(paste0(
       paste0(paste0("`", y_names, "`"), collapse = " + "), 
       " ~ ", 
@@ -697,56 +684,33 @@ pre <- function(formula, data, family = gaussian,
   if (type == "linear") {
     rules <- NULL
     rulevars <- NULL
-    
   } else {
-    if (use_glmertree) {
-      rule_object <- pre_rules_mixed_effects(formula = formula, 
-                                data = data,
-                                y_names = y_names,
-                                x_names = x_names,
-                                learnrate = learnrate, 
-                                par.init = par.init, 
-                                sampfrac = sampfrac, 
-                                mtry = mtry,
-                                weights = weights, 
-                                ntrees = ntrees, 
-                                tree.control = tree.control, 
-                                maxdepth = maxdepth,
-                                use.grad = use.grad, 
-                                family = family, 
-                                verbose = verbose, 
-                                singleconditions = singleconditions,
-                                removeduplicates = removeduplicates, 
-                                removecomplements = removecomplements)
-    } else {
-
-      rule_object <- try(pre_rules(formula = formula, 
-                               data = data,
-                               weights = weights,
-                               y_names = y_names,
-                               x_names = x_names,
-                               learnrate = learnrate, 
-                               par.init = par.init, 
-                               sampfrac = sampfrac, 
-                               mtry = mtry,
-                               maxdepth = maxdepth,
-                               ntrees = ntrees, 
-                               tree.control = tree.control, 
-                               use.grad = use.grad, 
-                               family = family, 
-                               verbose = verbose, 
-                               singleconditions = singleconditions,
-                               removeduplicates = removeduplicates, 
-                               removecomplements = removecomplements,
-                               tree.unbiased = tree.unbiased,
-                               return.dupl.compl = TRUE, 
-                               sparse = sparse))
-      if (inherits(rule_object, "try-error")) {
-        if (grepl("has new levels", rule_object)) {
-          stop(rule_object[1], paste("\n Hint: There may be a predictor variable which is a factor with rare levels. Consult ?rare_level_sampler"))
-        }
-        stop(rule_object[1])
+    rule_object <- try(pre_rules(formula = formula, 
+                                 data = data,
+                                 weights = weights,
+                                 y_names = y_names,
+                                 x_names = x_names,
+                                 learnrate = learnrate, 
+                                 par.init = par.init, 
+                                 sampfrac = sampfrac, 
+                                 mtry = mtry,
+                                 maxdepth = maxdepth,
+                                 ntrees = ntrees, 
+                                 tree.control = tree.control, 
+                                 use.grad = use.grad, 
+                                 family = family, 
+                                 verbose = verbose, 
+                                 singleconditions = singleconditions,
+                                 removeduplicates = removeduplicates, 
+                                 removecomplements = removecomplements,
+                                 tree.unbiased = tree.unbiased,
+                                 return.dupl.compl = TRUE, 
+                                 sparse = sparse))
+    if (inherits(rule_object, "try-error")) {
+      if (grepl("has new levels", rule_object)) {
+        stop(rule_object[1], paste("\n Hint: There may be a predictor variable which is a factor with rare levels. Consult ?rare_level_sampler"))
       }
+      stop(rule_object[1])
     }
     rules <- rule_object$rules
     rulevars <- rule_object$rulevars
@@ -765,14 +729,8 @@ pre <- function(formula, data, family = gaussian,
     data[ , y_names] <- data[ , y_names] - small_constant_added
   }
   
-  ## Prepare right formula if glmertree was used for tree induction
-  if (use_glmertree) {
-    modmat_f <- as.formula(paste(formula[[2]], formula[[1]], paste(x_names, collapse = "+")))
-  } else {
-    modmat_f <- formula
-  }
   modmat_data <- get_modmat(
-    formula = modmat_f, 
+    formula = formula, 
     data = data, 
     rules = rules, 
     type = type, 
@@ -1086,9 +1044,15 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                       family = "gaussian", verbose = FALSE, 
                       removeduplicates = TRUE, removecomplements = TRUE,
                       tree.unbiased = TRUE, return.dupl.compl = FALSE, 
-                      sparse = FALSE, singleconditions = singleconditions) {
+                      sparse = FALSE, singleconditions = FALSE) {
   
   n <- nrow(data)
+  
+  ## Make sure weights are found by tree-fitting functions.
+  ## Most fitting functions search for weights like function lm() does:
+  ## weights, subset and offset are evaluated in the same way as variables in formula, 
+  ## that is first in data and then in the environment of formula
+  environment(formula) <- environment() 
   
   ## Prepare glmtree arguments, if necessary:
   if (!use.grad && tree.unbiased) {
@@ -1104,6 +1068,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
 
   ## Set up subsamples (outside of the loop):
   subsample <- list()
+  
   for (i in 1:ntrees) {
     if (is.function(sampfrac)) {
       subsample[[i]] <- sampfrac(n = n, weights = weights)
@@ -1122,16 +1087,25 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
   if (learnrate == 0) {
     
     ## Set up rule learning function:
-    fit_tree_return_rules <- function(formula, data, family = NULL, 
+    fit_tree_return_rules <- function(formula, data, family = NULL, weights,
                                       use.grad = TRUE, tree.unbiased = TRUE,
                                       glmtree_args = NULL, tree.control = NULL) {
+      
+      ## Make sure weights are found by tree-fitting functions.
+      ## Most fitting functions search for weights like function lm() does:
+      ## weights, subset and offset are evaluated in the same way as variables in formula, 
+      ## that is first in data and then in the environment of formula
+      environment(formula) <- environment()
+      
       if (tree.unbiased) {
         if (use.grad) { # employ ctree
-          tree <- ctree(formula = formula, data = data, control = tree.control)
+          tree <- ctree(formula = formula, data = data, weights = weights,
+                        control = tree.control)
           return(list.rules(tree, removecomplements = removecomplements, 
                  singleconditions = singleconditions))
         } else { # employ (g)lmtree
           glmtree_args$data <- data
+          glmtree_args$weights <- weights          
           if (family == "gaussian") {
             tree <- do.call(lmtree, args = glmtree_args)
           } else {
@@ -1141,7 +1115,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                             singleconditions = singleconditions))
         }
       } else { # employ rpart
-        tree <- rpart(formula = formula, data = data, control = tree.control)
+        tree <- rpart(formula = formula, data = data, control = tree.control,
+                      weights = weights)
         paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE)
         paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
         if (removecomplements) {
@@ -1162,7 +1137,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
             glmtree_args$maxdepth <- maxdepth[i] + 1L
           }
         }
-        fit_tree_return_rules(data[subsample[[i]], ], 
+        fit_tree_return_rules(data = data[subsample[[i]], ], 
+                              weights = weights[subsample[[i]]],
                               formula = formula, 
                               family = family, 
                               use.grad = use.grad, 
@@ -1190,7 +1166,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           }
         }
         rules <- c(rules, 
-                   fit_tree_return_rules(data[subsample[[i]], ], 
+                   fit_tree_return_rules(data = data[subsample[[i]], ], 
+                                         weights = weights[subsample[[i]]],
                                          formula = formula, 
                                          family = family, 
                                          use.grad = use.grad, 
@@ -1272,15 +1249,16 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
         if (length(maxdepth) > 1L) {
           tree.control$maxdepth <- maxdepth[i]
         }
-        # Grow tree on subsample:
+        ## Grow tree on subsample:
         if (tree.unbiased) {
-          tree <- ctree(formula, control = tree.control,
+          tree <- ctree(formula = formula, control = tree.control, 
+                        weights = weights[subsample[[i]]],
                         data = data_with_y_learn[subsample[[i]], ])
-          # Collect rules:
+          ## Collect rules:
           rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
                                        singleconditions = singleconditions))
         } else {
-          tree <- rpart(formula, control = tree.control,
+          tree <- rpart(formula, control = tree.control, weights = weights[subsample[[i]]],
                         data = data_with_y_learn[subsample[[i]], ])
           paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE, pretty = 0)
           paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
@@ -1314,7 +1292,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       for(i in 1:ntrees) {
         
         # Take subsample of dataset:
-        glmtree_args$data <- data[subsample[[i]],]
+        glmtree_args$data <- data[subsample[[i]], ]
+        glmtree_args$weights <- weights[subsample[[i]]]
         glmtree_args$offset <- offset[subsample[[i]]] 
         if (length(maxdepth) > 1L) {
           glmtree_args$maxdepth <- maxdepth[i] + 1L
@@ -1528,115 +1507,6 @@ gpe_rules_pre <- function(learnrate = .01, par.init = FALSE,
 
 
 
-pre_rules_mixed_effects <- function(formula, data, family = "gaussian", 
-                                    y_names, x_names, learnrate = .01, 
-                                    sampfrac = .5, 
-                                    weights = rep(1, nrow(data)), 
-                                    mtry = Inf, maxdepth = 3L, ntrees = 500,
-                                    tree.control = ctree_control(mtry = mtry, maxdepth = maxdepth[1]), 
-                                    use.grad = TRUE, verbose = FALSE, 
-                                    removeduplicates = TRUE, 
-                                    removecomplements = TRUE, 
-                                    singleconditions = singleconditions,
-                                    par.init = FALSE, sparse = FALSE) {
-  
-  n <- nrow(data)
-  
-  ## Prepare arguments:
-  glmertree_args <- tree.control    
-  glmertree_args$formula <- formula
-  if (family != "gaussian") {
-    glmertree_args$family <- family      
-  }
-  
-  ## TODO: Allow for boosting, maybe allow for applying learnrate to the mixed- or only fixed-effects predictions
-  
-  ## Setup samples:
-  subsample <- list()
-  for (i in 1:ntrees) {
-    if(is.function(sampfrac)) {
-      subsample[[i]] <- sampfrac(n = n, weights = weights) 
-    } else if (sampfrac == 1) { # then bootstrap
-      subsample[[i]] <- sample(1:n, size = n, replace = TRUE, prob = weights)
-    } else if (sampfrac < 1) { # else subsample
-      subsample[[i]] <- sample(1:n, size = sampfrac*n, replace = FALSE, prob = weights)
-    }
-  }
-  
-  rules <- c()
-  
-  if (par.init) { # compute in parallel:
-    
-    rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = c("partykit", "pre")) %dopar% {
-      
-      # Prepare call:
-      glmertree_args$data <- data[subsample[[i]], ]
-      if (length(maxdepth) > 1) {
-        glmertree_args$maxdepth <- maxdepth[i] + 1        
-      }
-      # Fit tree:
-      if (family == "gaussian") {
-        tree <- do.call(glmertree::lmertree, args = glmertree_args)$tree
-      } else {
-        tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
-      }
-      # Collect rules:
-      list.rules(tree, removecomplements = removecomplements, 
-                 singleconditions = singleconditions)
-        
-    } 
-  } else { # do not compute in parallel:
-      
-    rules <- c()
-    for (i in 1:ntrees) {
-
-      # prepare call:
-      glmertree_args$data <- data[subsample[[i]], ]
-      if (length(maxdepth) > 1) {
-        glmertree_args$maxdepth <- maxdepth[i] + 1        
-      }
-      # Fit tree:
-      if (family == "gaussian") {
-        tree <- do.call(glmertree::lmertree, args = glmertree_args)$tree
-      } else {
-        tree <- do.call(glmertree::glmertree, args = glmertree_args)$tree
-      }
-      # Collect rules:
-      rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
-                                   singleconditions = singleconditions))
-    
-    }
-  } 
-    
-  # Keep unique, non-empty rules only:
-  rules <- unique(rules[!rules==""])
-  if (verbose) {
-    cat("\nA total of", ntrees, "trees and ", length(rules), "rules were generated initially.")
-  }
-  
-  rules_obj <- delete_duplicates_complements(
-    rules = rules, data = data, 
-    removecomplements = removecomplements, 
-    removeduplicates = removeduplicates, 
-    return.dupl.compl = TRUE, sparse = sparse, keep_rulevars = TRUE)
-  
-  complements.removed <- rules_obj$complements.removed
-  duplicates.removed <- rules_obj$duplicates.removed
-  rules <- rules_obj$rules
-  rulevars <- rules_obj$rulevars
-  
-  if (verbose && (removeduplicates || removecomplements)) 
-    cat("\n\nA total of", length(duplicates.removed) + length(complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n($duplicates.removed and $complements.removed show which, if any).")
-  
-  if (verbose) 
-    cat("\n\nAn initial ensemble consisting of", length(rules), "rules was succesfully created.")  
-
-  # check if any rules were generated:
-  if (length(rules) == 0)
-    warning("No prediction rules could be derived from dataset.", immediate. = TRUE)
-  
-  rules_obj
-}
 
 
 #' Sampling function generator for specifying varying maximum tree depth 

@@ -1,0 +1,267 @@
+---
+title: "Dealing with missing data in fitting prediction rule ensembles"
+author: "Marjolein Fokkema"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Dealing with missing data in fitting prediction rule ensembles}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
+---
+
+## Introduction
+
+To deal with missing data, multiple imputation is the golden standard (). With GLMs, the models fitted on each imputed dataset can then be pooled. For non-parameteric methods, such pooling is more difficult. With prediction rule ensembles, there are several ways to deal with missing data:
+
+* Listwise deletion. This is certainly the least favorable option, but already implemented in function `pre()`.
+
+* Single imputation: Perform only a single imputation and fit a prediction rule ensemble on this single dataset. This is likely better than listwise deletion, but likely inferior to multiple imputation. This can be easily done by the user.
+
+* Multiple imputation approach 1): Perform multiple imputation. Fit a separate prediction rule ensemble on each of the imputed datasets. Aggregate the ensembles into a single final ensemble. In terms of predictive accuracy, this approach will work best. Note that this also results in predicted values being aggregated, instead of model coefficients being aggregated and pred
+
+* Multiple imputation approach 2): Perform multiple imputation. Aggregate the datasets into one large dataset. Fit a single prediction rule on this large dataset. The artificially inflated sample size will have two main consequences when fitting the prediction rule ensemble: First, the trees fitted for rule generation may get deeper. Second, the RSS in the fitting of the penalized regression model will be inflated, yielding a lower amount of penalization than would be optimal given the true sample size. The first consequence is much reduced by retaining low maximum tree depth. The second consequence can be reduced by 'correcting' the optimal penalty parameter value for the artificially inflated sample size. 
+
+* Combining mean imputation with the Missing-In-Attributes approach. According to Josse et al. (2019), mean imputation and the Missing-In-Attributes approaches are not so bad from a prediction perspective. Furthermore, they are computationally inexpensive. For rule generation, we could employ the MIA approach as implemented in function `ctree`. For fitting the penalized regression model, we need to obtain a complete model matrix. The rule variables can be obtained as complete data using the MIA approach. Mean imputation can be applied to the original predictor variables. 
+
+Below, we provide examples for the two multiple imputation approaches. In future versions of package **`pre`**, the mean imputation combined with MIA approach will be implemented.
+
+
+
+## Example: Predicting wind speed
+
+For the examples, we will be predicting Wind speels using the `airquality` dataset (we focus on predicting the `wind` variable, because it does not have missing values,  while variables `Ozone` and `Solar.R` do):
+
+```{r}
+head(airquality)
+```
+
+We perform multiple imputation by chained equations, using the predictive mean matching method. We generate 5 imputed datasets:
+
+```{r, results='hide', message=FALSE, warning=FALSE, fig.width=7}
+library("mice")
+md.pattern(airquality)
+set.seed(42)
+imp <- mice(airquality, m = 5)
+```
+
+
+
+## Multiple imputation: Aggregate ensembles
+
+We create a `list` with imputed datasets:
+
+```{r}
+imp1 <- complete(imp, action = "all", include = FALSE)
+```
+
+We load the **`pre`** library:
+
+```{r}
+library("pre")
+```
+
+We create a custom function that fits PREs to several datasets contained in a list:
+
+```{r}
+pre.agg <- function(datasets, ...) {
+  result <- list()
+  for (i in 1:length(datasets)) {
+    result[[i]] <- pre(datasets[[i]], ...)
+  }
+  result
+}
+```
+
+We apply the new function:
+
+```{r}
+set.seed(43)
+airq.agg <- pre.agg(imp1, formula = Wind ~ .)
+```
+
+Note that we can used the ellipsis (`...`) to pass arguments to `pre` (see `?pre` for an overview of arguments that can be specified).
+
+We now define `print`, `summary`, `predict` and `coef` methods to extract results from the fitted ensemble. Again, we can use the ellipsis (`...`) to pass arguments to the `print`, `summary`, `predict` and `coef` methods of function `pre` (see e.g., `?pre:::print.pre` for more info):
+
+```{r, results ='hide'}
+print.agg <- function(object, ...) {
+  result <- list()
+  sink("NULL")
+  for (i in 1:length(object)) {
+    result[[i]] <- print(object[[i]], ...)
+  }
+  sink()
+  print(result)
+}
+print.agg(airq.agg) ## results suppressed for space considerations
+
+summary.agg <- function(object, ...) {
+  for (i in 1:length(object)) summary(object[[i]], ...)
+}
+summary.agg(airq.agg) ## results suppressed for space considerations
+```
+
+For averaging over predictions, there is only one option for continuous outcomes. For non-continuous outcomes, we can average over the linear predictor, or over the predicted values on the scale of the response. I do not know which would be more appropriate. The resulting predicted values will be highly correlated, though.
+
+```{r}
+predict.agg <- function(object, newdata, ...) {
+  rowMeans(sapply(object, predict, newdata = newdata, ...))
+}
+agg_preds <- predict.agg(airq.agg, newdata = airquality[1:4, ])
+agg_preds
+```
+
+Finally, the `coef` method should return the averaged / aggregated final PRE. That is, it returns: 
+
+1) One averaged intercept; 
+
+2) All rules and linear terms, with their coefficients scaled by the number of datasets; 
+
+3) In presence of identical rules and linear terms, it aggregates those rules and their coefficients into one rule / term, and adds together the scaled coefficients. 
+
+Note that linear terms that do not have the same winsorizing points will not be aggregated. Note that the labels of rules and variables may overlap between different datasets (e.g., the label `rule 12` or may appear multiple times in the aggregated ensemble, but each `rule 12` will have different conditions).
+
+```{r}
+coef.agg <- function(object, ...) {
+  coefs <- coef(object[[1]], ...)
+  coefs <- coefs[coefs$coefficient != 0,]
+  for (i in 2:length(object)) {
+    coefs_tmp <- coef(object[[i]], ...)
+    coefs_tmp <- coefs_tmp[coefs_tmp$coefficient != 0,]
+    ## Add intercepts:
+    coefs[coefs$rule == "(Intercept)", "coefficient"] <- 
+      coefs[coefs$rule == "(Intercept)", "coefficient"] + 
+      coefs_tmp[coefs_tmp$rule == "(Intercept)", "coefficient"]
+    ## Append other terms rest to coefs:
+    coefs <- rbind(coefs, coefs_tmp[coefs_tmp$rule!= "(Intercept)", ])
+  }
+  ## Divide coefficients by the number of datasets:
+  coefs$coefficient <- coefs$coefficient / length(object)
+  ## Identify identical rules:
+  duplicates <- which(duplicated(coefs$description))
+  for (i in duplicates) {
+    first_match <- which(coefs$description == coefs$description[i])[1]
+    ## Add the coefficients:
+    coefs$coefficient[first_match] <- 
+      coefs$coefficient[first_match] + coefs$coefficient[i]
+  }
+  ## Remove duplicates:
+  coefs <- coefs[-duplicates, ]
+  ## Return results:
+  coefs
+}
+coef.agg(airq.agg)
+```
+
+We have obtained a final ensemble of 17 terms.
+
+## Multiple imputation: A sinlge long dataset
+
+We aggregate the imputed datasets into one long dataset:
+
+```{r}
+imp2 <- complete(imp, "long", include = FALSE)
+```
+
+We fit the prediction rule ensemble to the long dataset:
+
+```{r}
+set.seed(43)
+airq.imp <- pre(Wind ~ ., data = imp2[ , -c(1, 2)])
+summary(airq.imp)
+```
+
+We have obtained a very large ensemble, which is mostly due to the artificially inflated sample size. With lasso regression, we minimize the following criterion: 
+
+$$\frac{1}{2n} RSS + \lambda |\beta|$$
+
+That is, for every unit increase in the L1 norm of the regression coefficients, we need to have a reduction of $\lambda \times \frac{1}{2n}$ in the RSS. We have artificially multiplied the sample size by 5, so the RSS will also multiply by 5; thus $\frac{1}{2n} RSS$ multiplies by $\frac{5}{2n} RSS$.
+
+Now, we correct the optimal $\lambda$ value for this artificial inflation of sample size: We take the optimal $\lambda$ from the dataset with sample size $5n$, and we multiply it by $\frac{2n}{5}$; this is the optimal $\lambda$ we should be using: 
+
+```{r}
+summary(airq.imp, penalty.par.val = airq.imp$glmnet.fit$lambda.1se * 2*nrow(airquality)/5)
+```
+
+We have now obtained a much smaller ensemble.
+
+
+## Comparison
+
+We compare performance using 10-fold cross validation. As a benchmark, we take a listwise deletion approach. We only evaluate accuracy for observations that have no missing values.
+
+```{r, eval=FALSE, results='hide', message = FALSE, warning = FALSE}
+k <- 10
+set.seed(43)
+fold_ids <- sample(1:k, size = nrow(airquality), replace = TRUE)
+
+observed <- c()
+for (i in 1:k) {
+  ## Separate training and test data
+  test <- airquality[fold_ids == i, ]
+  test <- test[!is.na(test$Ozone), ]
+  test <- test[!is.na(test$Solar.R), ]
+  observed <- c(observed, test$Wind)
+}  
+
+preds <- data.frame(observed)
+preds$LW <- preds$MI_agg <- preds$MI_long <- preds$observed
+row <- 1
+
+for (i in 1:k) {
+
+  if (i > 1) row <- row + nrow(test)
+  
+  ## Separate training and test data
+  train <- airquality[fold_ids != i, ]
+  test <- airquality[fold_ids == i, ]
+  test <- test[!is.na(test$Ozone), ]
+  test <- test[!is.na(test$Solar.R), ]
+
+  ## Fit and evaluate listwise deletion
+  premod <- pre(Wind ~ ., data = train)
+  preds$LW[row:(row+nrow(test)-1)] <- predict(premod, newdata = test)
+  
+  ## Perform multiple imputation
+  imp <- mice(train, m = 5)
+  imp1 <- complete(imp, action = "all", include = FALSE)
+  imp2 <- complete(imp, "long", include = FALSE)
+  
+  ## Fit and evaluate aggregated ensembles approach
+  airq.agg <- pre.agg(imp1, formula = Wind ~ .)
+  preds$MI_agg[row:(row+nrow(test)-1)] <- predict.agg(airq.agg, newdata = test)
+  
+  ## Fit and evaluate the single long dataset approach
+  airq.imp <- pre(Wind ~ ., data = imp2[ , -c(1, 2)])
+  preds$MI_long[row:(row+nrow(test)-1)] <- predict(airq.imp, 
+    penalty.par.val = airq.imp$glmnet.fit$lambda.1se * 2*nrow(train)/5,
+    newdata = test)
+  
+}
+```
+
+
+```{r, echo=FALSE, eval=FALSE}
+save(preds, file = "Missing_data_preds.Rda")
+```
+
+```{r, echo=FALSE}
+load("Missing_data_preds.Rda")
+```
+
+```{r, fig.width=5, fig.height=5}
+sapply(preds, function(x) mean((preds$observed - x)^2)) ## MSE
+sapply(preds, function(x) sd((preds$observed - x)^2)/sqrt(nrow(preds))) ## SE of MSE
+var(preds$observed) ## benchmark: Predict mean for all
+plot(preds)
+```
+
+we see that all three methods yields very similar predictions and accuracy. The 'single long dataset' multiple imputation method performed best, followed by the 'aggragated ensembles' imputation method, followed by listwise deletion. The standard errors indicate that in terms of variance, the methods have the same ordering. The differences in performance are small, though. In light of the sparsity and accuracy of the single-long-dataset multiple imputation method, perhaps this one should be preferred.
+
+
+## References
+
+Josse, J., Prost, N., Scornet, E., & Varoquaux, G. (2019). On the consistency of supervised learning with missing values. *arXiv preprint arXiv:1902.06931*. https://arxiv.org/abs/1902.06931
+
+Miles, A. (2016). Obtaining predictions from models fit to multiply imputed data. *Sociological Methods & Research, 45*(1), 175-185. https://doi.org/10.1177/0049124115610345
+
+Schafer, J. L., & Graham, J. W. (2002). Missing data: our view of the state of the art. *Psychological Methods, 7*(2), 147. https://doi.org/10.1037/1082-989X.7.2.147
