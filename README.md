@@ -186,9 +186,9 @@ assigned are saved in `airq.cv$fold_indicators`.
 For tuning the parameters of function `pre()` so as to obtain optimal
 predictive accuracy, users are advised to use **`R`** package
 **`caret`**. A tutorial is provided as a vignette, accessible by typing
-`vignette("Tuning", package = "pre")` or going to
-<https://cran.r-project.org/web/packages/pre/vignettes/Tuning.html> in a
-browser.
+`vignette("Tuning", package = "pre")` in **`R`** or by going to
+<https://cran.r-project.org/package=pre/> in a browser and clicking on
+the corresponding link to the vignette.
 
 ## Tools for interpretation
 
@@ -323,11 +323,10 @@ to optimize the parameters of function `pre` using **`caret`**’s `train`
 function, see the vignette on tuning:
 
 ``` r
-vignette("Tuning", package = "pre")
+vignette("tuning", package = "pre")
 ```
 
-or go to
-<https://cran.r-project.org/web/packages/pre/vignettes/Tuning.html> in a
+or open the vignette on <https://cran.r-project.org/package=pre/> in a
 browser.
 
 ## Dealing with missing values
@@ -336,12 +335,10 @@ Some suggestions on how to deal with missing values are provided in the
 following vignette:
 
 ``` r
-vignette("Missingness", package = "pre")
+vignette("missingness", package = "pre")
 ```
 
-or go to
-<https://cran.r-project.org/web/packages/pre/vignettes/Missingness.html>
-in a browser.
+or go to <https://cran.r-project.org/package=pre/> in a browser.
 
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
@@ -416,7 +413,7 @@ CRC.
 
 Fokkema, M. (2020). Fitting prediction rule ensembles with R package
 pre. *Journal of Statistical Software*, *92*(12), 1–30. Retrieved from
-<http://doi.org/10.18637/jss.v092.i12>
+<https://doi.org/10.18637/jss.v092.i12>
 
 </div>
 
@@ -440,7 +437,6 @@ Annals of Statistics*, *19*, 1–67.
 
 Friedman, J., & Popescu, B. (2008). Predictive learning via rule
 ensembles. *The Annals of Applied Statistics*, *2*(3), 916–954.
-Retrieved from <http://www.jstor.org/stable/30245114>
 
 </div>
 
