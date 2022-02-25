@@ -49,7 +49,7 @@ Note that **`pre`** is under development, and much work still needs to be done. 
 
 ## Example: A rule ensemble for predicting ozone levels
 
-To get a first impression of how function `pre()` works, we will fit a prediction rule ensemble to predict Ozone levels using the `airquality` dataset. We fit a prediction rule ensemble using function `pre()`:
+To get a first impression of how function `pre()` works, we will predict Ozone levels using the `airquality` dataset. We fit a prediction rule ensemble using function `pre()`:
 
 ```{r, results = FALSE}
 library("pre")
@@ -164,7 +164,7 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 include_graphics(sprintf("%spairplot-1.png", opts_current$get("fig.path")))
 ```
 
-Note that creating partial dependence plots is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. **`R`** package **`plotmo`** (@Milb18) provides more efficient functions for plotting partial dependence, which also support `pre` models. 
+Note that creating partial dependence plots is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. Milborrow's [-@Milb18] **`plotmo`** package provides more efficient functions for plotting partial dependence, which also support `pre` models. 
 
 If the final ensemble does not contain many terms, inspecting individual rules and linear terms through the `print` method may be more informative than partial dependence plots. One of the main advantages of prediction rule ensembles is their interpretability: the predictive model contains only simple functions of the predictor variables (rules and linear terms), which are easy to grasp. Partial dependence plots are often much more useful for interpretation of complex models, like random forests for example.
 

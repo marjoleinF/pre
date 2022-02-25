@@ -56,9 +56,9 @@ sciences is provided in Fokkema & Strobl (2020).
 
 ## Example: A rule ensemble for predicting ozone levels
 
-To get a first impression of how function `pre()` works, we will fit a
-prediction rule ensemble to predict Ozone levels using the `airquality`
-dataset. We fit a prediction rule ensemble using function `pre()`:
+To get a first impression of how function `pre()` works, we will predict
+Ozone levels using the `airquality` dataset. We fit a prediction rule
+ensemble using function `pre()`:
 
 ``` r
 library("pre")
@@ -255,9 +255,9 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 
 Note that creating partial dependence plots is computationally intensive
 and computation time will increase fast with increasing numbers of
-observations and numbers of variables. **`R`** package **`plotmo`**
-(Milborrow (2018)) provides more efficient functions for plotting
-partial dependence, which also support `pre` models.
+observations and numbers of variables. Milborrow’s (2018) **`plotmo`**
+package provides more efficient functions for plotting partial
+dependence, which also support `pre` models.
 
 If the final ensemble does not contain many terms, inspecting individual
 rules and linear terms through the `print` method may be more
