@@ -19,7 +19,7 @@ csl: inst/bib_style.csl
     -   [Assessing presence of interactions](#assessing-presence-of-interactions)
     -   [Correlations between selected terms](#correlations-between-selected-terms)
 -   [Tuning parameters of function pre](#tuning-parameters)
--   [Dealing with missing data](#missing-data)
+-   [Dealing with missing data](#dealing-with-missing-values)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [Credits](#credits)
 -   [References](#references)
@@ -103,7 +103,7 @@ airq.cv <- cvpre(airq.ens)
 
 The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. These results are saved for later use in `aiq.cv$accuracy`. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which observations were assigned are saved in `airq.cv$fold_indicators`.
 
-For tuning the parameters of function `pre()` so as to obtain optimal predictive accuracy, users are advised to use **`R`** package **`caret`**. A tutorial is provided as a vignette, accessible by typing `vignette("Tuning", package = "pre")` in **`R`** or by going to https://cran.r-project.org/package=pre/ in a browser and clicking on the corresponding link to the vignette.
+For tuning the parameters of function `pre()` so as to obtain optimal predictive accuracy, users are advised to use **`R`** package **`caret`**. A tutorial is provided as a vignette, accessible by typing `vignette("tuning", package = "pre")` in **`R`** or by going to https://cran.r-project.org/package=pre/vignettes/missingness.html in a browser and clicking on the corresponding link to the vignette.
 
 
 ## Tools for interpretation
@@ -210,7 +210,7 @@ To obtain an optimal set of model-fitting parameters, package **`caret`** @Kuhn0
 vignette("tuning", package = "pre")
 ```
 
-or open the vignette on https://cran.r-project.org/package=pre/ in a browser.
+or open the vignette on https://cran.r-project.org/package=pre/vignettes/tuning.html in a browser.
 
 
 ## Dealing with missing values
@@ -221,7 +221,7 @@ Some suggestions on how to deal with missing values are provided in the followin
 vignette("missingness", package = "pre")
 ```
 
-or go to https://cran.r-project.org/package=pre/ in a browser.
+or go to https://cran.r-project.org/package=pre/missingness.html in a browser.
 
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 

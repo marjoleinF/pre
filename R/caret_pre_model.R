@@ -1,95 +1,26 @@
 #' Model set up for train function of package caret
 #' 
-#' \code{caret_pre_model} provides a model setup for function \code{train} of
+#' \code{caret_pre_model} is deprecated and provided for backwards compatibility
+#' only. The object provides a model setup for function \code{train} of
 #' package caret. It allows for tuning arguments sampfrac, maxdepth, learnrate, 
 #' mtry, use.grad and penalty.par.val.
 #'  
 #' @details 
 #' 
-#' When tuning parameters of \code{pre()} with caret's \code{train()}
-#' function, always use the default S3 method (i.e., specify predictors and response
-#' variables through arguments \code{x} and \code{y}). When \code{train.formula()}, 
-#' is used (i.e., if \code{formula} and \code{data} arguments are specified),
-#' \code{train} will internally call \code{model.matrix()} on \code{data}, which 
-#' will code all categorical (factor) predictor variables as dummy variables,
-#' which will yield a different result than inputting the original factors, for most 
-#' tree-based methods.
-#' 
-#' \code{caret_pre__model$parameters} provides an overview of the parameters that
-#' can be tuned for function \code{pre} using \code{caret}. \code{caret_pre_model$grid}
-#' provides a function for creating a tuning grid (see Examples below).
-#' 
-#' @examples \dontrun{
+#' Object caret_pre_model is deprecated, and only included in package pre for backward 
+#' compatibility. Parameters of function \code{pre()} can be tuned by using method 
+#' \code{"pre"} in caret's function \code{train()}. See vignette on tuning for more
+#' information and examples: \code{vignette("Tuning", package = "pre")} 
 #'  
-#' library("caret")
-#'
-#' ## Prepare data:
-#' airq <- airquality[complete.cases(airquality),]
-#' y <- airq$Ozone
-#' x <- airq[,-1]
-#' 
-#' ## Apply caret with only pre's default settings (trControl and ntrees argument
-#' ## are employed here only to reduce computation time):
-#' 
-#' set.seed(42)
-#' prefit1 <- train(x = x, y = y, method = caret_pre_model,
-#'                  trControl = trainControl(number = 1),
-#'                  ntrees = 25L)
-#' prefit1
-#' 
-#' ## Create custom tuneGrid:
-#' set.seed(42)
-#' tuneGrid <- caret_pre_model$grid(x = x, y = y,
-#'                                  maxdepth = 3L:5L,
-#'                                  learnrate = c(.01, .1),
-#'                                  penalty.par.val = c("lambda.1se", "lambda.min"))
-#' tuneGrid
-#' ## Apply caret (again, ntrees and trControl set only to reduce computation time):
-#' prefit2 <- train(x = x, y = y, method = caret_pre_model,
-#'                  trControl = trainControl(number = 1),
-#'                  tuneGrid = tuneGrid, ntrees = 25L)
-#' prefit2
-#' 
-#' ## Get best tuning parameter values:
-#' prefit2$bestTune
-#' ## Get predictions from model with best tuning parameters:
-#' predict(prefit2, newdata = x[1:10, ])
-#' plot(prefit2)
-#'
-#' ## Obtain tuning grid through random search over the tuning parameter space:
-#' set.seed(42)
-#' tuneGrid2 <- caret_pre_model$grid(x = x, y = y, search = "random", len = 10)
-#' tuneGrid2
-#' set.seed(42)
-#' prefit3 <- train(x = x, y = y, method = caret_pre_model,
-#'                  trControl = trainControl(number = 1, verboseIter = TRUE),
-#'                  tuneGrid = tuneGrid2, ntrees = 25L)
-#' prefit3
-#' 
-#' ## Count response:
-#' set.seed(42)
-#' prefit4 <- train(x = x, y = y, method = caret_pre_model,
-#'                  trControl = trainControl(number = 1),
-#'                  ntrees = 25L, family = "poisson")
-#' prefit4
-#' 
-#' ## Binary factor response:
-#' y_bin <- factor(airq$Ozone > mean(airq$Ozone))
-#' set.seed(42)
-#' prefit5 <- train(x = x, y = y_bin, method = caret_pre_model,
-#'                  trControl = trainControl(number = 1),
-#'                  ntrees = 25L, family = "binomial")
-#' prefit5
-#' 
-#' ## Factor response with > 2 levels:
-#' x_multin <- airq[,-5]
-#' y_multin <- factor(airq$Month)
-#' set.seed(42)
-#' prefit6 <- train(x = x_multin, y = y_multin, method = caret_pre_model,
-#'                  trControl = trainControl(number = 1),
-#'                  ntrees = 25L, family = "multinomial")
-#' prefit6
-#' }
+#' @examples 
+#' ## Object caret_pre_model is only included in package pre for backward compatibility
+#' ## By now, function pre can be optimized in the default way by using the method "pre" 
+#' ## in caret's function train(). More information and instructions on tuning parameters
+#' ## of function pre() are provided in the vignette about tuning, which can be accessed
+#' ## from R by typing:
+#' ##
+#' ## vignette("Tuning", package = "pre")
+#' ##
 caret_pre_model <- list(
   library = "pre",
   type = c("Classification", "Regression"),
@@ -164,14 +95,8 @@ caret_pre_model <- list(
         theDots)
     out <- do.call(pre::pre, modelArgs)
     out
-
-    #pre(formula = as.formula(".outcome ~ ."), data = dat, weights = weights, 
-    #    sampfrac = param$sampfrac, maxdepth = param$maxdepth, 
-    #    learnrate = param$learnrate, mtry = param$mtry, 
-    #    use.grad = param$use.grad, ...)
   },
   predict = function(modelFit, newdata, submodels = NULL) {
-    #if (is.null(submodels)) {
       if (modelFit$family %in% c("gaussian", "mgaussian")) {
         out <- pre:::predict.pre(object = modelFit, 
                                  penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
@@ -185,7 +110,6 @@ caret_pre_model <- list(
                                         penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
                                         newdata = as.data.frame(newdata), type = "class"))      
       }
-    #} else {
     if (!is.null(submodels)) {
       tmp <- list()
       for (i in seq(along.with = submodels$penalty.par.val)) {
@@ -210,17 +134,14 @@ caret_pre_model <- list(
     out
   },
   prob = function(modelFit, newdata, submodels = NULL) {
-    #if (is.null(submodels)) {
       probs <- pre:::predict.pre(object = modelFit, 
                                  penalty.par.val = as.character(modelFit$tuneValue$penalty.par.val),
                                  newdata = as.data.frame(newdata), 
                                  type = "response")
-      # For binary classification, create matrix:    
       if (is.null(ncol(probs)) || ncol(probs) == 1) {
         probs <- data.frame(1 - probs, probs)
         colnames(probs) <- levels(modelFit$data[,modelFit$y_names])
       }
-    #} else {
     if (!is.null(submodels)) {
       tmp <- list()
       for (i in seq(along.with = submodels$penalty.par.val)) {
@@ -228,7 +149,6 @@ caret_pre_model <- list(
                                       newdata = as.data.frame(newdata), 
                                       type = "response",
                                       penalty.par.val = as.character(submodels$penalty.par.val[i]))
-        # For binary classification, create matrix:    
         if (is.null(ncol(tmp[[i]])) || ncol(tmp[[i]]) == 1) {
           tmp[[i]] <- data.frame(1 - tmp[[i]], tmp[[i]])
           colnames(tmp[[i]]) <- levels(modelFit$data[ , modelFit$y_names])
@@ -249,19 +169,14 @@ caret_pre_model <- list(
   },
   loop = function(fullGrid) {
     
-    # loop should provide a grid containing models that can
-    # be looped over for tuning penalty.par.val
     loop_rows <- rownames(unique(fullGrid[,-which(names(fullGrid) == "penalty.par.val")]))
     loop <- fullGrid[rownames(fullGrid) %in% loop_rows, ]
     
-    ## submodels should be a list and length(submodels == nrow(loop)
-    ## each element of submodels should be a data.frame with column penalty.par.val, with a row for every value to loop over
     submodels <- list()
-    ## for every row of loop:
+
     for (i in 1:nrow(loop)) {
       lambda_vals <- character()
-      ## check which rows in fullGrid without $penalty.par.val are equal to
-      ## rows in loop without $penalty.par.val
+
       for (j in 1:nrow(fullGrid)) {
         if (all(loop[i, -which(colnames(loop) == "penalty.par.val")] ==
                 fullGrid[j, -which(colnames(fullGrid) == "penalty.par.val")])) {
@@ -273,36 +188,12 @@ caret_pre_model <- list(
     }
     list(loop = loop, submodels = submodels)
   },
-  levels = NULL, #function(x) { levels(x$data[,x$y_names]) },
+  levels = NULL,
   tag = c("Rule-Based Model", "Tree-Based Model", "L1 regularization", "Bagging", "Boosting"),
   label = "Prediction Rule Ensembles",
-  predictors = NULL, #function(x, ...) { 
-    #if (x$family %in% c("gaussian", "poisson", "binomial")) {
-    #  return(suppressWarnings(importance(x, plot = FALSE, 
-    #                                     penalty.par.val = object$tuneValue$penalty.par.val,
-    #                                     ...)$varimps$varname))
-    #} else {
-    #  warning("Reporting the predictors in the model is not yet available for multinomial and multivariate responses")
-    #  return(NULL)
-    #}
-  #},
-  varImp = NULL, #function(x, ...) {
-    #if (x$family %in% c("gaussian","binomial","poisson")) {
-    #  varImps <- pre:::importance(x, plot = FALSE, 
-    #                              penalty.par.val = object$tuneValue$penalty.par.val, 
-    #                              ...)$varimps
-    #  varnames <- varImps$varname
-    #  varImps <- data.frame(Overall = varImps$imp)
-    #  rownames(varImps) <- varnames  
-    #  return(varImps)
-    #} else {
-    #  warning("Variable importances cannot be calculated for multinomial or mgaussian family")
-    #  return(NULL)
-    #}
-  #},
+  predictors = NULL,
+  varImp = NULL, 
   oob = NULL,
   notes = NULL,
   check = NULL
 )
-
-

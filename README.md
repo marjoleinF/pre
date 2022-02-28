@@ -15,7 +15,7 @@
     -   [Correlations between selected
         terms](#correlations-between-selected-terms)
 -   [Tuning parameters of function pre](#tuning-parameters)
--   [Dealing with missing data](#missing-data)
+-   [Dealing with missing data](#dealing-with-missing-values)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear
     terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [Credits](#credits)
@@ -62,6 +62,7 @@ ensemble using function `pre()`:
 
 ``` r
 library("pre")
+#> Warning: package 'pre' was built under R version 4.1.2
 airq <- airquality[complete.cases(airquality), ]
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airq)
@@ -186,9 +187,9 @@ assigned are saved in `airq.cv$fold_indicators`.
 For tuning the parameters of function `pre()` so as to obtain optimal
 predictive accuracy, users are advised to use **`R`** package
 **`caret`**. A tutorial is provided as a vignette, accessible by typing
-`vignette("Tuning", package = "pre")` in **`R`** or by going to
-<https://cran.r-project.org/package=pre/> in a browser and clicking on
-the corresponding link to the vignette.
+`vignette("tuning", package = "pre")` in **`R`** or by going to
+<https://cran.r-project.org/package=pre/vignettes/missingness.html> in a
+browser and clicking on the corresponding link to the vignette.
 
 ## Tools for interpretation
 
@@ -326,7 +327,8 @@ function, see the vignette on tuning:
 vignette("tuning", package = "pre")
 ```
 
-or open the vignette on <https://cran.r-project.org/package=pre/> in a
+or open the vignette on
+<https://cran.r-project.org/package=pre/vignettes/tuning.html> in a
 browser.
 
 ## Dealing with missing values
@@ -338,7 +340,8 @@ following vignette:
 vignette("missingness", package = "pre")
 ```
 
-or go to <https://cran.r-project.org/package=pre/> in a browser.
+or go to <https://cran.r-project.org/package=pre/missingness.html> in a
+browser.
 
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 

@@ -153,7 +153,7 @@ plot(pre_tune2,
      par.strip.text=list(cex=.7))
 ```
 
-Both with `ntrees = 500` and `1000`, the default value for the `learnrate` argument appears optimal; for the `sampfrac` argument, a higher value than the default seems beneficial. This latter result is likely to occur with smaller datasets only, as in most cases subsampling for rule generation may be expected benefecial. Setting `ntrees = 1000` (default is 500) and `maxdepth = 4` (default is 3) may improve performance. 
+Both with `ntrees = 500` and `1000`, the default value for the `learnrate` argument appears optimal; for the `sampfrac` argument, a higher value than the default seems beneficial. This latter result is likely to occur with smaller datasets only, as in most cases subsampling for rule generation may be expected beneficial. Setting `ntrees = 1000` (default is 500) and `maxdepth = 4` (default is 3) may improve performance. 
 
 Note that both `lambda.1se` and `lambda.min` criteria yield optimal and identical performance. It is likely that both penalty parameter criteria yield the exact same model. When both criteria yield similar or identical predictive accuracy, we prefer `lambda.1se` because it yields a sparser model. Note that `lambda.1se` is the default in `pre`, because it better accounts for the exploratory rule search. 
 
