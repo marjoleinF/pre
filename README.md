@@ -340,7 +340,7 @@ following vignette:
 vignette("missingness", package = "pre")
 ```
 
-or go to <https://cran.r-project.org/package=pre/missingness.html> in a
+or go to <https://cran.r-project.org/package=pre/vignettes/missingness.html> in a
 browser.
 
 # Generalized Prediction Ensembles: Combining MARS, rules and linear terms

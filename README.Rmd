@@ -221,9 +221,10 @@ Some suggestions on how to deal with missing values are provided in the followin
 vignette("missingness", package = "pre")
 ```
 
-or go to https://cran.r-project.org/package=pre/missingness.html in a browser.
+or go to https://cran.r-project.org/package=pre/vignettes/missingness.html in a browser.
 
-# Generalized Prediction Ensembles: Combining MARS, rules and linear terms
+
+## Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
 An even more flexible ensembling approach is implemented in function `gpe()`, which allows for fitting Generalized Prediction Ensembles: It combines the MARS (multivariate Adaptive Splines) approach of [@Friedman91] with the RuleFit approach of [@Friedman08]. In other words, `gpe()` fits an ensemble composed of hinge functions (possibly multivariate), prediction rules and linear functions of the predictor variables. See the following example:
 
@@ -237,9 +238,9 @@ airq.gpe
 The results indicate that several rules, a single hinge (linear spline) function, and no linear terms were selected for the final ensemble. The hinge function and its coefficient indicate that Ozone levels increase with increasing solar radiation and decreasing wind speeds. The prediction rules in the ensemble indicate a similar pattern. 
 
 
-# Credits
+## Credits
 
 I am very grateful to package co-author Benjamin Chistoffersen: https://github.com/boennecd, who developed `gpe` and contributed tremendously by improving functions, code and computational aspects. Furthermore, I am grateful for the many helpful suggestions of Stephen Milborrow, and for the contributions of Karl Holub (https://github.com/holub008) and Advik Shreekumar (https://github.com/adviksh).
 
 
-# References
+## References
