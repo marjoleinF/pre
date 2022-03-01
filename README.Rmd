@@ -19,7 +19,7 @@ csl: inst/bib_style.csl
     -   [Assessing presence of interactions](#assessing-presence-of-interactions)
     -   [Correlations between selected terms](#correlations-between-selected-terms)
 -   [Tuning parameters of function pre](#tuning-parameters)
--   [Dealing with missing data](#dealing-with-missing-values)
+-   [Dealing with missing values](#dealing-with-missing-values)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [Credits](#credits)
 -   [References](#references)
