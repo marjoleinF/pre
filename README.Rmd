@@ -221,7 +221,19 @@ Some suggestions on how to deal with missing values are provided in the followin
 vignette("missingness", package = "pre")
 ```
 
-or go to https://cran.r-project.org/package=pre/vignettes/missingness.html in a browser.
+or go to https://cran.r-project.org/package=pre/vignettes/missingness.html in a browser. An introduction and tutorial is provided in the following vignette:
+
+```{r, eval=FALSE}
+vignette("relaxed", package = "pre")
+```
+
+
+
+
+
+## Enforcing sparsity
+
+When obtaining sparsity (i.e., a final ensemble comprising only a few terms) is of central importance, the so-called relaxed lasso can be employed. It allows for retaining a pre-specified (low) number of terms, with adequate predictive accuracy.  
 
 
 ## Generalized Prediction Ensembles: Combining MARS, rules and linear terms

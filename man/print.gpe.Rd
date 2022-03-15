@@ -21,7 +21,8 @@ trade-off between accuracy and sparsity of the final ensemble, inspect
 
 \item{digits}{Number of decimal places to print}
 
-\item{...}{Additional arguments, currently not used.}
+\item{...}{Further arguments to be passed to 
+\code{\link[glmnet]{coef.cv.glmnet}}.}
 }
 \description{
 Print a General Prediction Ensemble (gpe)

@@ -12,11 +12,12 @@ singleplot(
   nvals = NULL,
   type = "response",
   ylab = "predicted",
+  gamma = NULL,
   ...
 )
 }
 \arguments{
-\item{object}{an object of class \code{\link{pre}}}
+\item{object}{an object of class \code{\link{pre}}.}
 
 \item{varname}{character vector of length one, specifying the variable for
 which the partial dependence plot should be created. Note that \code{varname}
@@ -42,6 +43,9 @@ fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 values for continuous outputs and linear predictor values for nominal outputs.}
 
 \item{ylab}{character. Label to be printed on the y-axis.}
+
+\item{gamma}{Mixing parameter for relaxed fits. See
+\code{\link[glmnet]{coef.cv.glmnet}}.}
 
 \item{...}{Further arguments to be passed to 
 \code{\link[graphics]{plot.default}}.}

@@ -133,7 +133,7 @@ utils::globalVariables("%dopar%")
 #' with \code{family}, \code{use.grad} and \code{learnrate}.
 #' @param sparse logical. Should sparse design matrices be used? May improve
 #' computation times for large datasets.
-#' @param ... Additional arguments to be passed to
+#' @param ... Further arguments to be passed to
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' 
 #' @details Note: obervations with missing values will be removed prior to 
@@ -287,12 +287,12 @@ pre <- function(formula, data, family = gaussian,
   ## Check arguments ##
   #####################
   
-  ## Save call:
+  ## Save cll:
   cl <- match.call()
   
   ## Check if proper formula argument is specified 
   if (!(inherits(formula, "formula"))) {
-    stop("Argument 'formula' should specify and object of class 'formula'.\n")
+    stop("Argument formula should specify and object of class 'formula'.\n")
   }
   ## Check if dot and functions are simultaneously used in formula
   form <- as.character(formula[3])
@@ -302,22 +302,22 @@ pre <- function(formula, data, family = gaussian,
   if (any(grepl(".", form, fixed = TRUE))) {
     if (any(grepl("(", form, fixed = TRUE))) {
       if (any(grepl(")", form, fixed = TRUE))) {
-        warning("Argument 'formula' contains both one or more functions of predictor variables, as well as a dot ('.'), which should be avoided. Model fitting may fail, and/or both the original variable(s) and their functions may be included as predictor variables.\n", immediate. = TRUE)  
+        warning("Argument formula contains both one or more functions of predictor variables, as well as a dot ('.'), which should be avoided. Model fitting may fail, and/or both the original variable(s) and their functions may be included as predictor variables.\n", immediate. = TRUE)  
       }
     }
   }
   if (any(grepl("-", as.character(formula), fixed = TRUE))) {
-    warning("Argument 'formula' contains a minus sign. Note that the minus sign should not be used to omit the intercept or variables from the ensemble. To omit the intercept from the final ensemble, specify intercept = FALSE\n", immediate. = TRUE)
+    warning("Argument formula contains a minus sign. Note that the minus sign should not be used to omit the intercept or variables from the ensemble. To omit the intercept from the final ensemble, specify intercept = FALSE\n", immediate. = TRUE)
   }
 
   ## Check if proper data argument is specified:
   if (!is.data.frame(data)) {
-    stop("Argument 'data' should specify a data frame.\n")
+    stop("Argument data should specify a data frame.\n")
   }
 
   ## Check and set up family argument: 
   if (length(family) > 1L) {
-    warning("Argument 'family' has length > 1, only first element will be used.\n")
+    warning("Argument family has length > 1, only first element will be used.\n")
     family <- family[1L]
   }
   if (is.function(family)) { 
@@ -333,34 +333,34 @@ pre <- function(formula, data, family = gaussian,
         warning("The link function specified is currently not supported; log link will be employed.\n", immediate. = TRUE)
       }
     } else {
-      stop("Argument 'family' should specify a family object.\n")
+      stop("Argument family should specify a family object.\n")
     }
   }
   if (is.character(family)) {
     if (!(family %in% c("gaussian", "binomial", "poisson", "mgaussian", "multinomial", "cox"))) {
-      stop("Argument 'family' should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian', 'cox', or a corresponding family object.\n")
+      stop("Argument family should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian', 'cox', or a corresponding family object.\n")
     }
   } else {
-    stop("Argument 'family' should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian', 'cox', or a corresponding family object.\n")
+    stop("Argument family should be equal to 'gaussian', 'binomial', 'poisson', 'multinomial', 'mgaussian', 'cox', or a corresponding family object.\n")
   }
   
   ## Check if proper weights argument is specified, if specified:
   if (missing(weights)) {
     weights <- rep(1L, times = nrow(data))
   } else if (length(weights) != nrow(data)) {
-      warning("Length of argument 'weights' is not equal to nrow(data).\n", immediate. = TRUE)
+      warning("Length of argument weights is not equal to nrow(data).\n", immediate. = TRUE)
   }
   
   ## Check if proper type argument is specified:
   if (!(length(type) == 1L && type %in% c("rules", "both", "linear"))) {
-    stop("Argument 'type' should be 'rules', 'linear' or 'both'.\n")
+    stop("Argument type should be 'rules', 'linear' or 'both'.\n")
   }
   
   ## Check if proper sampfrac argument is specified:
   if (!is.function(sampfrac)) {
     if (!(length(sampfrac) == 1 && is.numeric(sampfrac) && sampfrac > 0 && 
           sampfrac <= 1)) {
-      stop("Argument 'sampfrac' should be a single numeric value > 0 and <= 1, or a sampling function.\n")
+      stop("Argument sampfrac should be a single numeric value > 0 and <= 1, or a sampling function.\n")
     }
   }
 
@@ -368,50 +368,50 @@ pre <- function(formula, data, family = gaussian,
   if (is.function(maxdepth)) {
     maxdepth <- maxdepth(ntrees = ntrees)
   } else if (!is.numeric(maxdepth)) {
-    stop("Argument 'maxdepth' should be either a numeric vector of length 1 or ntrees, or a random number generating function.\n")
+    stop("Argument maxdepth should be either a numeric vector of length 1 or ntrees, or a random number generating function.\n")
   } else if (!(length(maxdepth) %in% c(1L, ntrees))) {
-    warning("Argument 'maxdepth' should be either a numeric vector of length 1 or ntrees, only first value of maxdepth will be used.\n")
+    warning("Argument maxdepth should be either a numeric vector of length 1 or ntrees, only first value of maxdepth will be used.\n")
     maxdepth <- maxdepth[1L]
   } 
   if (!all(maxdepth > 0)) {
     stop("All values of maxdepth should be > 0.\n")
   } 
   if (!all(maxdepth == suppressWarnings(as.integer(maxdepth)) | is.infinite(maxdepth))) {
-    stop("Argument 'maxdepth' should consist of  of integer values or Inf), or a random number generating function.\n")
+    stop("Argument maxdepth should consist of  of integer values or Inf), or a random number generating function.\n")
   }
   
   ## Check if proper learnrate argument is specified:
   if (!(length(learnrate) == 1L && is.numeric(learnrate) && 
         (learnrate >= 0 || learnrate <= 1))) {
-    stop("Argument 'learnrate' shoud be a single numeric value >= 0 and <= 1.\n")
+    stop("Argument learnrate shoud be a single numeric value >= 0 and <= 1.\n")
   }
   
   ## Check if proper mtry argument is specified:
   if (!(length(mtry) == 1L && mtry > 0 && 
         (mtry == suppressWarnings(as.integer(mtry)) || is.infinite(mtry)))) {
-    stop("Argument 'mtry' should be a single integer value, or Inf.\n")
+    stop("Argument mtry should be a single integer value, or Inf.\n")
   }
   
   ## Check if proper ntrees argument is specified:
   if (!(length(ntrees) == 1L && ntrees == as.integer(ntrees) && ntrees > 0)) {
-    stop("Argument 'ntrees' should be a single positive integer.\n")
+    stop("Argument ntrees should be a single positive integer.\n")
   }
   
   ## Check if proper winsfrac argument is specified:
   if (!(length(winsfrac == 1L) && is.numeric(winsfrac) && winsfrac >= 0 && 
         winsfrac < 1)) {
-    stop("Argument 'winsfrac' should be a numeric value >= 0 and < 1.\n")
+    stop("Argument winsfrac should be a numeric value >= 0 and < 1.\n")
   }
 
   ## Check if proper nfolds argument is specified:
   if (!(length(nfolds) == 1L && nfolds > 0 && nfolds == as.integer(nfolds))) {
-    stop("Argument 'nfolds' should be a positive integer.\n")
+    stop("Argument nfolds should be a positive integer.\n")
   }
   
   ## Check if proper confirmatory argument is specified:
   if (!is.null(confirmatory)) {
     if (!is.character(confirmatory)) {
-      stop("Argument 'confirmatory' should specify a character vector.\n")
+      stop("Argument confirmatory should specify a character vector.\n")
     }
   }
   
@@ -427,7 +427,7 @@ pre <- function(formula, data, family = gaussian,
   
   if (par.final || par.init) {
     if(!requireNamespace("foreach")) {
-      warning("Parallel computation requires package foreach. Arguments 'par.init' and 'par.final' are set to FALSE.\n")   
+      warning("Parallel computation requires package foreach. Arguments par.init and par.final are set to FALSE.\n")   
       par.init <- par.final <- FALSE
     }
   }
@@ -450,19 +450,19 @@ pre <- function(formula, data, family = gaussian,
     }
   } else {
     if (!is.list(tree.control)) {
-      stop("Argument 'tree.control' should be a list of control parameters.\n")
+      stop("Argument tree.control should be a list of control parameters.\n")
     }
     if (use.grad && tree.unbiased) {
       if (!setequal(names(ctree_control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(ctree_control()), collapse = ', '), "\n")
+        stop("Argument tree.control should be a list containing named elements ", paste(names(ctree_control()), collapse = ', '), "\n")
       }
     } else if (!use.grad && tree.unbiased) { 
       if (!setequal(names(mob_control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing named elements ", paste(names(mob_control()), collapse = ', '), "\n")
+        stop("Argument tree.control should be a list containing named elements ", paste(names(mob_control()), collapse = ', '), "\n")
       }
     } else if (!tree.unbiased) {
       if (!setequal(names(rpart.control()), names(tree.control))) {
-        stop("Argument 'tree.control' should be a list containing names elements ", paste(names(rpart.control()), collapse = ', '), "\n")
+        stop("Argument tree.control should be a list containing names elements ", paste(names(rpart.control()), collapse = ', '), "\n")
       }
     }
     if (use.grad) { ## if ctree or rpart are employed:
@@ -473,7 +473,7 @@ pre <- function(formula, data, family = gaussian,
     if (tree.unbiased) {
       tree.control$mtry <- mtry
     } else if (mtry != Inf) {
-      warning("Argument 'tree.unbiased' was set to FALSE, so rpart is employed for tree induction, and value specified for 'mtry' will be ignored.\n")
+      warning("Argument tree.unbiased was set to FALSE, so rpart is employed for tree induction, and value specified for mtry will be ignored.\n")
       mtry <- Inf
     }
   }
@@ -552,7 +552,7 @@ pre <- function(formula, data, family = gaussian,
       } else if (is.Surv(data[ , y_names])) { # then family should be cox
         family <- "cox"
       } else if (!is.numeric(data[ , y_names])) { # then response is not a factor, survival or numeric
-        warning("The response variable specified through argument 'formula' should be of class numeric, factor or Surv.")
+        warning("The response variable specified through argument formula should be of class numeric, factor or Surv.")
       }
     } else if (length(y_names) > 1L) { # multiple responses specified, should be numeric
       if (all(sapply(data[ , y_names], is.numeric))) {
@@ -566,49 +566,49 @@ pre <- function(formula, data, family = gaussian,
     
     if (family[1L] == "gaussian") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'gaussian', but multiple response variables were specified in 'formula'.\n")        
+        warning("Argument family was set to 'gaussian', but multiple response variables were specified in formula.\n")        
       }
       if (!is.numeric(data[ , y_names])) { # then family should be poisson or gaussian
-        warning("Argument 'family' was set to 'gaussian', but the response variable specified in 'formula' is not of class numeric.\n")
+        warning("Argument family was set to 'gaussian', but the response variable specified in formula is not of class numeric.\n")
       }
     } else if (family[1L] == "poisson") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'poisson', but multiple response variables were specified, which is not supported.\n")
+        warning("Argument family was set to 'poisson', but multiple response variables were specified, which is not supported.\n")
       }
       if (!isTRUE(all.equal(round(data[ , y_names]), data[ , y_names]))) {
-        warning("Argument 'family' was set to 'poisson', but the response variable specified in 'formula' is non-integer.\n")
+        warning("Argument family' was set to 'poisson', but the response variable specified in formula is non-integer.\n")
       }
     } else if (family[1L] == "binomial") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'binomial', but multiple response variables were specified, which is not supported.\n")
+        warning("Argument family was set to 'binomial', but multiple response variables were specified, which is not supported.\n")
       } else if (!is.factor(data[ , y_names])) {
-        warning("Argument 'family' was set to 'binomial', but the response variable specified is not a factor.\n")
+        warning("Argument family was set to 'binomial', but the response variable specified is not a factor.\n")
       } else if (is.ordered(data[ , y_names])) {
-        warning("Argument 'family' was set to 'binomial', but the response variable specified is an ordered factor. It will be treated as an unordered factor.")
+        warning("Argument family was set to 'binomial', but the response variable specified is an ordered factor. It will be treated as an unordered factor.")
       } else if (nlevels(data[ , y_names]) != 2L) {
-        warning("Argument 'family' was set to 'binomial', but the response variable has ", nlevels(data[ , y_names]), " levels.\n")        
+        warning("Argument family was set to 'binomial', but the response variable has ", nlevels(data[ , y_names]), " levels.\n")        
       }
     } else if (family[1L] == "multinomial") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'multinomial', but multiple response variables were specified, which is not supported.\n")
+        warning("Argument family was set to 'multinomial', but multiple response variables were specified, which is not supported.\n")
       } else if (!is.factor(data[ , y_names])) {
-        warning("Argument 'family' was set to 'multinomial', but the response variable specified is not a factor.\n")
+        warning("Argument family was set to 'multinomial', but the response variable specified is not a factor.\n")
       } else if (is.ordered(data[ , y_names])) {
-        warning("Argument 'family' was set to 'multinomial', but the response variable specified is an ordered factor. It will be treated as an unordered factor.")
+        warning("Argument family was set to 'multinomial', but the response variable specified is an ordered factor. It will be treated as an unordered factor.")
       } else if (nlevels(data[ , y_names]) < 3L) {
-        warning("Argument 'family' was set to 'multinomial', but the response variable has ", nlevels(data[ , y_names]), " levels.\n")
+        warning("Argument family was set to 'multinomial', but the response variable has ", nlevels(data[ , y_names]), " levels.\n")
       }
     } else if (family[1L] == "cox") {
       if (length(y_names) > 1L) {
-        warning("Argument 'family' was set to 'cox', but multiple response variables were specified, which is not supported.\n")
+        warning("Argument family was set to 'cox', but multiple response variables were specified, which is not supported.\n")
       } else if (!is.Surv(data[ , y_names])) {
-        warning("Argument 'family' was set to 'cox', but the response variable specified is not of class Surv.\n")
+        warning("Argument family was set to 'cox', but the response variable specified is not of class Surv.\n")
       }
     } else if (family == "mgaussian") {
       if (length(y_names) == 1L) {
-        warning("Argument 'family' was set to 'mgaussian', but only a single response variable was specified.\n")
+        warning("Argument family was set to 'mgaussian', but only a single response variable was specified.\n")
       } else if (!all(sapply(data[ , y_names], is.numeric))) {
-        warning("Argument 'family' was set to 'mgaussian', but not all response variables specified are numeric.\n")
+        warning("Argument family was set to 'mgaussian', but not all response variables specified are numeric.\n")
       }
     }
   }
@@ -616,17 +616,17 @@ pre <- function(formula, data, family = gaussian,
   ## Check specification of tree growing algorithms employed:
   if (!tree.unbiased) { # rpart is employed
     if (family == "mgaussian") {
-      stop("Employing rpart algorithm for rule induction with a multivariate response variable is not supported. Set argument 'tree.unbiased' to TRUE and argument 'use.grad' to FALSE.\n")
+      stop("Employing rpart algorithm for rule induction with a multivariate response variable is not supported. Specify tree.unbiased = TRUE and use.grad = FALSE.\n")
     } else if (learnrate > 0 && family == "multinomial") {
-      stop("Employing rpart algorithm for rule induction with a multinomial response variable and learnrate > 0 is not supported. Set argument 'learnrate' to 0, or arguments 'tree.unbiased' and 'use.grad' to TRUE.\n")
+      stop("Employing rpart algorithm for rule induction with a multinomial response variable and learnrate > 0 is not supported. Specify learnrate = 1, or tree.unbiased = TRUE and use.grad = TRUE.\n")
     }
   } else if (!use.grad) { # (g)lmtree is employed
     if (family == "multinomial") {
-      stop("Employing (g)lmtree for rule induction with a multinomial response variable is not supported. Set argument 'use.grad' to TRUE for multivariate responses.\n")
+      stop("Employing (g)lmtree for rule induction with a multinomial response variable is not supported. Specify use.grad = TRUE for multivariate responses.\n")
     } else if (family == "mgaussian") {
-      stop("Employing (g)lmtree for rule induction with a multivariate response variable is not supported. Set argument 'use.grad' to TRUE for multivariate responses.\n")
+      stop("Employing (g)lmtree for rule induction with a multivariate response variable is not supported. Specify use.grad = TRUE for multivariate responses.\n")
     } else if (family == "cox") {
-      stop("Employing (g)lmertree for rule induction with a survival response is not supported. Set argument 'use.grad' to TRUE for a survival response.\n")
+      stop("Employing (g)lmertree for rule induction with a survival response is not supported. Specify use.grad = TRUE for a survival response.\n")
     }
   }
   
@@ -1519,7 +1519,7 @@ gpe_rules_pre <- function(learnrate = .01, par.init = FALSE,
 #' number of terminal nodes in trees used for rule inducation.
 #' @param av.tree.depth integer of length one. Specifies the average maximum
 #' tree depth in trees used for rule induction.
-#' @return Returns a random sampling function with single argument 'ntrees',
+#' @return Returns a random sampling function with single argument \code{ntrees},
 #' which can be supplied to the \code{maxdepth} argument of function 
 #' \code{\link{pre}} to specify varying tree depths.
 #' @details The original RuleFit implementation varying tree sizes for
@@ -1593,10 +1593,11 @@ maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
 #' trade-off between accuracy and sparsity of the final ensemble, inspect
 #' \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.
 #' @param digits Number of decimal places to print
-#' @param ... Additional arguments, currently not used.
+#' @param ... Further arguments to be passed to 
+#' \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @return Prints information about the fitted prediction rule ensemble.
-#' @details Note that the cv error is estimated with data that was also used 
-#' for learning rules and may be too optimistic. Use \code{\link{cvpre}} to 
+#' @details Note that the CV error is estimated with data that was also used 
+#' for learning rules and may be too optimistic. Use function \code{\link{cvpre}} to 
 #' obtain a more realistic estimate of future prediction error.
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
@@ -1610,47 +1611,27 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
                       digits = getOption("digits"),
                       ...) {
   
-  if (!(class(x) == "pre" || class(x) == "gpe")) {
-    stop("Argument 'x' should be of class 'pre'.")
+  if (!inherits(x, c("pre", "gpe"))) {
+    stop("Argument x should be of class 'pre'.")
   }
   
-  if (!(length(penalty.par.val) == 1)) {
-    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+  if (!(length(penalty.par.val) == 1L)) {
+    stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!(penalty.par.val == "lambda.min" || 
                penalty.par.val == "lambda.1se" || 
                (is.numeric(penalty.par.val) && penalty.par.val >= 0))) {
-    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0.")
+    stop("Argument penalty.par.val should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0.")
   }
   
-  if (!(length(digits) == 1 && digits == as.integer(digits))) {
-    stop("Argument 'digits' should be a single integer.")
+  if (!(length(digits) == 1L && digits == as.integer(digits))) {
+    stop("Argument digits should be a single integer.")
   }
   
-  # function to round values:
-  rf <- function(x) {
-    signif(x, digits)
-  }
+  ## Print summary
+  summary.pre(x, penalty.par.val = penalty.par.val, digits = digits, ...)
   
-  if (penalty.par.val == "lambda.1se") {
-    lambda_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.1se)
-    cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
-        rf(x$glmnet.fit$lambda[lambda_ind]))
-  }
-  if (penalty.par.val == "lambda.min") {
-    lambda_ind <- which(x$glmnet.fit$lambda == x$glmnet.fit$lambda.min)
-    cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
-        rf(x$glmnet.fit$lambda[lambda_ind]))
-  }
-  if (is.numeric(penalty.par.val)) {
-    lambda_ind <- which(abs(x$glmnet.fit$lambda - penalty.par.val) == min(abs(
-      x$glmnet.fit$lambda - penalty.par.val)))
-    cat("Final ensemble with lambda = ", rf(x$glmnet.fit$lambda[lambda_ind]))
-  }
-  cat("\n  number of terms = ", x$glmnet.fit$glmnet.fit$df[lambda_ind], 
-      "\n  mean cv error (se) = ", rf(x$glmnet.fit$cvm[lambda_ind]), 
-      " (", rf(x$glmnet.fit$cvsd[lambda_ind]), ")", "\n\n  cv error type : ",
-      x$glmnet.fit$name, "\n\n", sep = "")
-  coefs <- coef(x, penalty.par.val = penalty.par.val)
+  ## Print coefficients
+  coefs <- coef(x, penalty.par.val = penalty.par.val, ...)
   if (x$family %in% c("gaussian", "poisson", "binomial", "cox")) {
     coefs <- coefs[coefs$coefficient != 0, ]
   } else if (x$family %in% c("mgaussian", "multinomial")) {
@@ -1680,7 +1661,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' 
 #' @param object An object of class \code{\link{pre}}.
 #' @inheritParams print.pre
-#' @param ... Additional arguments, currently not used.
+#' @param ... Further arguments to be passed to \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @return Prints information about the fitted prediction rule ensemble.
 #' @details Note that the cv error is estimated with data that was also used 
 #' for learning rules and may be too optimistic. Use \code{\link{cvpre}} to 
@@ -1693,38 +1674,111 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 #' \code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
 #' \code{\link{interact}}, \code{\link{cvpre}} 
 #' @export
-summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
+summary.pre <- function(object, penalty.par.val = "lambda.1se", 
+                        digits = getOption("digits"), ...) {
   
-  if (class(object) != "pre") {
-    stop("Argument 'object' should be of class 'pre'.")
+  if (!inherits(object, "pre")) {
+    stop("Argument object should be of class 'pre'.")
   }
   
   if (!(length(penalty.par.val) == 1L)) {
-    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+    stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!penalty.par.val %in% c("lambda.min", "lambda.1se") && 
                !(is.numeric(penalty.par.val) && penalty.par.val >= 0)) {
-    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0.")
+    stop("Argument penalty.par.val should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0.")
   }
   
-  if (penalty.par.val == "lambda.1se") {
-    lambda_ind <- which(object$glmnet.fit$lambda == object$glmnet.fit$lambda.1se)
-    cat("\nFinal ensemble with cv error within 1se of minimum: \n  lambda = ", 
-        object$glmnet.fit$lambda[lambda_ind])
+  if (!(length(digits) == 1L && digits == as.integer(digits))) {
+    stop("Argument digits should be a single integer.")
   }
-  if (penalty.par.val == "lambda.min") {
-    lambda_ind <- which(object$glmnet.fit$lambda == object$glmnet.fit$lambda.min)
-    cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
-        object$glmnet.fit$lambda[lambda_ind])
+  
+  cl <- match.call()
+
+  if (inherits(object$glmnet.fit, "cv.relaxed")) {
+    
+    ## check if gamma value is specified, and if so whether it is a single, proper value
+    if (!is.null(cl$gamma)) {
+      if (!(length(cl$gamma) == 1L && cl$gamma >= 0 && cl$gamma <= 1)) {
+        stop("Argument gamma has been supplied, but should be a single numeric value [0, 1].")
+      }
+      if (!cl$gamma %in% object$glmnet.fit$relaxed$gamma) {
+        stop("Specified gamma value should be one of: ", 
+             paste(object$glmnet.fit$relaxed$gamma, sep = ", "),
+             ".")
+      }
+    }
+        
+    if (penalty.par.val == "lambda.1se") {
+      lambda_ind <- object$glmnet.fit$relaxed$index["1se", 1]
+      if (is.null(cl$gamma)) {
+        gamma_ind <- object$glmnet.fit$relaxed$index["1se", 2]
+      } else {
+        gamma_ind <- which(object$glmnet.fit$relaxed$gamma == cl$gamma)
+      }
+      cat("\nFinal ensemble with cv error within 1se of minimum: \n\n  lambda = ", 
+          object$glmnet.fit$relaxed$lambda.1se,
+          "\n  gamma = ", object$glmnet.fit$relaxed$gamma[[gamma_ind]])
+    }
+    if (penalty.par.val == "lambda.min") {
+      lambda_ind <- object$glmnet.fit$relaxed$index["min", 1]
+      if (is.null(cl$gamma)) {
+        gamma_ind <- object$glmnet.fit$relaxed$index["min", 2]
+      } else {
+        gamma_ind <- which(object$glmnet.fit$relaxed$gamma == cl$gamma)
+      }
+      cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
+          object$glmnet.fit$relaxed$lambda.min,
+          "\n  gamma = ", object$glmnet.fit$relaxed$gamma[[gamma_ind]])
+    }
+    if (is.numeric(penalty.par.val)) {
+      if (is.null(cl$gamma)) {
+        stop("Relaxed lasso was employed and numeric penalty.par.val was specified; also specify value for gamma.")
+      } else {
+        if (cl$gamma %in% object$glmnet.fit$relaxed$gamma) {
+          gamma_ind <- which(object$glmnet.fit$relaxed$gamma == cl$gamma)
+        } else {
+          stop("Rule ensemble was fitted with gamma values: ", 
+               object$glmnet.fit$relaxed$gamma, 
+               ". Argument gamma should specify one of those values.")
+        }
+        lambda_ind <- which.min(abs(
+          object$glmnet.fit$relaxed$statlist[[gamma_ind]]$lambda - penalty.par.val))
+        cat("Final ensemble: \n\n  lambda = ", 
+            object$glmnet.fit$relaxed$statlist[[gamma_ind]]$lambda[lambda_ind],
+            "\n  gamma = ", object$glmnet.fit$relaxed$gamma[gamma_ind])
+      }
+    }
+    cat("\n  number of terms = ", object$glmnet.fit$relaxed$statlist[[gamma_ind]]$nzero[lambda_ind], 
+        "\n  mean cv error (se) = ", object$glmnet.fit$relaxed$statlist[[gamma_ind]]$cvm[lambda_ind], 
+        " (", object$glmnet.fit$relaxed$statlist[[gamma_ind]]$cvsd[lambda_ind], ")", "\n\n  cv error type : ",
+        object$glmnet.fit$name, "\n\n", sep = "")
+    
+  } else { ## default, non-relaxed lasso was fitted
+    
+    if (!is.null(cl$gamma)) { 
+      warning("A value for gamma was specified, but will be ignored because the rule ensemble was not fit using relax = TRUE")
+    }
+    
+    if (penalty.par.val == "lambda.1se") {
+      lambda_ind <- object$glmnet.fit$index["1se", 1L]
+      cat("\nFinal ensemble with cv error within 1se of minimum: \n\n  lambda = ", 
+          object$glmnet.fit$lambda.1se)
+    }
+    if (penalty.par.val == "lambda.min") {
+      lambda_ind <- object$glmnet.fit$index["min", 1L]
+      cat("Final ensemble with minimum cv error: \n\n  lambda = ", 
+          object$glmnet.fit$lambda.min)
+    }
+    if (is.numeric(penalty.par.val)) {
+      lambda_ind <- which(abs(object$glmnet.fit$lambda - penalty.par.val) == min(abs(
+        object$glmnet.fit$lambda - penalty.par.val)))
+      cat("Final ensemble: \n\n  lambda = ", object$glmnet.fit$lambda[lambda_ind])
+    }
+    cat("\n  number of terms = ", object$glmnet.fit$nzero[lambda_ind], 
+        "\n  mean cv error (se) = ", object$glmnet.fit$cvm[lambda_ind], 
+        " (", object$glmnet.fit$cvsd[lambda_ind], ")", "\n\n  cv error type : ",
+        object$glmnet.fit$name, "\n\n", sep = "")
   }
-  if (is.numeric(penalty.par.val)) {
-    lambda_ind <- which(abs(object$glmnet.fit$lambda - penalty.par.val) == min(abs(
-      object$glmnet.fit$lambda - penalty.par.val)))
-    cat("Final ensemble with lambda = ", object$glmnet.fit$lambda[lambda_ind])
-  }
-  cat("\n  number of terms = ", object$glmnet.fit$nzero[lambda_ind], 
-      "\n  mean cv error (se) = ", object$glmnet.fit$cvm[lambda_ind], 
-      " (", object$glmnet.fit$cvsd[lambda_ind], ")", "\n\n  cv error type : ",
-      object$glmnet.fit$name, "\n\n", sep = "")
 }
 
 
@@ -1751,6 +1805,7 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' @param parallel logical. Should parallel foreach be used? Must register parallel 
 #' beforehand, such as doMC or others.
 #' @param print logical. Should accuracy estimates be printed to the command line?
+#' @param ... Further arguments to be passed to \code{\link{predict.pre}}.
 #' @return Calculates cross-validated estimates of predictive accuracy and prints 
 #' these to the command line. For survival regression, accuracy is not calculated, 
 #' as there is currently no agreed-upon way to best quantify accuracy in survival 
@@ -1781,48 +1836,48 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se", ...) {
 #' @export
 cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5, 
                   foldids = NULL, verbose = FALSE, parallel = FALSE,
-                  print = TRUE) {
+                  print = TRUE, ...) {
   
   ## check if proper object argument is specified:
-  if (class(object) != "pre") {
-    stop("Argument 'object' should supply an object of class 'pre'")
+  if (!inherits(object, "pre")) {
+    stop("Argument object should supply an object of class 'pre'")
   }
   
   ## Check if proper k argument is specified:  
   if (!(length(k) == 1L && k == as.integer(k))) {
-    stop("Argument 'k' should be a single positive integer.")
+    stop("Argument k should be a single positive integer.")
   }  
   
   ## Check if proper verbose argument is specified:  
   if (!(is.logical(verbose) && length(verbose) == 1L)) {
-    stop("Argument 'verbose' should be TRUE or FALSE.")
+    stop("Argument verbose should be TRUE or FALSE.")
   }  
   
   ## check if pclass is a numeric vector of length 1, and <= 1 and > 0
   if (!(is.numeric(pclass) && length(pclass) == 1L && pclass <= 1 && pclass > 0)) {
-    stop("Argument 'verbose' should be TRUE or FALSE.")
+    stop("Argument verbose should be TRUE or FALSE.")
   }  
   
   ## check if proper penalty.par.val argument is specified:
   if (!(length(penalty.par.val) == 1L)) {
-    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+    stop("Argument penalty.par.val should be a numeric vector of length 1.")
   } else if (!(penalty.par.val == "lambda.min" || 
                penalty.par.val == "lambda.1se" || 
                (is.numeric(penalty.par.val) && penalty.par.val >= 0))) {
-    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
+    stop("Argument penalty.par.val should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
   }
   
   ## check if proper parallel argument is specified:
   if (!(is.logical(parallel) && length(parallel) == 1L)) {
-    stop("Argument 'parallel' should be TRUE or FALSE")
+    stop("Argument parallel should be TRUE or FALSE")
   }
 
   ## check if proper foldids argument is specified:
   if (!is.null(foldids)) {
     if (length(foldids) != nrow(object$data)) {
-      stop("Argument 'foldids' has length ", length(foldids), ", but should have length ", nrow(object$data), ".")
+      stop("Argument foldids has length ", length(foldids), ", but should have length ", nrow(object$data), ".")
     } else if (all.equal(foldids, as.integer(foldids))) {
-      stop("Argument 'foldids' should be an integer vector, but is not.")
+      stop("Argument foldids should be an integer vector, but is not.")
     } 
   }
 
@@ -1847,7 +1902,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
       set.seed(seeds[i])
       cvobject <- eval(cl)
       predict(cvobject, type = "response", newdata = object$data[foldids == i,], 
-              penalty.par.val = penalty.par.val)
+              penalty.par.val = penalty.par.val, ...)
     }
     for (i in 1:k) {
       cvpreds[foldids == i,] <- cvpreds_unsorted[[i]]
@@ -1867,7 +1922,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
       cvobject <- eval(cl)
       cvpreds[foldids == i, ] <- predict(
         cvobject, newdata = object$data[foldids == i,], 
-        type = "response", penalty.par.val = penalty.par.val)
+        type = "response", penalty.par.val = penalty.par.val, ...)
       
       if (verbose && i == k) {
         cat("done!\n")
@@ -1935,7 +1990,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
 #' 
 #' @param object object of class \code{\link{pre}}
 #' @inheritParams print.pre
-#' @param ... additional arguments to be passed to \code{\link[glmnet]{coef.cv.glmnet}}.
+#' @param ... Further arguments to be passed to \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @return returns a dataframe with 3 columns: coefficient, rule (rule or 
 #' variable name) and description (\code{NA} for linear terms, conditions for 
 #' rules).
@@ -1965,19 +2020,33 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   ## be included or not
   
   ## check if proper object argument is specified:
-  if(class(object) != "pre") {
-    stop("Argument 'object' should supply an object of class 'pre'")
+  if (!inherits(object, "pre")) {
+    stop("Argument object should supply an object of class 'pre'")
   }
 
   ## check if proper penalty.par.val argument is specified:
-  if (!(length(penalty.par.val) == 1)) {
-    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+  if (!(length(penalty.par.val) == 1L)) {
+    stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!(penalty.par.val == "lambda.min" || 
                penalty.par.val == "lambda.1se" || 
                (is.numeric(penalty.par.val) && penalty.par.val >= 0))) {
-    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
+    stop("Argument penalty.par.val should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
   }
   
+  ## check if gamma value is specified, and if so whether it is a single value
+  cl <- match.call()
+  if (!is.null(cl$gamma)) {
+    if (!(length(cl$gamma) == 1L && cl$gamma >= 0 && cl$gamma <= 1)) {
+      stop("Argument gamma has been supplied, but should be a single numeric value [0, 1].")
+    }
+    if (!cl$gamma %in% object$glmnet.fit$relaxed$gamma) {
+      stop("Specified gamma value should be one of ", object$glmnet.fit$relaxed$gamma)
+    }
+    if (is.null(object$glmnet.fit$relaxed)) {
+      warning("A gamma value was specified, but the pre ensemble was not fit using relax = TRUE. The gamma value will be ignored.")
+    }
+  }
+
   if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
     coefs <- as(coef(object$glmnet.fit, s = penalty.par.val, ...), 
                 Class = "matrix")
@@ -2088,23 +2157,38 @@ predict.pre <- function(object, newdata = NULL, type = "link",
                         penalty.par.val = "lambda.1se", ...)
 {
   ## Check if proper object argument is specified:
-  if(class(object) != "pre") {
-    stop("Argument 'object' should supply an object of class 'pre'")
+  if (!inherits(object, "pre")) {
+    stop("Argument object should supply an object of class 'pre'")
   }
   
   ## check if proper type argument is specified:
   if (length(type) != 1L || !is.character(type)) {
-    stop("Argument 'type' should be a character vector of length 1")
+    stop("Argument type should be a character vector of length 1")
   }
   
   ## check if proper penalty.par.val argument is specified:
   if (!(length(penalty.par.val) == 1L)) {
-    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+    stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!(penalty.par.val%in% c("lambda.min", "lambda.1se")) && 
                !(is.numeric(penalty.par.val) && penalty.par.val >= 0)) {
-    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
+    stop("Argument penalty.par.val should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
   }
-
+  
+  ## check if gamma value is specified, and if so whether it is a single value
+  cl <- match.call()
+  if (!is.null(cl$gamma)) {
+    if (!(length(cl$gamma) == 1L && cl$gamma >= 0 && cl$gamma <= 1)) {
+      stop("Argument gamma has been supplied, but should be a single numeric value [0, 1].")
+    }
+    if (!cl$gamma %in% object$glmnet.fit$relaxed$gamma) {
+      stop("Specified gamma value should be one of ", object$glmnet.fit$relaxed$gamma)
+    }
+    if (is.null(object$glmnet.fit$relaxed)) {
+      warning("A gamma value was specified, but the pre ensemble was not fit using relax = TRUE. The gamma value will be ignored.")
+    }
+  }
+  
+  ## Construct data matrix for prediction
   if (is.null(newdata)) {
     
     newdata <- object$modmat
@@ -2190,17 +2274,17 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   
   ## Get predictions:
   if (object$family %in% c("gaussian", "binomial", "poisson", "cox")) {
+    
     preds <- predict(object$glmnet.fit, newx = newdata, 
-                     s = penalty.par.val, type = type, ...)[,1]
+                     s = penalty.par.val, type = type, ...)[ , 1L]
   } else if (object$family %in% c("mgaussian", "multinomial")) {
     if (object$family == "multinomial" && type == "class") {
       preds <- predict(object$glmnet.fit, newx = newdata, 
-                       s = penalty.par.val, type = type, ...)[,1]
+                       s = penalty.par.val, type = type, ...)[ , 1L]
     } else {
       preds <- predict(object$glmnet.fit, newx = newdata, 
-                       s = penalty.par.val, type = type, ...)[,,1]
+                       s = penalty.par.val, type = type, ...)[ , , 1L]
     }
-
   }
   return(preds)
 }
@@ -2218,7 +2302,9 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' datasets, package `plotmo` (Milborrow, 2019) provides more efficient functions 
 #' for plotting partial dependence and also supports `pre` models. 
 #'
-#' @param object an object of class \code{\link{pre}}
+#' @param object an object of class \code{\link{pre}}.
+#' @param gamma Mixing parameter for relaxed fits. See  
+#' \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @param varname character vector of length one, specifying the variable for
 #' which the partial dependence plot should be created. Note that \code{varname}
 #' should correspond to the variable as described in the model formula used
@@ -2258,7 +2344,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' @export
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                        nvals = NULL, type = "response", ylab = "predicted", 
-                       ...)
+                       gamma = NULL, ...)
 {
  
   ## Check family:
@@ -2267,34 +2353,52 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   }
   
   ## Check if proper object argument is specified: 
-  if(class(object) != "pre") {
-    stop("Argument 'object' should be an object of class 'pre'")
+  if (!inherits(object, "pre")) {
+    stop("Argument object should be an object of class 'pre'")
   }
   
   ## Check if proper varname argument is specified: 
   if (length(varname) != 1L || !is.character(varname)) {
-    stop("Argument 'varname' should be a character vector of length 1.")
+    stop("Argument varname should be a character vector of length 1.")
   } else if (!(varname %in% object$x_names)) {
     varnames <- grep(varname, x = object$x_names, value = TRUE, fixed = TRUE)
     if (length(varnames > 0)) {
-      stop("Argument 'varname' should specify the variable name as specified in the model formula (e.g., ", paste0(paste0("'", varnames, "'"), collapse = " or "), ").")
+      stop("Argument varname should specify the variable name as specified in the model formula (e.g., ", paste0(paste0("'", varnames, "'"), collapse = " or "), ").")
     } else {
-      stop("Argument 'varname' should specify the name of a variable used to generate the ensemble.")
+      stop("Argument varname should specify the name of a variable used to generate the ensemble.")
     }
   }
   
   ## Check if proper penalty.par.val argument is specified: 
   if (length(penalty.par.val) != 1L) {
-    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+    stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!( penalty.par.val %in% c("lambda.min", "lambda.1se") || 
                (is.numeric(penalty.par.val) && penalty.par.val >= 0))) {
-    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
+    stop("Argument penalty.par.val should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
+  }
+  
+  ## check if proper gamma value is specified
+  if (!is.null(gamma)) {
+    if (!is.null(object$glmnet.fit$relaxed)) { 
+      warning("A value for gamma was specified, but will be ignored because the rule ensemble was not fit using relax = TRUE.")
+      gamma <- NULL
+    }
+  }
+  if (!is.null(gamma)) {
+    if (!(length(gamma) == 1L && gamma >= 0 && gamma <= 1)) {
+      stop("Argument gamma has been supplied, but should be a single numeric value [0, 1].")
+    }
+    if (!gamma %in% object$glmnet.fit$relaxed$gamma) {
+      stop("Specified gamma value should be one of: ", 
+           paste(object$glmnet.fit$relaxed$gamma, sep = ", "),
+           ".")
+    }
   }
   
   ## Check if proper nvals argument is specified: 
   if (!is.null(nvals)) {
     if (length(nvals) != 1L || nvals != as.integer(nvals)) {
-      stop("Argument 'nvals' should be an integer vector of length 1.")
+      stop("Argument nvals should be an integer vector of length 1.")
     } else if (is.factor(object$data[ , varname]) && !is.null(nvals)) {
       warning("Plot is requested for variable of class factor. Value specified for
               nvals will be ignored.", immediate. = TRUE)
@@ -2304,7 +2408,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   
   ## Check if proper type argument is specified: 
   if (length(type) != 1L || !is.character(type)) {
-    stop("Argument 'type' should be a single character string.")
+    stop("Argument type should be a single character string.")
   }
   
   # Generate expanded dataset:
@@ -2318,8 +2422,14 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   exp_dataset[,varname] <- rep(newx, each = nrow(object$data))
   
   # get predictions:
-  exp_dataset$predy <- predict.pre(object, newdata = exp_dataset, type = type,
-                                   penalty.par.val = penalty.par.val)
+  if (is.null(gamma)) {
+    exp_dataset$predy <- predict.pre(object, newdata = exp_dataset, type = type,
+                                    penalty.par.val = penalty.par.val)
+  } else {
+    exp_dataset$predy <- predict.pre(object, newdata = exp_dataset, type = type,
+                                     penalty.par.val = penalty.par.val, 
+                                     gamma = gamma)
+  }
   
   # create plot:
   plot(aggregate(
@@ -2342,6 +2452,8 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' for plotting partial dependence and also supports `pre` models. 
 #'
 #' @param object an object of class \code{\link{pre}}
+#' @param gamma Mixing parameter for relaxed fits. See  
+#' \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @param varnames character vector of length two. Currently, pairplots can only
 #' be requested for non-nominal variables. If varnames specifies the name(s) of
 #' variables of class \code{"factor"}, an error will be printed.
@@ -2357,7 +2469,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' \code{pred.type = "response"} gives fitted values for continuous outputs and
 #' fitted probabilities for nominal outputs. \code{pred.type = "link"} gives fitted
 #' values for continuous outputs and linear predictor values for nominal outputs.
-#' @param ... Additional arguments to be passed to \code{\link[graphics]{image}}, 
+#' @param ... Further arguments to be passed to \code{\link[graphics]{image}}, 
 #' \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on
 #' whether \code{type} is specified to be \code{"heatmap"}, \code{"contour"}, \code{"both"} 
 #' or \code{"perspective"}).
@@ -2400,8 +2512,8 @@ pairplot <- function(object, varnames, type = "both",
 {
   
   ## Check if proper object argument is specified: 
-  if(class(object) != "pre") {
-    stop("Argument 'object' should be an object of class 'pre'")
+  if (!inherits(object, "pre")) {
+    stop("Argument object should be an object of class 'pre'")
   }
   
   ## Check family:
@@ -2411,14 +2523,14 @@ pairplot <- function(object, varnames, type = "both",
   
   ## Check if proper varnames argument is specified: 
   if (length(varnames) != 2L || !is.character(varnames)) {
-    stop("Argument 'varnames' should be a character vector of length 2.")
+    stop("Argument varnames should be a character vector of length 2.")
   } else if (!(all(varnames %in% object$x_names))) {
         varname <- grep(varnames[1], x = object$x_names, value = TRUE, fixed = TRUE)
         varnames <- c(varname, grep(varnames[2], x = object$x_names, value = TRUE, fixed = TRUE))
     if (length(varnames > 0)) {
-      stop("Argument 'varnames' should specify the variable names as specified in the model formula (e.g., ", paste0(paste0("'", varnames, "'"), collapse = " and/or "), ").")
+      stop("Argument varnames should specify the variable names as specified in the model formula (e.g., ", paste0(paste0("'", varnames, "'"), collapse = " and/or "), ").")
     } else {
-      stop("Argument 'varnames' should specify names of variables used to generate the ensemble.")
+      stop("Argument varnames should specify names of variables used to generate the ensemble.")
     }
   } else if (any(sapply(object$data[ , varnames], is.factor))) {
     stop("3D partial dependence plots are currently not supported for factors.")
@@ -2426,25 +2538,43 @@ pairplot <- function(object, varnames, type = "both",
   
   ## Check if proper penalty.par.val argument is specified: 
   if (!(length(penalty.par.val) == 1)) {
-    stop("Argument 'penalty.par.val' should be a vector of length 1.")
+    stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!(penalty.par.val %in% c("lambda.min", "lambda.1se") || 
                (is.numeric(penalty.par.val) && penalty.par.val >= 0))) {
-    stop("Argument 'penalty.par.val' should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
+    stop("Argument penalty.par.val should be equal to 'lambda.min', 'lambda.1se' or a numeric value >= 0")
+  }
+  
+  ## check if proper gamma value is specified
+  if (!is.null(gamma)) {
+    if (!is.null(object$glmnet.fit$relaxed)) { 
+      warning("A value for gamma was specified, but will be ignored because the rule ensemble was not fit using relax = TRUE.")
+      gamma <- NULL
+    }
+  }
+  if (!is.null(gamma)) {
+    if (!(length(gamma) == 1L && gamma >= 0 && gamma <= 1)) {
+      stop("Argument gamma has been supplied, but should be a single numeric value [0, 1].")
+    }
+    if (!gamma %in% object$glmnet.fit$relaxed$gamma) {
+      stop("Specified gamma value should be one of: ", 
+           paste(object$glmnet.fit$relaxed$gamma, sep = ", "),
+           ".")
+    }
   }
   
   ## Check if proper nvals argument is specified: 
   if (!(length(nvals) == 2 && all(nvals == as.integer(nvals)))) {
-    stop("Argument 'nvals' should be an integer vector of length 2.")
+    stop("Argument nvals should be an integer vector of length 2.")
   }
   
   ## Check if proper type argument is specified: 
   if (!(length(type) == 1 && is.character(type))) {
-    stop("Argument 'type' should be equal to 'heatmap', 'contour', 'both' or 'perspective'.")
+    stop("Argument type should be equal to 'heatmap', 'contour', 'both' or 'perspective'.")
   }
   
   ## Check if proper pred.type argument is specified: 
   if (!(length(type) == 1 && is.character(type))) {
-    stop("Argument 'type' should be a single character string.")
+    stop("Argument type should be a single character string.")
   }
   
   ## check if pakcage akima is installed:
@@ -2473,8 +2603,13 @@ pairplot <- function(object, varnames, type = "both",
                                    times = nobs1)
   
   # get predictions:
-  pred_vals <- predict.pre(object, newdata = exp_dataset, type = pred.type,
-                           penalty.par.val = penalty.par.val)
+  if (is.null(gamma)) {
+    pred_vals <- predict.pre(object, newdata = exp_dataset, type = pred.type,
+                            penalty.par.val = penalty.par.val)
+  } else {
+    pred_vals <- predict.pre(object, newdata = exp_dataset, type = pred.type,
+                             penalty.par.val = penalty.par.val, gamma = gamma)
+  }
   
   # create plot:
   if (is.null(nvals)) {nvals <- 3}
@@ -2549,6 +2684,8 @@ importance <- function(x, ...)  UseMethod("importance")
 #' character spaces added after variable names. 
 #' @param cex.axis numeric. The magnification to be used for axis annotation
 #' relative to the current setting of \code{cex}.
+#' @param gamma Mixing parameter for relaxed fits. See  
+#' \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @param legend logical or character. Should legend be plotted for multinomial
 #' or multivariate responses and if so, where? Defaults to \code{"topright"}, 
 #' which puts the legend in the top-right corner of the plot. Alternatively, 
@@ -2585,7 +2722,8 @@ importance <- function(x, ...)  UseMethod("importance")
 #' @aliases importance
 
 importance.pre <- function(x, standardize = FALSE, global = TRUE,
-                           quantprobs = c(.75, 1), penalty.par.val = "lambda.1se", 
+                           penalty.par.val = "lambda.1se", gamma = NULL,
+                           quantprobs = c(.75, 1),
                            round = NA, plot = TRUE, ylab = "Importance",
                            main = "Variable importances", abbreviate = 10L,
                            diag.xlab = TRUE, diag.xlab.hor = 0, diag.xlab.vert = 2,
@@ -2610,27 +2748,32 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
   
   ## Step 1: Calculate the importances of the base learners:
   
-  # get base learner coefficients:
-  coefs <- coef(x, penalty.par.val = penalty.par.val)
+  ## get coefficients:
+  if (is.null(gamma)) {
+    coefs <- coef(x, penalty.par.val = penalty.par.val)
+  } else {
+    coefs <- coef(x, penalty.par.val = penalty.par.val, gamma = gamma)    
+  }
   if (x$family %in% c("mgaussian", "multinomial")) {
     coef_inds <- names(coefs)[!names(coefs) %in% c("rule", "description")]
   }
 
-  # only continue when there are nonzero terms besides intercept:
+  ## continue only continue when there are nonzero terms besides intercept:
   if ((x$family %in% c("gaussian", "binomial", "poisson") && 
       sum(coefs$coefficient != 0) > 1L ) || 
       (x$family %in% c("mgaussian", "multinomial") && 
        sum(rowSums(coefs[,coef_inds]) != 0) > 1L) ||
       (x$family == "cox" && sum(coefs$coefficient != 0) > 0)) { 
-    # give factors a description:
+    ## give factors a description:
     if (any(is.na(coefs$description))) {
       coefs$description[is.na(coefs$description)] <-
         paste0(as.character(coefs$rule)[is.na(coefs$description)], " ")
     }
-    coefs <- coefs[order(coefs$rule),]
-    # Get sds for every baselearner:
+    coefs <- coefs[order(coefs$rule), ]
+    
+    ## Get SDs for every baselearner:
     if (global) {
-      # x$x_scales should be used to get correct SDs for linear terms:
+      ## Get SDs (x$x_scales should be used to get correct SDs for linear terms)
       if (x$family == "cox") {
         sds <- apply(x$modmat, 2, sd, na.rm = TRUE)  
       } else {
@@ -2645,11 +2788,11 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
       }
     } else {
       preds <- predict.pre(x, newdata = x$data, type = "response",
-                           penalty.par.val = penalty.par.val)
+                           penalty.par.val = penalty.par.val, ...)
       local_modmat <- x$modmat[preds >= quantile(preds, probs = quantprobs[1]) &
                                       preds <= quantile(preds, probs = quantprobs[2]),]
       if (nrow(local_modmat) < 2) {stop("Selected subregion contains less than 2 observations, importances cannot be calculated")}
-      # x$x_scales should be used to get correct SDs for linear terms:
+      ## x$x_scales should be used to get correct SDs for linear terms:
       if (x$family == "cox") {
         ## cox prop haz model has no intercept, so should be omitted
         sds <- apply(local_modmat, 2, sd, na.rm = TRUE)
@@ -2683,7 +2826,7 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
       warning("There seems to be a problem with the ordering or size of the coefficient and sd vectors. Importances cannot be calculated.")
     }
     
-    # baselearner importance is given by abs(coef*SD) (F&P section 6):
+    ## baselearner importance is given by abs(coef*SD) (F&P section 6):
     if (x$family %in% c("multinomial", "mgaussian")) {
       baseimps <- data.frame(coefs, sd = sds)
       baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) {x*sds}))
@@ -2711,11 +2854,11 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
     ## Omit intercept:
     baseimps <- baseimps[baseimps$description != "1",]
     
-    # Calculate the number of terms in each rule:
+    ## Calculate the number of conditions in each rule:
     baseimps$nterms <- NA
     for(i in 1:nrow(baseimps)) {
-      # If there is " & " in description, there are at least 2 terms/variables 
-      # in the base learner:
+      ## If there is " & " in description, there are at least 2 conditions/variables 
+      ## in the base learner:
       if (grepl(" & ", baseimps$description[i])) {
         baseimps$nterms[i] <- length(gregexpr("&", baseimps$description)[[i]]) + 1L
       } else {
@@ -2734,19 +2877,19 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
                             stringsAsFactors = FALSE)
     }
     
-    for(i in 1:nrow(varimps)) { # for every variable:
+    for(i in 1:nrow(varimps)) {
       
-      ## Get imps from rules and linear terms:
+      ## Get imps from rules and linear terms
       for(j in 1:nrow(baseimps)) {
-        # if the variable name appears in the rule:
-        #   (Note: EXACT matches are needed, so 1) there should be a space before 
-        #     and after the variable name in the rule and thus 2) there should be 
-        #     a space added before the description of the rule)
+        ## if the variable name appears in the rule:
+        ##   (Note: EXACT matches are needed, so 1) there should be a space before 
+        ##     and after the variable name in the rule and thus 2) there should be 
+        ##     a space added before the description of the rule)
         if(grepl(paste0(" ", varimps$varname[i], " "), paste0(" ", baseimps$description[j]))) {
-          # count the number of times it appears in the rule:
+          ## Count the number of times it appears in the rule
           n_occ <- length(gregexpr(paste0(" ", varimps$varname[i], " "),
                                    paste0(" ", baseimps$description[j]), fixed = TRUE)[[1]])
-          # add it to the importance of the variable:
+          # Add to the importance of the variable
           if (x$family %in% c("mgaussian", "multinomial")) {
             varimps[i, gsub("coefficient", "importance", coef_inds)] <- 
               varimps[i, gsub("coefficient", "importance", coef_inds)] + 
@@ -2757,10 +2900,10 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
         }
       }
         
-      ## Get imps from factors:
+      ## Get imps from factors
       if (is.factor(x$data[ , varimps$varname[i]])) { # && 
           # !is.ordered(x$data[ , varimps$varname[i]])) {
-        ## Sum those baseimps$imp for which baseimps$rule has varimps$varname[i] as part of its name
+        ## Sum baseimps$imp for which baseimps$rule has varimps$varname[i] as part of its name
         if (x$family %in% c("mgaussian", "multinomial")) {
           varimps[i, gsub("coefficient", "importance", coef_inds)] <-
             varimps[i, gsub("coefficient", "importance", coef_inds)] +
@@ -2775,8 +2918,6 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
     
     
     ## Step 3: Return (and plot) importances:
-    
-
     
     if (x$family %in% c("mgaussian", "multinomial")) {
       varimps <- varimps[rowSums(varimps[ , gsub("coefficient", "importance", coef_inds)]) != 0, ]
@@ -2892,6 +3033,7 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
 #' @param parallel logical. Should parallel foreach be used to generate initial
 #' ensemble? Must register parallel beforehand, such as doMC or others.
 #' @param verbose logical. should progress be printed to the command line?
+#' @param ... Further arguments to be passed to \code{\link{predict.pre}}.
 #' @return A list of length \code{nsamp} with null interaction models, to be
 #' used as input for \code{\link{interact}}.
 #' @examples \donttest{set.seed(42)
@@ -2915,7 +3057,8 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
 #' @seealso \code{\link{pre}}, \code{\link{interact}} 
 #' @export
 bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
-                           penalty.par.val = "lambda.1se", verbose = FALSE)
+                           penalty.par.val = "lambda.1se", verbose = FALSE,
+                           ...)
 {
   
   ## TODO: Implement for all types of response variables
@@ -2951,11 +3094,11 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
       F_A_of_x <- predict.pre(bs.ens.null, newdata = object$data, 
-                              penalty.par.val = penalty.par.val)
+                              penalty.par.val = penalty.par.val, ...)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
       F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
-                                penalty.par.val = penalty.par.val)
+                                penalty.par.val = penalty.par.val, ...)
       # step 5: Calculate ytilde of formula 47 of F&P2008:
       ytilde <- F_A_of_x + object$data[bs_inds, object$y_names] - F_A_of_x_p
       # step 6: Build a model using (x,ytilde), using the same procedure as was
@@ -2977,12 +3120,13 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
       bs.ens.null <- eval(bsnullmodcall, envir = environment())
       # step 3: first part of formula 47 of F&P2008:
       # Calculate predictions F_A(x) for original x, using the null interaction model F_A:
-      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$data, type = "link")
+      F_A_of_x <- predict.pre(bs.ens.null, newdata = object$data, type = "link",
+                              ...)
       # step 4: third part of formula 47 of F&P2008:
       # Calculate predictions F_A(x_p):
       F_A_of_x_p <- predict.pre(bs.ens.null, newdata = bsdataset,
                                 penalty.par.val = penalty.par.val,
-                                type = "link")
+                                type = "link", ...)
       # step 5: Calculate ytilde of formula 47 of F&P2008:
       # TODO: Does not compute for categorical outcomes: 
       ytilde <- F_A_of_x + (object$data[bs_inds, object$y_names] - F_A_of_x_p)
@@ -3003,9 +3147,9 @@ bsnullinteract <- function(object, nsamp = 10, parallel = FALSE,
 
 
 # Internal function for calculating H statistic (section 8.1, equation 45):
-Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose = FALSE) {
+Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose = FALSE, ...) {
   # Calculate the predicted value F(x) of the full model for each observation:
-  preds_x <- predict.pre(object, newdata = object$data, penalty.par.val = penalty.par.val)
+  preds_x <- predict.pre(object, newdata = object$data, penalty.par.val = penalty.par.val, ...)
   # Calculate the expected value of F_j(x_j), over all observed values x_/j,
   # and the expected value of F_/j(x_/j), over all observed values x_j:
   exp_dataset <- object$data[rep(row.names(object$data),
@@ -3016,9 +3160,9 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
   exp_dataset$ids <- sample(1:k, nrow(exp_dataset), replace = TRUE)
   for(i in 1:k) {
     if (verbose) cat(".")
-    exp_dataset[exp_dataset$ids==i, "yhat"] <- predict.pre(
+    exp_dataset[exp_dataset$ids == i, "yhat"] <- predict.pre(
       object, newdata = exp_dataset[exp_dataset$ids==i,],
-      penalty.par.val = penalty.par.val)
+      penalty.par.val = penalty.par.val, ...)
   }
   # expected value of F_j(x_j), over all observed values x_/j:
   exp_dataset$i_xj <- rep(1:nrow(object$data), each = nrow(object$data))
@@ -3083,7 +3227,7 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' command line?
 #' @param parallel logical. Should parallel foreach be used? Must register
 #' parallel beforehand, such as doMC or others.
-#' @param ... Additional arguments to be passed to \code{barplot}.
+#' @param ... Further arguments to be passed to \code{barplot}.
 #' @examples
 #' \donttest{set.seed(42)
 #'  airq.ens <- pre(Ozone ~ ., data=airquality[complete.cases(airquality),])
@@ -3128,7 +3272,9 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
 #' @export
 interact <- function(object, varnames = NULL, nullmods = NULL, 
-                     penalty.par.val = "lambda.1se", quantprobs = c(.05, .95),
+                     penalty.par.val = "lambda.1se", 
+                     gamma = NULL, 
+                     quantprobs = c(.05, .95),
                      plot = TRUE, col = c("darkgrey", "lightgrey"), 
                      ylab = "Interaction strength", 
                      main = "Interaction test statistics", 
@@ -3164,8 +3310,13 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
   if (parallel) {
     H <- foreach::foreach(i = 1:length(varnames), .combine = "c", .packages = "pre") %dopar% {
       # Calculate H_j for the original dataset:
-      Hsquaredj(object = object, varname = varnames[i], k = k,
-                penalty.par.val = penalty.par.val, verbose = verbose)
+      if (is.null(gamma)) {
+        Hsquaredj(object = object, varname = varnames[i], k = k,
+                  penalty.par.val = penalty.par.val, verbose = verbose)
+      } else {
+        Hsquaredj(object = object, varname = varnames[i], k = k,
+                  penalty.par.val = penalty.par.val, verbose = verbose, gamma = gamma)
+      }
     }
     names(H) <- varnames
     if (!is.null(nullmods)) {
@@ -3173,9 +3324,15 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
         # Calculate H_j for the bootstrapped null models:
         nullH <- c()
         for(j in 1:length(nullmods)) {
-          nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
-                                k = k, penalty.par.val = penalty.par.val,
-                                verbose = verbose)
+          if (is.null(gamma)) {
+            nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+                                  k = k, penalty.par.val = penalty.par.val,
+                                  verbose = verbose)
+          } else {
+            nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+                                  k = k, penalty.par.val = penalty.par.val,
+                                  verbose = verbose, gamma = gamma)
+          }
         }
         nullH
       }
@@ -3186,18 +3343,38 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
     H <- c()
     if (is.null(nullmods)) {
       for(i in 1:length(varnames)) {
-        H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k,
-                          penalty.par.val = penalty.par.val, verbose = verbose)
+        if (is.null(gamma)) {
+          nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+                                k = k, penalty.par.val = penalty.par.val,
+                                verbose = verbose)
+        } else {
+          nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+                                k = k, penalty.par.val = penalty.par.val,
+                                verbose = verbose, gamma = gamma)
+        }
       }
-    } else { # Calculate H values for the training data and bootstrapped null models:
+    } else { # Comoute H values for the training data and bootstrapped null models
       nullH <- data.frame()
       for(i in 1:length(varnames)) {
-        H[i] <- Hsquaredj(object = object, varname = varnames[i], k = k,
-                          penalty.par.val = penalty.par.val, verbose = verbose)
+        if (is.null(gamma)) {
+          H[i] <- Hsquaredj(object = object, varname = varnames[i],
+                                k = k, penalty.par.val = penalty.par.val,
+                                verbose = verbose)
+        } else {
+          H[i] <- Hsquaredj(object = object, varname = varnames[i],
+                                k = k, penalty.par.val = penalty.par.val,
+                                verbose = verbose, gamma = gamma)
+        }
         for(j in 1:length(nullmods)) {
-          nullH[j,i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+          if (is.null(gamma)) {
+            nullH[j, i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
                                   k = k, penalty.par.val = penalty.par.val,
                                   verbose = verbose)
+          } else {
+            nullH[j, i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+                                  k = k, penalty.par.val = penalty.par.val,
+                                  verbose = verbose, gamma = gamma)
+          }
         }
       }
       colnames(nullH) <- varnames
@@ -3261,6 +3438,8 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' the rule does not apply (``exit nodes'')?
 #' @param standardize logical. Should printed importances be standardized? See
 #' \code{\link{importance.pre}}.
+#' @param gamma Mixing parameter for relaxed fits. See  
+#' \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @param ... Arguments to be passed to \code{\link[grid]{gpar}}.
 #' @examples
 #' \donttest{set.seed(42)
@@ -3269,7 +3448,8 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
 #' @seealso \code{\link{pre}}, \code{\link{print.pre}}
 #' @method plot pre
 #' @export
-plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE, 
+plot.pre <- function(x, penalty.par.val = "lambda.1se", gamma = NULL,
+                     linear.terms = TRUE, 
                      nterms = NULL, fill = "white", ask = FALSE, 
                      exit.label = "0", standardize = FALSE, plot.dim = c(3, 3), 
                      ...) {
@@ -3294,16 +3474,26 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", linear.terms = TRUE,
 
   ## Get nonzero terms:
   if (x$family %in% c("multinomial", "mgaussian")) {
-    coefs <- coef(x, penalty.par.val = penalty.par.val)
+    if (is.null(gamma)) {
+      coefs <- coef(x, penalty.par.val = penalty.par.val)
+    } else {
+      coefs <- coef(x, penalty.par.val = penalty.par.val, gamma = gamma)
+    }
     nonzeroterms <- coefs[rowSums(coefs[,!names(coefs) %in% c("rule", "description")]) != 0,]
     if ("(Intercept)" %in% nonzeroterms$rule) {
       intercept <- nonzeroterms[which(nonzeroterms$rule == "(Intercept)"), "coefficient"] # may be needed for plotting linear terms later      
       nonzeroterms <- nonzeroterms[-which(nonzeroterms$rule == "(Intercept)"), ] # omit intercept
     }
   } else {
-    nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
-                               penalty.par.val = penalty.par.val, 
-                               standardize = standardize)$baseimps
+    if (is.null(gamma)) {
+      nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
+                                 penalty.par.val = penalty.par.val, 
+                                 standardize = standardize)$baseimps
+    } else {
+      nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
+                                 penalty.par.val = penalty.par.val, 
+                                 standardize = standardize)$baseimps
+    }
   }
 
   if (!linear.terms) {
@@ -3638,7 +3828,8 @@ get_conditions <- function(object, penalty.par.val = "lambda.1se") {
 #' \code{colors = NULL} (default), \code{colorRampPalette} is used to generate
 #' a sequence of 200 colors going from red to white to blue. A different set of 
 #' plotting colors can be specified here, for example: 
-#' \code{cm.colors(100)}, \code{colorspace::rainbow_hcl)(100)} 
+#' \code{cm.colors(100)}, \code{rainbow_hcl)(100)} (the latter requires
+#' package \code{colorspace}). 
 #' or \code{colorRampPalette(c("red", "yellow", "green"))(100)}.
 #' @param fig.plot plotting region to be used for correlation plot. See 
 #' \code{fig} under \code{\link{par}}.
@@ -3649,8 +3840,6 @@ get_conditions <- function(object, penalty.par.val = "lambda.1se") {
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' corplot(airq.ens)}
-#' @seealso See
-#' \code{\link[colorspace]{rainbow_hcl}} and \code{\link[grDevices]{colorRampPalette}}.
 #' @export
 corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
                     fig.plot = c(0, 0.85, 0, 1), fig.legend = c(.8, .95, 0, 1),
@@ -3735,6 +3924,8 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
 #' @param rule.col character. Specifies the color to be used for plotting the rule
 #' descriptions. If \code{NULL}, rule descriptions are not plotted.
 #' @param ylab character. Specifies the label for the horizonantal (y-) axis.
+#' @param ... Further arguments to be passed to \code{\link{predict.pre}} and 
+#' \code{\link[glmnet]{predict.cv.glmnet}}.
 #' @details Provides a graphical depiction of the contribution of rules and
 #' linear terms to the individual predictions (if \code{plot = TRUE}.
 #' Invisibly returns a list with objects \code{predictors} and
@@ -3797,11 +3988,11 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
                     pred.type = "response", digits = 3L,  cex = .8,
                     ylab = "Contribution to linear predictor",
                     bar.col = c("#E495A5", "#39BEB1"),
-                    rule.col = "darkgrey") {
+                    rule.col = "darkgrey", ...) {
   
   ## check arguments:
   if (!inherits(object, what = "pre")) {
-    stop("Argument object should specfify an object of class 'pre'.")
+    stop("Argument object should specify an object of class 'pre'.")
   }
   if (!is.data.frame(newdata)) {
     stop("Argument newdata should specify a data frame.")
@@ -3813,7 +4004,7 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
     stop("Argument plot should be a logical vector of length 1.")
   }
   
-  ## Check if all variables with non-zero importances have been supplied:
+  ## Check if all variables with non-zero importance have been supplied:
   req_vars <- importance(object, plot = FALSE, 
                          penalty.par.val = penalty.par.val)$varimps$varname
   if (!all(req_vars%in% names(newdata))) {
@@ -3823,7 +4014,7 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
   ## Check if proper response variable is specified: 
   if (object$family %in% c("mgaussian", "multinomial")) {
     if (!((is.numeric(response) || is.character(response)) && length(response) == 1L)) {
-      stop("Argument 'response' should specify a numeric or character vector or length 1.")
+      stop("Argument response should specify a numeric or character vector or length 1.")
     }
     if (object$family == "mgaussian") {
       if (is.numeric(response)) {
@@ -3833,7 +4024,7 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
         response <- object$y_names[response]
       } else {
         if (!(response %in% object$y_names)) {
-          stop(paste0("Response variable named '", response, "'does not exist. Argument 'response' should specify one of: "), paste(object$y_names, collapse = " "))
+          stop(paste0("Response variable named '", response, "'does not exist. Argument response should specify one of: "), paste(object$y_names, collapse = " "))
         }
       }
     } else {
@@ -3844,24 +4035,24 @@ explain <- function(object, newdata, penalty.par.val = "lambda.1se",
         response <- levels(object$data[ , object$y_names])[response]
       } else {
         if (!(response %in% levels(object$data[ , object$y_names]))) {
-          stop(paste0("Response variable level '", response, "' does not exist. Argument 'response' should specify one of: "), paste(levels(object$data[ , object$y_names]), collapse = " "))
+          stop(paste0("Response variable level '", response, "' does not exist. Argument response should specify one of: "), paste(levels(object$data[ , object$y_names]), collapse = " "))
         }
       }
     }
   }
   
-  ## Prepare model matrix for getting explanations:
+  ## Prepare model matrix for getting explanations
   modmat <- newdata
-  
   ## Add values of variables which have zero importance, if missing:
   nonreq_vars <- object$x_names[!object$x_names %in% req_vars]
   if (any(add_vars <- !nonreq_vars %in% names(modmat))) {
     modmat[, nonreq_vars[add_vars]] <- object$data[1, nonreq_vars[add_vars]]
   }
   
-  ## Get predicted values:
+  ## Get predicted values
   preds <- round(predict(object, newdata = modmat, type = pred.type,
-                         penalty.par.val = penalty.par.val), digits = digits)
+                         penalty.par.val = penalty.par.val, ...), 
+                 digits = digits)
   
   ## Prepare newdata:
   winsfrac <- (object$call)$winsfrac

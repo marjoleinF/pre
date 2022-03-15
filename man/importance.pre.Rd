@@ -10,8 +10,9 @@ rule ensemble (pre)}
   x,
   standardize = FALSE,
   global = TRUE,
-  quantprobs = c(0.75, 1),
   penalty.par.val = "lambda.1se",
+  gamma = NULL,
+  quantprobs = c(0.75, 1),
   round = NA,
   plot = TRUE,
   ylab = "Importance",
@@ -37,11 +38,6 @@ numeric (non-count) response variables.}
 \code{FALSE}, local importances will be calculated, given the quantiles 
 of the predictions F(x) in \code{quantprobs}.}
 
-\item{quantprobs}{optional numeric vector of length two. Only used when
-\code{global = FALSE}. Probabilities for calculating sample quantiles of the 
-range of F(X), over which local importances are calculated. The default 
-provides variable importances calculated over the 25\% highest values of F(X).}
-
 \item{penalty.par.val}{character or numeric. Value of the penalty parameter
 \eqn{\lambda} to be employed for selecting the final ensemble. The default
 \code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
@@ -51,6 +47,14 @@ with minimum cross-validated error, or a numeric value \eqn{>0} may be
 specified, with higher values yielding a sparser ensemble. To evaluate the 
 trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
+
+\item{gamma}{Mixing parameter for relaxed fits. See
+\code{\link[glmnet]{coef.cv.glmnet}}.}
+
+\item{quantprobs}{optional numeric vector of length two. Only used when
+\code{global = FALSE}. Probabilities for calculating sample quantiles of the 
+range of F(X), over which local importances are calculated. The default 
+provides variable importances calculated over the 25\% highest values of F(X).}
 
 \item{round}{integer. Number of decimal places to round numeric results to.
 If \code{NA} (default), no rounding is performed.}

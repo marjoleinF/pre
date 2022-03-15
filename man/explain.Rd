@@ -20,7 +20,8 @@ explain(
   cex = 0.8,
   ylab = "Contribution to linear predictor",
   bar.col = c("#E495A5", "#39BEB1"),
-  rule.col = "darkgrey"
+  rule.col = "darkgrey",
+  ...
 )
 }
 \arguments{
@@ -88,6 +89,9 @@ plotting the positive and negative contributions to the predictions, respectivel
 
 \item{rule.col}{character. Specifies the color to be used for plotting the rule
 descriptions. If \code{NULL}, rule descriptions are not plotted.}
+
+\item{...}{Further arguments to be passed to \code{\link{predict.pre}} and 
+\code{\link[glmnet]{predict.cv.glmnet}}.}
 }
 \description{
 \code{explain} shows which rules apply to which observations and visualizes

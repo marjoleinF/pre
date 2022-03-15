@@ -7,6 +7,7 @@
 \method{plot}{pre}(
   x,
   penalty.par.val = "lambda.1se",
+  gamma = NULL,
   linear.terms = TRUE,
   nterms = NULL,
   fill = "white",
@@ -29,6 +30,9 @@ with minimum cross-validated error, or a numeric value \eqn{>0} may be
 specified, with higher values yielding a sparser ensemble. To evaluate the 
 trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
+
+\item{gamma}{Mixing parameter for relaxed fits. See
+\code{\link[glmnet]{coef.cv.glmnet}}.}
 
 \item{linear.terms}{logical. Should linear terms be included in the plot?}
 

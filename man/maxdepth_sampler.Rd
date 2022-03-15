@@ -15,7 +15,7 @@ number of terminal nodes in trees used for rule inducation.}
 tree depth in trees used for rule induction.}
 }
 \value{
-Returns a random sampling function with single argument 'ntrees',
+Returns a random sampling function with single argument \code{ntrees},
 which can be supplied to the \code{maxdepth} argument of function 
 \code{\link{pre}} to specify varying tree depths.
 }

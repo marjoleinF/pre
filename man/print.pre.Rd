@@ -21,7 +21,8 @@ trade-off between accuracy and sparsity of the final ensemble, inspect
 
 \item{digits}{Number of decimal places to print}
 
-\item{...}{Additional arguments, currently not used.}
+\item{...}{Further arguments to be passed to 
+\code{\link[glmnet]{coef.cv.glmnet}}.}
 }
 \value{
 Prints information about the fitted prediction rule ensemble.
@@ -31,8 +32,8 @@ Prints information about the fitted prediction rule ensemble.
 ensemble to the command line
 }
 \details{
-Note that the cv error is estimated with data that was also used 
-for learning rules and may be too optimistic. Use \code{\link{cvpre}} to 
+Note that the CV error is estimated with data that was also used 
+for learning rules and may be too optimistic. Use function \code{\link{cvpre}} to 
 obtain a more realistic estimate of future prediction error.
 }
 \examples{

@@ -19,7 +19,8 @@ specified, with higher values yielding a sparser ensemble. To evaluate the
 trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
-\item{...}{Additional arguments, currently not used.}
+\item{...}{Further arguments to be passed to 
+\code{\link[glmnet]{coef.cv.glmnet}}.}
 }
 \value{
 Prints information about the fitted ensemble.

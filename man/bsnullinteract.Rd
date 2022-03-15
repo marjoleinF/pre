@@ -9,7 +9,8 @@ bsnullinteract(
   nsamp = 10,
   parallel = FALSE,
   penalty.par.val = "lambda.1se",
-  verbose = FALSE
+  verbose = FALSE,
+  ...
 )
 }
 \arguments{
@@ -32,6 +33,8 @@ trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
 \item{verbose}{logical. should progress be printed to the command line?}
+
+\item{...}{Further arguments to be passed to \code{\link{predict.pre}}.}
 }
 \value{
 A list of length \code{nsamp} with null interaction models, to be

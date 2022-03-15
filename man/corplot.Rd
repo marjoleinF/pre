@@ -30,7 +30,8 @@ trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{colors = NULL} (default), \code{colorRampPalette} is used to generate
 a sequence of 200 colors going from red to white to blue. A different set of 
 plotting colors can be specified here, for example: 
-\code{cm.colors(100)}, \code{colorspace::rainbow_hcl)(100)} 
+\code{cm.colors(100)}, \code{rainbow_hcl)(100)} (the latter requires
+package \code{colorspace}). 
 or \code{colorRampPalette(c("red", "yellow", "green"))(100)}.}
 
 \item{fig.plot}{plotting region to be used for correlation plot. See 
@@ -49,8 +50,4 @@ plot's legend. Should be a sequence from -1 to 1.}
 \donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 corplot(airq.ens)}
-}
-\seealso{
-See
-\code{\link[colorspace]{rainbow_hcl}} and \code{\link[grDevices]{colorRampPalette}}.
 }

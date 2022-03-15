@@ -4,7 +4,12 @@
 \alias{summary.pre}
 \title{Summary method for objects of class pre}
 \usage{
-\method{summary}{pre}(object, penalty.par.val = "lambda.1se", ...)
+\method{summary}{pre}(
+  object,
+  penalty.par.val = "lambda.1se",
+  digits = getOption("digits"),
+  ...
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{pre}}.}
@@ -19,7 +24,9 @@ specified, with higher values yielding a sparser ensemble. To evaluate the
 trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
-\item{...}{Additional arguments, currently not used.}
+\item{digits}{Number of decimal places to print}
+
+\item{...}{Further arguments to be passed to \code{\link[glmnet]{coef.cv.glmnet}}.}
 }
 \value{
 Prints information about the fitted prediction rule ensemble.

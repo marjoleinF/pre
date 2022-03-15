@@ -49,8 +49,8 @@ test_that("Get previous results with airquality and pre function", {
   # Works with rpart
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data = airquality, tree.unbiased = FALSE, ntrees = 10)
-  # save_to_test(airq.ens, "airquality_w_pre_with_rpart")
-  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_rpart"), tolerance = 1.49e-08)
+  # save_to_test(airq.ens$rules, "airquality_w_pre_with_rpart")
+  expect_equal(airq.ens$rules, read_to_test("airquality_w_pre_with_rpart"), tolerance = 1.49e-08)
   
   #####
   # Works with glmtree

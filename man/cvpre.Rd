@@ -12,7 +12,8 @@ cvpre(
   foldids = NULL,
   verbose = FALSE,
   parallel = FALSE,
-  print = TRUE
+  print = TRUE,
+  ...
 )
 }
 \arguments{
@@ -48,6 +49,8 @@ to the command line?}
 beforehand, such as doMC or others.}
 
 \item{print}{logical. Should accuracy estimates be printed to the command line?}
+
+\item{...}{Further arguments to be passed to \code{\link{predict.pre}}.}
 }
 \value{
 Calculates cross-validated estimates of predictive accuracy and prints 

@@ -46,10 +46,13 @@ values for the two predictor variables specified will be used (see details).}
 fitted probabilities for nominal outputs. \code{pred.type = "link"} gives fitted
 values for continuous outputs and linear predictor values for nominal outputs.}
 
-\item{...}{Additional arguments to be passed to \code{\link[graphics]{image}}, 
+\item{...}{Further arguments to be passed to \code{\link[graphics]{image}}, 
 \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on
 whether \code{type} is specified to be \code{"heatmap"}, \code{"contour"}, \code{"both"} 
 or \code{"perspective"}).}
+
+\item{gamma}{Mixing parameter for relaxed fits. See
+\code{\link[glmnet]{coef.cv.glmnet}}.}
 }
 \description{
 \code{pairplot} creates a partial dependence plot to assess the effects of a

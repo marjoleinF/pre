@@ -10,6 +10,7 @@ interact(
   varnames = NULL,
   nullmods = NULL,
   penalty.par.val = "lambda.1se",
+  gamma = NULL,
   quantprobs = c(0.05, 0.95),
   plot = TRUE,
   col = c("darkgrey", "lightgrey"),
@@ -78,7 +79,7 @@ allocation errors. If a memory allocation error still occurs, increase k.}
 \item{verbose}{logical. Should progress information be printed to the
 command line?}
 
-\item{...}{Additional arguments to be passed to \code{barplot}.}
+\item{...}{Further arguments to be passed to \code{barplot}.}
 }
 \value{
 Function \code{interact()} returns and plots interaction statistics

@@ -177,7 +177,7 @@ such as doMC or others.}
 \item{sparse}{logical. Should sparse design matrices be used? May improve
 computation times for large datasets.}
 
-\item{...}{Additional arguments to be passed to
+\item{...}{Further arguments to be passed to
 \code{\link[glmnet]{cv.glmnet}}.}
 }
 \value{

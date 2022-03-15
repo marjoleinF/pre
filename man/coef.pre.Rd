@@ -19,7 +19,7 @@ specified, with higher values yielding a sparser ensemble. To evaluate the
 trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
-\item{...}{additional arguments to be passed to \code{\link[glmnet]{coef.cv.glmnet}}.}
+\item{...}{Further arguments to be passed to \code{\link[glmnet]{coef.cv.glmnet}}.}
 }
 \value{
 returns a dataframe with 3 columns: coefficient, rule (rule or 
