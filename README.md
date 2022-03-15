@@ -15,7 +15,7 @@
     -   [Correlations between selected
         terms](#correlations-between-selected-terms)
 -   [Tuning parameters of function pre](#tuning-parameters)
--   [Dealing with missing data](#dealing-with-missing-values)
+-   [Dealing with missing values](#dealing-with-missing-values)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear
     terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [Credits](#credits)
@@ -62,7 +62,7 @@ ensemble using function `pre()`:
 
 ``` r
 library("pre")
-#> Warning: package 'pre' was built under R version 4.1.2
+#> Warning: package 'pre' was built under R version 4.1.3
 airq <- airquality[complete.cases(airquality), ]
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airq)
@@ -340,10 +340,23 @@ following vignette:
 vignette("missingness", package = "pre")
 ```
 
-or go to <https://cran.r-project.org/package=pre/vignettes/missingness.html> in a
+or go to
+<https://cran.r-project.org/package=pre/vignettes/missingness.html> in a
 browser.
 
-# Generalized Prediction Ensembles: Combining MARS, rules and linear terms
+## Enforcing sparsity and relaxed lasso fits
+
+When obtaining sparsity (i.e., a final ensemble comprising only few
+terms) is of central importance, the so-called relaxed lasso can be
+employed. It allows for retaining a pre-specified (low) number of terms,
+with adequate predictive accuracy. An introduction and tutorial is
+provided in the following vignette:
+
+``` r
+vignette("relaxed", package = "pre")
+```
+
+## Generalized Prediction Ensembles: Combining MARS, rules and linear terms
 
 An even more flexible ensembling approach is implemented in function
 `gpe()`, which allows for fitting Generalized Prediction Ensembles: It
@@ -389,7 +402,7 @@ hinge function and its coefficient indicate that Ozone levels increase
 with increasing solar radiation and decreasing wind speeds. The
 prediction rules in the ensemble indicate a similar pattern.
 
-# Credits
+## Credits
 
 I am very grateful to package co-author Benjamin Chistoffersen:
 <https://github.com/boennecd>, who developed `gpe` and contributed
@@ -399,7 +412,7 @@ Milborrow, and for the contributions of Karl Holub
 (<https://github.com/holub008>) and Advik Shreekumar
 (<https://github.com/adviksh>).
 
-# References
+## References
 
 <div id="refs" class="references csl-bib-body hanging-indent"
 line-spacing="2">
