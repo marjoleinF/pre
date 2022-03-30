@@ -1,5 +1,5 @@
 ---
-title: "Sparse and relaxed: Use of the relaxed lasso in fitting rule ensembles"
+title: "More sparse and relaxed: Fitting rule ensembles with the relaxed lasso"
 author: "Marjolein Fokkema"
 output: rmarkdown::html_vignette
 vignette: >
@@ -12,9 +12,9 @@ vignette: >
 
 A beneficial property of the lasso penalty is that it shrinks coefficients to zero. A less beneficial property is that, in the process, the lasso tends to overshrink the large coefficients too far to zero. When fitting prediction rule ensembles (PREs), this may be a nuisance, especially when we want to enfore more sparsity than what would be optimal according to cross-validated prediction error. In what follows, we show how we can easily select a smaller number of terms for the final ensemble, while retaining relatively high predictive accuracy, using the relaxed lasso. 
 
-The relaxed lasso has been proposed by Meinshausen (2007). Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package `**glmnet**` and can be employed in package `**pre**`. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". A short introduction to the relaxed lasso is provided in `**glmnet**` vignette "The Relaxed lasso" (accesible in `**R**` by typing `vignette("relax", "glmnet")`. 
+The relaxed lasso has been proposed by Meinshausen (2007). Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso" (accesible in **`R`** by typing `vignette("relax", "glmnet")`. 
 
-## Example
+## Example: Predicting Ozone levels with a small number of rules
 
 ```{r}
 library("pre")
@@ -51,26 +51,24 @@ tab <- print(tab)
 ```
 
 ```{r}
-tab[1:12, ]
+tab[9:16, ]
 ```
 
-From the `Df` and `Lambda` column, we can see that a $\lambda$ value of `r tab$Lambda[which(tab$Df == 5)[1]]` would result in a final ensemble comprising five terms.
+From the `Df` and `Lambda` column, we can see that a $\lambda$ value of `r tab$Lambda[which(tab$Df == 5)[1]]` would result in a final ensemble comprising five terms. However, from the plot above, which shows the cross-validated error ($y$-axis) against the value of penalty parameter $\lambda$ on the lower $x$-axis, and the corresponding number of selected terms on the upper $x$-axis, we see that this would yield substantially higher error. In part, this is due to overshrinkage, which we can mitigate using the relaxed lasso, which 'unshrinks' the non-zero coefficients.
 
 
 ## Relaxed fits
 
-Though we can obtain smaller ensembles through supplying larger values for $\lambda$, in the plot we also see that the cross-validated errors ($y$-axis) will be substantially higher with a $\lambda$ value yielding five terms. This is due to selecting a smaller number of predictors, as well as to the overshrinking of large coefficients the lasso tends to exhibit. To mitigate this overshrinkage, the relaxed lasso 'unshrinks' the non-zero coefficients towards their unpenalized values.   
-
-We can also employ the relaxed lasso by specifying `relax = TRUE` when fitting rule ensemble using function `pre`, because we can pass most of the arguments of function `cv.glmnet` directly to function `pre`: 
+We can use the relaxed lasso by specifying `relax = TRUE` when fitting rule ensemble using function `pre`: 
 
 ```{r}
 set.seed(42)
 airq.ens.rel <- pre(Ozone ~ ., data = airq, relax = TRUE)
 ```
 
-If we specify `relax = TRUE`, the `gamma` argument (see `?cv.glmnet`) will by default be set to a range of five values in the interval [0, 1]. This can be overruled by specifying different values for argument `gamma` in the call to function `pre`. 
+If we specify `relax = TRUE`, the `gamma` argument (see `?cv.glmnet` for documentation on arguments `relax` and `gamma`) will by default be set to a range of five values in the interval [0, 1]. This can be overruled by specifying different values for argument `gamma` in the call to function `pre`. 
 
-Let us take a look at the regularization paths we obtain in the relaxed fit:
+Let us take a look at the regularization paths for the relaxed fits:
 
 ```{r, fig.width=6, fig.height=3.5}
 plot(airq.ens.rel$glmnet.fit)
@@ -88,72 +86,66 @@ mat <- data.frame(lambda.1se = c(fit$lambda.1se, fit$gamma.1se, fit$nzero.1se),
 mat
 ```
 
-Thus, as the dotted vertical lines in the plots already suggest, with the default `"lambda.1se"` criterion, a final model with `r fit$nzero.1se` terms will be selected, with coefficients obtained using a $\lambda$ value of `r fit$lambda.1se` and a $\gamma$ value of `r fit$gamma.1se`. With the `"lambda.min"` criterion, we obtain a more complex fit; $\gamma = 0$ still yields the lowest CV error. Note that use of `"lambda.min"` increases the likelihood of overfitting, because function `pre` uses the same data to extract the rules and fit the penalized regression, so in most cases the default `"lambda.1se"` criterion can be expected to provide a less complex, better generalizable, often more accurate fit.  
+Thus, as the dotted vertical lines in the plots already suggest, with the default `"lambda.1se"` criterion, a final model with `r fit$nzero.1se` terms will be selected, with coefficients obtained using a $\lambda$ value of `r round(fit$lambda.1se, digits = 3L)` and a $\gamma$ value of `r fit$gamma.1se`. With the `"lambda.min"` criterion, we obtain a more complex fit; $\gamma = 0$ still yields the lowest CV error. Note that use of `"lambda.min"` increases the likelihood of overfitting, because function `pre` uses the same data to extract the rules and fit the penalized regression, so in most cases the default `"lambda.1se"` criterion can be expected to provide a less complex, better generalizable, often more accurate fit.  
 
-The default of function `pre` is to use the `"lambda.1se"` criterion. When `relax = TRUE` has been specified in the call to function `pre`, the default of all `S3` methods for class `pre` (i.e., `print`, `plot`, `coef`, `predict`, `importance`) and associated functions (i.e., `explain`, `cvpre`, `singleplot`, `pairplot`, `interact`) is to use the solution obtained with `"lambda.1se"` and the $\gamma$ value yielding the lowest CV error at that value of $\lambda$. This can be overruled by specifying a different value of $\lambda$ to the `penalty.par.value` argument, and/or a different value of $\gamma$ to the `gamma` argument. Some examples:
+The default of function `pre` is to use the `"lambda.1se"` criterion. When `relax = TRUE` has been specified in the call to function `pre`, the default of all functions and `S3` methods applied to objects of class `pre` (`print`, `plot`, `coef`, `predict`, `importance`, `explain`, `cvpre`, `singleplot`, `pairplot`, `interact`) is to use the solution obtained with `"lambda.1se"` and the $\gamma$ value yielding lowest CV error at that value of $\lambda$. This can be overruled by specifying a different values of $\lambda$ (`penalty.par.val`) and $\gamma$ (`gamma`). Some examples:
 
 ```{r}
 summary(airq.ens.rel)
 summary(airq.ens.rel, penalty = "lambda.min")
-summary(airq.ens.rel, gamma = 0.75)
-summary(airq.ens.rel, penalty = 7, gamma = 0) ## lambda value closest to specified value will be used 
+summary(airq.ens.rel, penalty = 8, gamma = 0)
+summary(airq.ens.rel, penalty = 8, gamma = 1)
 ```
 
-Some rules for specification of $\lambda$ and $\gamma$ in package `**pre**`:
+Note how lowest CV error is indeed obtained with the `"lambda.min"` criterion, while the default `"lambda.1se"` yields a sparser model, with accuracy within 1 standard error of `"lambda.min"`. If we want to go (much) sparser, the a lower value of $\gamma$ should be preferred, to retain good-enough predictive accuracy.
 
-* If a numeric value of $\lambda$ is supplied, a (numeric) value for $\gamma$ must be supplied. 
+Some rules for specification of $\lambda$ and $\gamma$:
 
-* Otherwise (if the default `lambda.1se` criterion is employed, or the `lambda.min` criterion specified), the $\gamma$ value yielding lowest CV error (at the $\lambda$ value associated with the specified criterion) will be used; this $\gamma$ value can be overruled by supplying the desired $\gamma$ value to the `gamma` argument. 
+* If a numeric value of $\lambda$ is supplied, a (numeric) value for $\gamma$ *must* be supplied. 
 
-* Multiple values of $\gamma$ can be passed to function `pre`, but all other methods and functions take only one single value for $\gamma$.
+* Otherwise (if the default `"lambda.1se"` criterion is employed, or `"lambda.min"` specified), the $\gamma$ value yielding lowest CV error (at the $\lambda$ value associated with the specified criterion) will be used; this $\gamma$ value can be overruled by supplying the desired $\gamma$ value to the `gamma` argument. 
+
+* Multiple values of $\gamma$ can be passed to function `pre`, but all other methods and functions accept *only a single value* for $\gamma$ (this differs from several **`glmnet`** functions) .
+
+* If a specific $\lambda$ value is supplied, results are returned for a penalty parameter value that was used in the path, and closest to the specified value. 
 
 Also note that in the code chunk above we refer to the `penalty.par.val` argument by abbreviating it to `penalty`; this has the same effect as writing `penalty.par.val` in full. 
 
 
+
+
 ## Forward stepwise selection
 
-If we use $\gamma = 0$, our final ensemble will be a non-penalized fit with predictors (rules and predictors) selected by the lasso. This approach can be useful if we want a rule ensemble with low complexity and high generalizability, and especially when we want to decide a-priori on the number of terms we want to retain. By specifying a high value of $\lambda$, we can retain a small number of rules, while specifying $\gamma = 0$ will provide unbiased (unpenalized) coefficients. This avoids the overshrinking of large coefficients. In terms of predictive accuracy, this approach may not perform best, but if low complexity (interpretability) is most important, this is a very useful approach, which does not reduce predictive accuracy too much.
+Using $\gamma = 0$ amounts to a forward stepwise selection approach, with entry order of the variables (rules and linear terms) determined by the lasso. This approach can be useful if we want a rule ensemble with low complexity and high generalizability, and especially when we want to decide a-priori on the number of terms we want to retain. By specifying a high value of $\lambda$, we can retain a small number of rules, while specifying $\gamma = 0$ will provide unbiased (unpenalized) coefficients. This avoids the overshrinking of large coefficients. In terms of predictive accuracy, this approach may not perform best, but if low complexity (interpretability) is most important, this is a very useful approach, which does not reduce predictive accuracy too much.
 
-To use forward stepwise regression with variable entry order determined by the lasso, we specify a $\gamma$ value of 0, and specify the number of variables we want to retain through specification of $\lambda$ (`penalty.par.val`). Here, we use the value of $\lambda$ that we found to yield a five-term ensemble:  
+To use forward stepwise regression with variable entry order determined by the lasso, we specify a $\gamma$ value of 0, and specify the number of variables we want to retain through specification of $\lambda$ (`penalty.par.val`). To find the value of $\lambda$ corresponding to the number of terms one want to retain, check (results not shown for space considerations):
+
+```{r, eval=FALSE} 
+airq.ens.rel$glmnet.fit$glmnet.fit
+``` 
+
+Here, we use the value of $\lambda$ that we found earlier to yield a five-term ensemble:  
 
 ```{r, fig.width=5, fig.height=3.5}
-my_lambda <- tab$Lambda[tab$Df == 5][1]
-my_lambda
-print(airq.ens.rel, gamma = 0, penalty = my_lambda)
+coefs <- coef(airq.ens.rel, gamma = 1, penalty = 8)
+coefs[coefs$coefficient != 0, ]
+coefs <- coef(airq.ens.rel, gamma = 0, penalty = 8)
+coefs[coefs$coefficient != 0, ]
 ```
 
-We have retained the same set of terms as with the default (non-relaxed) lasso, but the terms obtained different coefficient values. The CV error estimate indicates that this is beneficial for prediction. Note also that we can obtain the default lasso solution by specifying `gamma = 1`:
-
-```{r}
-print(airq.ens.rel, gamma = 1, penalty = my_lambda)
-```
-
-
-## Comparison of predicted values
-
-Below, we depict the effect of the $\gamma$ parameter, which controls the amount of shrinkage on the non-zero coefficients. On the $x$-axes are the observed, on the $y$-axes the predicted values of the response. We see that the default, non-relaxed approach (where $\gamma = 1$ and $\lambda$ is selected using the 1SE criterion) yields predicted values most heavily shrunken towards the training sample mean (`r mean(airq$Ozone)`). With lower values of $\lambda$ and/or $\gamma$, predicted values are shrunken less.
-
-```{r, fig.height = 6, fig.width = 6}
-par(mfrow = c(2,2))
-plot(airq$Ozone, predict(airq.ens.rel, gamma = 1), 
-     main = "lambda.1se criterion (default)", 
-     ylim = c(0, 150), xlab = "observed", ylab = "predicted")
-abline(0, 1)
-plot(airq$Ozone, predict(airq.ens.rel), 
-     main = "lambda.1se criterion (relaxed)", 
-     ylim = c(0, 150), xlab = "observed", ylab = "predicted")
-abline(0, 1)
-plot(airq$Ozone, predict(airq.ens.rel, penalty = "lambda.min"),
-                         main = "forward stepwise (retain terms)", 
-     ylim = c(0, 150), xlab = "observed", ylab = "predicted")
-abline(0, 1)
-plot(airq$Ozone, predict(airq.ens.rel, penalty = my_lambda, gamma = 0), 
-                         main = "lambda.min criterion (relaxed)", 
-     ylim = c(0, 150), xlab = "observed", ylab = "predicted")
-abline(0, 1)
-```
+Note we have retained the exact same set of terms with the unpenalized relaxed lasso ($\gamma = 0$) as with the default (non-relaxed) lasso ($\gamma = 1$), but the terms obtained different coefficient values. The CV error estimates (returned by fuction `summary` above) indicate that this is beneficial for prediction. 
 
 To evaluate predictive accuracy of the final fitted model, and to estimate generalization error to unseen observations, cross-validation would be more appropriate than using training data for fitting and evaluating the model. To that end, function `cvpre` can for example be used.
+
+
+
+## Session info
+
+In case you obtained different results, these results were obtained using the following:
+
+```{r}
+sessionInfo()
+```
 
 
 ## References

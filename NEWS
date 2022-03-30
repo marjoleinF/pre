@@ -1,7 +1,9 @@
-Changes in Version 1.0.4 (2022-02-24)
+Changes in Version 1.0.4 (2022-03-30)
 
   - Implemented relaxed lasso fits and added vignette on relaxed fits, 
       see vignette("relaxed", "pre")
+
+  - More informative warning message if no rules could be derived.
 
 
 

@@ -16,6 +16,8 @@
         terms](#correlations-between-selected-terms)
 -   [Tuning parameters of function pre](#tuning-parameters)
 -   [Dealing with missing values](#dealing-with-missing-values)
+-   [Go sparser with relaxed lasso
+    fits](#go-sparser-with-relaxed-lasso-fits)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear
     terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [Credits](#credits)
@@ -62,7 +64,6 @@ ensemble using function `pre()`:
 
 ``` r
 library("pre")
-#> Warning: package 'pre' was built under R version 4.1.3
 airq <- airquality[complete.cases(airquality), ]
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airq)
@@ -79,6 +80,7 @@ We can print the resulting ensemble (alternatively, we could use the
 airq.ens
 #> 
 #> Final ensemble with cv error within 1se of minimum: 
+#> 
 #>   lambda =  3.543968
 #>   number of terms = 12
 #>   mean cv error (se) = 352.395 (99.13754)
@@ -327,9 +329,8 @@ function, see the vignette on tuning:
 vignette("tuning", package = "pre")
 ```
 
-or open the vignette on
-<https://cran.r-project.org/package=pre/vignettes/tuning.html> in a
-browser.
+or go to <https://cran.r-project.org/package=pre/vignettes/tuning.html>
+in a browser.
 
 ## Dealing with missing values
 
@@ -344,13 +345,13 @@ or go to
 <https://cran.r-project.org/package=pre/vignettes/missingness.html> in a
 browser.
 
-## Enforcing sparsity and relaxed lasso fits
+## Go sparser with relaxed lasso fits
 
-When obtaining sparsity (i.e., a final ensemble comprising only few
-terms) is of central importance, the so-called relaxed lasso can be
-employed. It allows for retaining a pre-specified (low) number of terms,
-with adequate predictive accuracy. An introduction and tutorial is
-provided in the following vignette:
+When sparsity (i.e., a final ensemble comprising only few terms) is of
+central importance, the so-called relaxed lasso can be employed. It
+allows for retaining a pre-specified (low) number of terms, with
+adequate predictive accuracy. An introduction and tutorial is provided
+in the following vignette:
 
 ``` r
 vignette("relaxed", package = "pre")
@@ -373,6 +374,7 @@ airq.gpe <- gpe(Ozone ~ ., data = airquality[complete.cases(airquality),],
 airq.gpe
 #> 
 #> Final ensemble with cv error within 1se of minimum: 
+#> 
 #>   lambda =  3.229132
 #>   number of terms = 11
 #>   mean cv error (se) = 359.2623 (110.8863)

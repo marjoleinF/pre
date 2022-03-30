@@ -8,9 +8,9 @@
 interact(
   object,
   varnames = NULL,
-  nullmods = NULL,
   penalty.par.val = "lambda.1se",
   gamma = NULL,
+  nullmods = NULL,
   quantprobs = c(0.05, 0.95),
   plot = TRUE,
   col = c("darkgrey", "lightgrey"),
@@ -32,9 +32,6 @@ statistics should be calculated. If \code{NULL}, interaction statistics for
 all predictor variables with non-zeor coefficients will be calculated (which
 may take a long time).}
 
-\item{nullmods}{object with bootstrapped null interaction models, resulting
-from application of \code{bsnullinteract}.}
-
 \item{penalty.par.val}{character or numeric. Value of the penalty parameter
 \eqn{\lambda} to be employed for selecting the final ensemble. The default
 \code{"lambda.min"} employs the \eqn{\lambda} value within 1 standard
@@ -44,6 +41,12 @@ with minimum cross-validated error, or a numeric value \eqn{>0} may be
 specified, with higher values yielding a sparser ensemble. To evaluate the 
 trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
+
+\item{gamma}{Mixing parameter for relaxed fits. See
+\code{\link[glmnet]{coef.cv.glmnet}}.}
+
+\item{nullmods}{object with bootstrapped null interaction models, resulting
+from application of \code{bsnullinteract}.}
 
 \item{quantprobs}{numeric vector of length two. Probabilities that should be
 used for plotting the range of bootstrapped null interaction model statistics.

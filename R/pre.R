@@ -2,11 +2,17 @@
 ##          Group variables and check each group like: 
 ##          L <- list(A, B, C) all(sapply(L, class) == "matrix") or any(is.na(unlist(L)))
 
-## TODO: Implement forward selection based on AIC (and BIC)?
+
 
 ## TODO: Implement functionality for missing-in-attributes approach for missing values
 ## MIA is supported by ctree. Can then do mean imputation before glmnet. 
 ## Will need some work with predict method?
+
+
+
+## TODO: Implement unit tests for correct passing of gamma argument
+## TODO: Implement unit tests for function interact() without nullmods
+
 
 
 utils::globalVariables("%dopar%")
@@ -721,7 +727,7 @@ pre <- function(formula, data, family = gaussian,
   #################################################################
   
   if (type == "rules" && length(rules) == 0) {
-    warning("No prediction rules could be derived from the data.")
+    warning("No prediction rules could be derived from the data, yielding an intercept-only model. Estimation will be halted.")
     return(NULL)
   }
   
@@ -1379,13 +1385,24 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       cat("\n\nAn initial ensemble consisting of", length(rules_obj$rules), "rules was successfully created.")  
     
   } else {
-    warning("No prediction rules could be derived from dataset.", immediate. = TRUE)  
+    warn <- "No prediction rules could be derived from dataset. " 
+    if (tree.unbiased) {
+      warn <- paste0(warn, "Consider increasing the criterion for implementing splits and/or turning off the Bonferroni correction by specifying tree.control=")
+      if (use.grad) {
+        warn <- paste0(warn, "ctree_control(alpha = .5, testtype='Univariate'). ")
+      } else {
+        warn <- paste0(warn, "mob_control(alpha = .5, bonferroni = FALSE). ")
+      }
+      warn <- paste0(warn, "(The default for alpha is .05, higher values increase likelihood of splitting.) ")
+    }
+    warn <- paste0(warn, "Consider increasing the size of samples used for rule generation (by specifying sampfrac=.5 or any other value >.5 and <= 1) in the call to function pre().")
+    warning(warn, immediate. = TRUE)
     rules_obj <- list(rules = rules,
                       complements.removed = NULL, 
                       duplicates.removed = NULL, 
                       rulevars = NULL)
   }
-  
+
   rules_obj
 }
 
@@ -1612,7 +1629,7 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
                       ...) {
   
   if (!inherits(x, c("pre", "gpe"))) {
-    stop("Argument x should be of class 'pre'.")
+    stop("Argument x should be of class 'pre' (or 'gpe').")
   }
   
   if (!(length(penalty.par.val) == 1L)) {
@@ -1677,8 +1694,8 @@ print.pre <- function(x, penalty.par.val = "lambda.1se",
 summary.pre <- function(object, penalty.par.val = "lambda.1se", 
                         digits = getOption("digits"), ...) {
   
-  if (!inherits(object, "pre")) {
-    stop("Argument object should be of class 'pre'.")
+  if (!inherits(object, c("pre", "gpe"))) {
+    stop("Argument object should be of class 'pre' (or 'gpe').")
   }
   
   if (!(length(penalty.par.val) == 1L)) {
@@ -2506,7 +2523,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @import graphics
 #' @seealso \code{\link{pre}}, \code{\link{singleplot}} 
 #' @export
-pairplot <- function(object, varnames, type = "both", 
+pairplot <- function(object, varnames, type = "both", gamma = NULL,
                      penalty.par.val = "lambda.1se", 
                      nvals = c(20L, 20L), pred.type = "response", ...)
 {
@@ -3200,6 +3217,8 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' statistics should be calculated. If \code{NULL}, interaction statistics for
 #' all predictor variables with non-zeor coefficients will be calculated (which
 #' may take a long time).
+#' @param gamma Mixing parameter for relaxed fits. See  
+#' \code{\link[glmnet]{coef.cv.glmnet}}.
 #' @param nullmods object with bootstrapped null interaction models, resulting
 #' from application of \code{bsnullinteract}.
 #' @inheritParams print.pre
@@ -3271,9 +3290,9 @@ Hsquaredj <- function(object, varname, k = 10, penalty.par.val = NULL, verbose =
 #' \doi{10.1214/07-AOAS148}.
 #' @seealso \code{\link{pre}}, \code{\link{bsnullinteract}} 
 #' @export
-interact <- function(object, varnames = NULL, nullmods = NULL, 
+interact <- function(object, varnames = NULL, 
                      penalty.par.val = "lambda.1se", 
-                     gamma = NULL, 
+                     gamma = NULL, nullmods = NULL,
                      quantprobs = c(.05, .95),
                      plot = TRUE, col = c("darkgrey", "lightgrey"), 
                      ylab = "Interaction strength", 
@@ -3342,20 +3361,20 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
   } else { # if not parallel computation:
     H <- c()
     if (is.null(nullmods)) {
-      for(i in 1:length(varnames)) {
+      for (i in 1:length(varnames)) {
         if (is.null(gamma)) {
-          nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+          H[i] <- Hsquaredj(object = object, varname = varnames[i],
                                 k = k, penalty.par.val = penalty.par.val,
                                 verbose = verbose)
         } else {
-          nullH[j] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
+          H[i] <- Hsquaredj(object = object, varname = varnames[i],
                                 k = k, penalty.par.val = penalty.par.val,
                                 verbose = verbose, gamma = gamma)
         }
       }
-    } else { # Comoute H values for the training data and bootstrapped null models
+    } else { # Compute H values for the training data and bootstrapped null models
       nullH <- data.frame()
-      for(i in 1:length(varnames)) {
+      for (i in 1:length(varnames)) {
         if (is.null(gamma)) {
           H[i] <- Hsquaredj(object = object, varname = varnames[i],
                                 k = k, penalty.par.val = penalty.par.val,
@@ -3365,7 +3384,7 @@ interact <- function(object, varnames = NULL, nullmods = NULL,
                                 k = k, penalty.par.val = penalty.par.val,
                                 verbose = verbose, gamma = gamma)
         }
-        for(j in 1:length(nullmods)) {
+        for (j in 1:length(nullmods)) {
           if (is.null(gamma)) {
             nullH[j, i] <- Hsquaredj(object = nullmods[[j]], varname = varnames[i],
                                   k = k, penalty.par.val = penalty.par.val,

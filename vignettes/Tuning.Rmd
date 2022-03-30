@@ -1,5 +1,5 @@
 ---
-title: "Tuning parameters of function pre"
+title: "Tuning the parameters of function pre"
 author: "Marjolein Fokkema"
 output: rmarkdown::html_vignette
 vignette: >
@@ -10,7 +10,7 @@ vignette: >
 
 ## Introduction
 
-Function `pre()` has a substantial number of model-fitting parameters, which may be tuned so as to optimize predictive accuracy and/or interpretability (sparsity) of the final model. For many of the parameters, default settings will likely perform well. Here, we discuss the effects of several of the parameters on predictive accuracy and model complexity. We will not explain what every argument does; readers are referred to the documentation of function `pre()` for that, or readers can consult Fokkema (2020). We then illustrate how to optimize predictive accuracy for a binary classification problem.
+Function `pre()` has a substantial number of model-fitting parameters, which may be tuned so as to optimize predictive accuracy and/or interpretability (sparsity) of the final model. For many of the parameters, default settings will likely perform well. Here, we discuss the effects of several of the parameters on predictive accuracy and model complexity. Next, we illustrate how to optimize predictive accuracy for a binary classification problem using package **`caret`**. We do not explain each argument in detail; readers are referred to the documentation of function `pre()` for that, or Fokkema (2020). 
 
 
 ## Tuning parameters

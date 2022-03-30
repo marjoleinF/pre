@@ -1,6 +1,6 @@
 Package: pre
 Title: Prediction Rule Ensembles
-Version: 1.0.3
+Version: 1.0.4
 Authors@R: c(person("Marjolein", "Fokkema", role = c("aut", "cre"), email = 
   "m.fokkema@fsw.leidenuniv.nl"), person(given = "Benjamin", 
   family = "Christoffersen", role = "aut", email = "boennecd@gmail.com"))
@@ -49,5 +49,5 @@ Suggests:
 License: GPL-2 | GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
 VignetteBuilder: knitr

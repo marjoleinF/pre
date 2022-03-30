@@ -18,7 +18,7 @@ To deal with missing data, multiple imputation is the golden standard (Schafer &
 
 * Multiple imputation approach by aggregating ensembles: Create multiple imputed datasets; fit a separate prediction rule ensemble to each of the imputed datasets; aggregate the ensembles into a single final ensemble. In terms of predictive accuracy, this approach will work well. It will, however, yield more complex ensembles than the former two approaches, and the next approach.
 
-* Combining mean imputation with the Missing-In-Attributes approach. According to Josse et al. (2019), mean imputation and the Missing-In-Attributes approaches are not so bad from a prediction perspective. Furthermore, they are computationally inexpensive. 
+* Combining mean imputation with the Missing-In-Attributes approach. According to Josse et al. (2019), mean imputation and the Missing-In-Attributes approaches perform well from a prediction perspective. Furthermore, they are computationally inexpensive. 
 
 Below, we provide examples for the first three approaches described above. In future versions of package **`pre`**, the mean imputation combined with MIA approach will be implemented.
 
@@ -28,7 +28,7 @@ Below, we provide examples for the first three approaches described above. In fu
 
 For the examples, we will be predicting Wind speels using the `airquality` dataset (we focus on predicting the `wind` variable, because it does not have missing values,  while variables `Ozone` and `Solar.R` do):
 
-```{r, results='hide', message=FALSE, warning=FALSE, fig.width=7}
+```{r, results='hide', message=FALSE, warning=FALSE, fig.width=5}
 head(airquality)
 nrow(airquality)
 library("mice")
@@ -50,7 +50,7 @@ With listwise deletion, only `r sum(complete.cases(airquality))` out of `r nrow(
 
 ## Single Imputation
 
-Here we apply a single imputation by filling in the mean: 
+Here we apply single imputation by replacing missing values with the mean: 
 
 ```{r}
 imp0 <- airquality
@@ -61,7 +61,7 @@ airq.ens.imp0 <- pre(Wind ~., data = imp0)
 airq.ens.imp0
 ```
 
-We obtain a larger number of rules. The mean squared error between this model and the former cannot really be compared, because they are computed over different sets of observations.
+We obtain a larger number of rules, and slightly lower cross-validated mean squared error. However, this model cannot really be compared with the listwise deletion model, because they are computed over different sets of observations.
 
 
 ## Multiple Imputation
@@ -126,7 +126,7 @@ summary.agg <- function(object, ...) {
 summary.agg(airq.agg) ## results suppressed for space considerations
 ```
 
-For averaging over predictions, there is only one option for continuous outcomes. For non-continuous outcomes, we can average over the linear predictor, or over the predicted values on the scale of the response. I do not know which would be more appropriate. The resulting predicted values will be highly correlated, though.
+For averaging over predictions, there is only one option for continuous outcomes. For non-continuous outcomes, we can average over the linear predictor, or over the predicted values on the scale of the response. I am not sure which would be more appropriate; the resulting predicted values will not be identical, but highly correlated, though.
 
 ```{r}
 predict.agg <- function(object, newdata, ...) {
@@ -144,21 +144,15 @@ Finally, the `coef` method should return the averaged / aggregated final PRE. Th
 
 3) In presence of identical rules and linear terms, it aggregates those rules and their coefficients into one rule / term, and adds together the scaled coefficients. 
 
-Note that linear terms that do not have the same winsorizing points will not be aggregated. Note that the labels of rules and variables may overlap between different datasets (e.g., the label `rule 12` or may appear multiple times in the aggregated ensemble, but each `rule 12` will have different conditions).
+Note that linear terms that do not have the same winsorizing points will not be aggregated. Note that the labels of rules and variables may overlap between different datasets (e.g., the label `rule 12` may appear multiple times in the aggregated ensemble, but each `rule 12` will have different conditions).
 
 ```{r}
 coef.agg <- function(object, ...) {
   coefs <- coef(object[[1]], ...)
-  coefs <- coefs[coefs$coefficient != 0,]
+  coefs <- coefs[coefs$coefficient != 0, ]
   for (i in 2:length(object)) {
     coefs_tmp <- coef(object[[i]], ...)
-    coefs_tmp <- coefs_tmp[coefs_tmp$coefficient != 0,]
-    ## Add intercepts:
-    coefs[coefs$rule == "(Intercept)", "coefficient"] <- 
-      coefs[coefs$rule == "(Intercept)", "coefficient"] + 
-      coefs_tmp[coefs_tmp$rule == "(Intercept)", "coefficient"]
-    ## Append other terms rest to coefs:
-    coefs <- rbind(coefs, coefs_tmp[coefs_tmp$rule!= "(Intercept)", ])
+    coefs <- rbind(coefs, coefs_tmp[coefs_tmp$coefficient != 0, ])
   }
   ## Divide coefficients by the number of datasets:
   coefs$coefficient <- coefs$coefficient / length(object)
@@ -172,20 +166,28 @@ coef.agg <- function(object, ...) {
   }
   ## Remove duplicates:
   coefs <- coefs[-duplicates, ]
+  ## Check if there are- duplicate linear terms left and repeat:
+  duplicates <- which(duplicated(coefs$rule))
+  for (i in duplicates) {
+    first_match <- which(coefs$rule == coefs$rule[i])[1]
+    coefs$coefficient[first_match] <- 
+      coefs$coefficient[first_match] + coefs$coefficient[i]
+  }
+  coefs <- coefs[-duplicates, ]
   ## Return results:
   coefs
 }
 coef.agg(airq.agg)
 ```
 
-We have obtained a final ensemble of 17 terms.
+We have obtained a final ensemble of `r nrow(coef.agg(airq.agg))-1` terms.
 
 
 
 
-## Comparison
+## Comparing accuracy and sparsity
 
-We compare performance using 10-fold cross validation. WE evaluate predictive accuracy and the number of selected rules. We only evaluate accuracy for observations that have no missing values.
+We compare performance using 10-fold cross validation. We evaluate predictive accuracy and the number of selected rules. We only evaluate accuracy for observations that have no missing values.
 
 ```{r, eval=FALSE, results='hide', message = FALSE, warning = FALSE}
 k <- 10
@@ -202,9 +204,9 @@ for (i in 1:k) {
 }  
 
 preds <- data.frame(observed)
-preds$LW <- preds$SI <- preds$MI <- preds$observed
+preds$LWD <- preds$SI <- preds$MI <- preds$observed
 nterms <- matrix(nrow = k, ncol = 3)
-colnames(nterms) <- c("LW", "SI", "MI")
+colnames(nterms) <- c("LWD", "SI", "MI")
 row <- 1
 
 for (i in 1:k) {
@@ -219,9 +221,9 @@ for (i in 1:k) {
 
   ## Fit and evaluate listwise deletion
   premod <- pre(Wind ~ ., data = train)
-  preds$LW[row:(row+nrow(test)-1)] <- predict(premod, newdata = test)
+  preds$LWD[row:(row+nrow(test)-1)] <- predict(premod, newdata = test)
   tmp <- print(premod)
-  nterms[i, "LW"] <- nrow(tmp) - 1
+  nterms[i, "LWD"] <- nrow(tmp) - 1
   
   ## Fit and evaluate single imputation
   imp0 <- train
@@ -258,14 +260,24 @@ load("Missing_data_results.Rda")
 sapply(preds, function(x) mean((preds$observed - x)^2)) ## MSE
 sapply(preds, function(x) sd((preds$observed - x)^2)/sqrt(nrow(preds))) ## SE of MSE
 var(preds$observed) ## benchmark: Predict mean for all
-plot(preds, main = "Observed against predicted", cex.main = .8)
-boxplot(nterms, main = "Number of selected terms per missing-data method",
+```
+
+Interestingly, we see that all three methods yield similar predictions and accuracy, and explain about 20% of variance in the response. Multiple imputation performed best, followed by listwise deletion, followed by single imputation. Taking into account the standard errors, however, these differences are not significant. Also, this simple evaluation on only a single dataset should not be taken too seriously. The better performance of multiple imputation does come at the cost of increased complexity: 
+
+```{r, fig.width=4, fig.height=4}
+boxplot(nterms, main = "Number of selected terms \nper missing-data method",
         cex.main = .8)
 ```
 
-Interestingly, we see that all three methods yield similar predictions and accuracy. Multiple imputation did not outperform single imputation on this dataset, which is somewhat in line with the findings of Josse et al. (2019). Single imputation performed bestin terms of predictive accuracy, at the ocst of only a relatively small increase in complexity. Note, however, that this evaluation on only a single dataset should not be taken too seriously. For other datasets, multiple imputation may likely perform better than single imputation; this would be in line with more general expectations and results on missing data treatment. However, multiple imputation will always come with increased costs in terms of computational burden and increased complexity of the final ensemble. 
+In line with findings of Josse et al. (2019), we expect MIA to work better for rules than mean imputation. In future versions of package **`pre`**, we plan to implement MIA (for the rules) and combine it with mean imputation (for the linear terms).
 
+## Session info
 
+In case you obtained different results, these results were obtained using the following:
+
+```{r}
+sessionInfo()
+```
 
 ## References
 

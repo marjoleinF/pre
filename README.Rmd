@@ -20,6 +20,7 @@ csl: inst/bib_style.csl
     -   [Correlations between selected terms](#correlations-between-selected-terms)
 -   [Tuning parameters of function pre](#tuning-parameters)
 -   [Dealing with missing values](#dealing-with-missing-values)
+-   [Go sparser with relaxed lasso fits](#go-sparser-with-relaxed-lasso-fits)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [Credits](#credits)
 -   [References](#references)
@@ -210,7 +211,7 @@ To obtain an optimal set of model-fitting parameters, package **`caret`** @Kuhn0
 vignette("tuning", package = "pre")
 ```
 
-or open the vignette on https://cran.r-project.org/package=pre/vignettes/tuning.html in a browser.
+or go to https://cran.r-project.org/package=pre/vignettes/tuning.html in a browser.
 
 
 ## Dealing with missing values
@@ -224,9 +225,9 @@ vignette("missingness", package = "pre")
 or go to https://cran.r-project.org/package=pre/vignettes/missingness.html in a browser. 
 
 
-## Enforcing sparsity and relaxed lasso fits
+## Go sparser with relaxed lasso fits
 
-When obtaining sparsity (i.e., a final ensemble comprising only few terms) is of central importance, the so-called relaxed lasso can be employed. It allows for retaining a pre-specified (low) number of terms, with adequate predictive accuracy. An introduction and tutorial is provided in the following vignette:
+When sparsity (i.e., a final ensemble comprising only few terms) is of central importance, the so-called relaxed lasso can be employed. It allows for retaining a pre-specified (low) number of terms, with adequate predictive accuracy. An introduction and tutorial is provided in the following vignette:
 
 ```{r, eval=FALSE}
 vignette("relaxed", package = "pre")
