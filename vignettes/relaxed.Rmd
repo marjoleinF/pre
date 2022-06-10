@@ -10,9 +10,13 @@ vignette: >
 
 ## Introduction
 
-A beneficial property of the lasso penalty is that it shrinks coefficients to zero. A less beneficial property is that, in the process, the lasso tends to overshrink the large coefficients too far to zero. When fitting prediction rule ensembles (PREs), this may be a nuisance, especially when we want to enfore more sparsity than what would be optimal according to cross-validated prediction error. In what follows, we show how we can easily select a smaller number of terms for the final ensemble, while retaining relatively high predictive accuracy, using the relaxed lasso. 
+A beneficial property of the lasso penalty is that it shrinks coefficients to zero. A less beneficial property is that, in the process, the lasso tends to overshrink the large coefficients too far to zero. Authors have argued that the lasso should "be considered as a *variable screener* rather than a *model selector*" (Su et al., 2017). It has a high true positive rate (i.e., high probability that a true predictor will be selected) at the cost of high false positive rate (i.e., high probability that a non-predictor will be selected). 
 
-The relaxed lasso has been proposed by Meinshausen (2007). Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso" (accesible in **`R`** by typing `vignette("relax", "glmnet")`. 
+When fitting prediction rule ensembles (PREs), this may be a nuisance, especially when we want to enforce sparsity. In what follows, we show how we can easily select a smaller number of terms for the final ensemble, while retaining relatively high predictive accuracy, using the relaxed lasso. 
+
+The relaxed lasso was proposed by Meinshausen (2007). Investigations of Su et al. (2107) provide insight on why the relaxed lasso is beneficial [^1]. Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso" (accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
+
+[^1]: As explained by Su et al. (2017), the shrinkage of the lasso penalty introduces pseudo-noise. When the regularization parameter $\lambda$ is large, the estimated coefficients are seriously biased downwards, and the residuals still contain much of the effects associated with already selected variables. As strong variables get picked up, the shrinkage inflates pseudo-noise. If non-predictors are at least slightly correlated with this pseudo-noise, they will get picked up as predictors. Thus, for variable selection we might want a somewhat larger value of $\lambda$, but to reduce the pseudo-noise, we want to deshrink the non-zero coefficients. 
 
 ## Example: Predicting Ozone levels with a small number of rules
 
@@ -76,7 +80,7 @@ plot(airq.ens.rel$glmnet.fit)
 
 We obtained one regularization path for each value of $\gamma$. The path with $\gamma = 1$ is the default lasso path. Lower values of $\gamma$ 'unshrink' the value of the non-zero coefficients of the lasso towards their unpenalized values. We see that for the $\lambda$ value yielding the minimum MSE (indicated by the left-most vertical dotted line), the value of $\gamma$ does not make a lot of difference for the MSE, but when $\lambda$ values increase, higher values of $\gamma$ tend to yield lower MSE. 
 
-For model selection using the `"lambda.min"` or `"lambda.1se"` criterion, by default the $\gamma$ value yielding the lowest CV error will be used:
+For model selection using the `"lambda.min"` criterion, by default the $\lambda$ and $\gamma$ combination yielding the lowest CV error is returned. For the `"lambda.1se"` criterion, the $\lambda$ and $\gamma$ combination yielding the sparsest solution within 1 standard error of the error criterion of the minimum is returned:
 
 ```{r}
 fit <- airq.ens.rel$glmnet.fit$relaxed
@@ -88,7 +92,7 @@ mat
 
 Thus, as the dotted vertical lines in the plots already suggest, with the default `"lambda.1se"` criterion, a final model with `r fit$nzero.1se` terms will be selected, with coefficients obtained using a $\lambda$ value of `r round(fit$lambda.1se, digits = 3L)` and a $\gamma$ value of `r fit$gamma.1se`. With the `"lambda.min"` criterion, we obtain a more complex fit; $\gamma = 0$ still yields the lowest CV error. Note that use of `"lambda.min"` increases the likelihood of overfitting, because function `pre` uses the same data to extract the rules and fit the penalized regression, so in most cases the default `"lambda.1se"` criterion can be expected to provide a less complex, better generalizable, often more accurate fit.  
 
-The default of function `pre` is to use the `"lambda.1se"` criterion. When `relax = TRUE` has been specified in the call to function `pre`, the default of all functions and `S3` methods applied to objects of class `pre` (`print`, `plot`, `coef`, `predict`, `importance`, `explain`, `cvpre`, `singleplot`, `pairplot`, `interact`) is to use the solution obtained with `"lambda.1se"` and the $\gamma$ value yielding lowest CV error at that value of $\lambda$. This can be overruled by specifying a different values of $\lambda$ (`penalty.par.val`) and $\gamma$ (`gamma`). Some examples:
+The default of function `pre` is to use the `"lambda.1se"` criterion. When `relax = TRUE` has been specified in the call to function `pre`, the default of all functions and `S3` methods applied to objects of class `pre` (`print`, `plot`, `coef`, `predict`, `importance`, `explain`, `cvpre`, `singleplot`, `pairplot`, `interact`) is to use the solution obtained with `"lambda.1se"` and the $\gamma$ value yielding lowest CV error at that value of $\lambda$. This can be overruled by specifying a different value of $\lambda$ (`penalty.par.val`) and/or $\gamma$ (`gamma`). Some examples:
 
 ```{r}
 summary(airq.ens.rel)
@@ -97,11 +101,11 @@ summary(airq.ens.rel, penalty = 8, gamma = 0)
 summary(airq.ens.rel, penalty = 8, gamma = 1)
 ```
 
-Note how lowest CV error is indeed obtained with the `"lambda.min"` criterion, while the default `"lambda.1se"` yields a sparser model, with accuracy within 1 standard error of `"lambda.min"`. If we want to go (much) sparser, the a lower value of $\gamma$ should be preferred, to retain good-enough predictive accuracy.
+Note how lowest CV error is indeed obtained with the `"lambda.min"` criterion, while the default `"lambda.1se"` yields a sparser model, with accuracy within 1 standard error of `"lambda.min"`. If we want to go (much) sparser, we need to specify a lower value for the $\lambda$ penalty, and a lower value of $\gamma$ should likely be preferred, to retain good-enough predictive accuracy.
 
 Some rules for specification of $\lambda$ and $\gamma$:
 
-* If a numeric value of $\lambda$ is supplied, a (numeric) value for $\gamma$ *must* be supplied. 
+* If a numeric value of $\lambda$ has been supplied, a (numeric) value for $\gamma$ *must* be supplied. 
 
 * Otherwise (if the default `"lambda.1se"` criterion is employed, or `"lambda.min"` specified), the $\gamma$ value yielding lowest CV error (at the $\lambda$ value associated with the specified criterion) will be used; this $\gamma$ value can be overruled by supplying the desired $\gamma$ value to the `gamma` argument. 
 
@@ -152,4 +156,6 @@ sessionInfo()
 
 Hastie, T., Tibshirani, R., & Tibshirani, R. J. (2017). Extended comparisons of best subset selection, forward stepwise selection, and the lasso. *arXiv:1707.08692*, https://arxiv.org/abs/1707.08692.
 
-Meinshausen, N. (2007). Relaxed lasso. *Computational Statistics & Data Analysis, 52*(1), 374-393.
+Meinshausen, N. (2007). Relaxed lasso. *Computational Statistics & Data Analysis, 52*(1), 374-393. https://doi.org/10.1016/j.csda.2006.12.019
+
+Su, W., Bogdan, M., & Candes, E. (2017). False discoveries occur early on the lasso path. *The Annals of Statistics, 45*(5), 2133-2150. https://doi.org/10.1214/16-AOS1521

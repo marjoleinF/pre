@@ -1,7 +1,15 @@
+Changes in Version 1.0.5 (2022-06-10)
+
+  - No major changes, several bug fixes, dependence on package akima 
+      eliminated.
+
+
+
+
 Changes in Version 1.0.4 (2022-03-30)
 
   - Implemented relaxed lasso fits and added vignette on relaxed fits, 
-      see vignette("relaxed", "pre")
+      see vignette("relaxed", "pre").
 
   - More informative warning message if no rules could be derived.
 

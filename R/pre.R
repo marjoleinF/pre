@@ -572,7 +572,7 @@ pre <- function(formula, data, family = gaussian,
     
     if (family[1L] == "gaussian") {
       if (length(y_names) > 1L) {
-        warning("Argument family was set to 'gaussian', but multiple response variables were specified in formula.\n")        
+        warning("Argument family was set to 'gaussian', but multiple response variables were specified in formula. Consider specifying family = 'mggaussian'?\n")        
       }
       if (!is.numeric(data[ , y_names])) { # then family should be poisson or gaussian
         warning("Argument family was set to 'gaussian', but the response variable specified in formula is not of class numeric.\n")
@@ -584,6 +584,14 @@ pre <- function(formula, data, family = gaussian,
       if (!isTRUE(all.equal(round(data[ , y_names]), data[ , y_names]))) {
         warning("Argument family' was set to 'poisson', but the response variable specified in formula is non-integer.\n")
       }
+    } else if (family[1L] == "multinomial") {
+      if (length(y_names) > 1L) {
+        warning("Argument family was set to 'multinomial', but multiple response variables were specified in formula, which is not supported. Check specified response variable (should be a single factor with > 2 levels) and family.\n")        
+      }
+      if (!is.factor(data[ , y_names])) {
+        warning("Argument family was set to 'multinomial', but response variable is numeric. Response variable will be converted to factor.")
+        data[ , y_names] <- factor(data[ , y_names])
+      }  
     } else if (family[1L] == "binomial") {
       if (length(y_names) > 1L) {
         warning("Argument family was set to 'binomial', but multiple response variables were specified, which is not supported.\n")
@@ -912,7 +920,7 @@ get_modmat <- function(
     # normalize numeric variables:
     if (normalize) { 
       # Normalize linear terms (section 5 of F&P08), if there are any:
-      needs_scaling <- x_names[sapply(data[ , x_names], is.numeric)]
+      needs_scaling <- x_names[sapply(data[ , x_names, drop = FALSE], is.numeric)]
       if (length(needs_scaling) > 0) {
         if (is.null(x_scales)) {
           x_scales <- apply(
@@ -1223,7 +1231,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
           y[,i] <- ifelse(y[,i] == 1, log(p_0[,i]), log(1 - p_0[,i]))
         }
         ## omit original response and include dummy-coded response in data:
-        data_with_y_learn <- cbind(data[ , -which(names(data)== y_names)], y)
+        data_with_y_learn <- cbind(data[ , -which(names(data)== y_names), drop = FALSE], y)
         multinomial_y_names <- names(y)
       } else if (family == "mgaussian") {
         y <- data[ , y_names]
@@ -1239,7 +1247,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
         eta <- rep(0, times = nrow(data))
         ngradient_CoxPH <- mboost::CoxPH()@ngradient
         ## omit original response and include pseudo-y:
-        data_with_y_learn <- cbind(data[ , -which(names(data)== y_names)], y)
+        data_with_y_learn <- cbind(data[ , -which(names(data)== y_names), drop = FALSE], y)
         data_with_y_learn$pseudo_y <- ngradient_CoxPH(y = y, f = eta, w = weights)
       }
       
@@ -1276,7 +1284,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
         }
         
         ## Update eta and y_learn:
-        eta <- eta + learnrate * predict(tree, newdata = data)
+        eta <- eta + learnrate * predict(tree, newdata = data_with_y_learn)
         if (family %in% c("gaussian", "mgaussian")) {
           data_with_y_learn[ , y_names] <- y - eta
         } else if (family == "binomial") {
@@ -1728,7 +1736,7 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se",
     if (penalty.par.val == "lambda.1se") {
       lambda_ind <- object$glmnet.fit$relaxed$index["1se", 1]
       if (is.null(cl$gamma)) {
-        gamma_ind <- object$glmnet.fit$relaxed$index["1se", 2]
+        gamma_ind <- object$glmnet.fit$relaxed$index["1se", 2L]
       } else {
         gamma_ind <- which(object$glmnet.fit$relaxed$gamma == cl$gamma)
       }
@@ -1893,7 +1901,7 @@ cvpre <- function(object, k = 10, penalty.par.val = "lambda.1se", pclass = .5,
   if (!is.null(foldids)) {
     if (length(foldids) != nrow(object$data)) {
       stop("Argument foldids has length ", length(foldids), ", but should have length ", nrow(object$data), ".")
-    } else if (all.equal(foldids, as.integer(foldids))) {
+    } else if (!all.equal(foldids, as.integer(foldids))) {
       stop("Argument foldids should be an integer vector, but is not.")
     } 
   }
@@ -2051,16 +2059,21 @@ coef.pre <- function(object, penalty.par.val = "lambda.1se", ...)
   }
   
   ## check if gamma value is specified, and if so whether it is a single value
-  cl <- match.call()
-  if (!is.null(cl$gamma)) {
-    if (!(length(cl$gamma) == 1L && cl$gamma >= 0 && cl$gamma <= 1)) {
-      stop("Argument gamma has been supplied, but should be a single numeric value [0, 1].")
-    }
-    if (!cl$gamma %in% object$glmnet.fit$relaxed$gamma) {
-      stop("Specified gamma value should be one of ", object$glmnet.fit$relaxed$gamma)
-    }
+  gamma <- eval.parent(match.call()[["gamma"]])
+  if (!is.null(gamma)) {  
     if (is.null(object$glmnet.fit$relaxed)) {
-      warning("A gamma value was specified, but the pre ensemble was not fit using relax = TRUE. The gamma value will be ignored.")
+      warning("A gamma value was specified, but pre object was not fitted using relax = TRUE. Specified gamma will be ignored or an error may occur.")
+    } else {
+      #gamma <- eval.parent(parse(text = cl$gamma))
+      if (!(length(gamma) == 1L && gamma >= 0 && gamma <= 1)) {
+        stop("Argument gamma has been supplied, but should be a single numeric value [0, 1].")
+      }
+      if (!gamma %in% object$glmnet.fit$relaxed$gamma) {
+        stop("Specified gamma value should be one of ", object$glmnet.fit$relaxed$gamma)
+      }
+      if (is.null(object$glmnet.fit$relaxed)) {
+        warning("A gamma value was specified, but the pre ensemble was not fitted using relax = TRUE. The gamma value will be ignored.")
+      }
     }
   }
 
@@ -2506,11 +2519,6 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' 
 #' See also section 8.1 of Friedman & Popescu (2008).
 #' 
-#' @note Function \code{pairplot} uses package akima to construct interpolated 
-#' surfaces and  has an ACM license that restricts applications to non-commercial 
-#' usage, see 
-#' \url{https://www.acm.org/publications/policies/software-copyright-notice}
-#' Function \code{pairplot} prints a note referring to this ACM licence.
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' pairplot(airq.ens, c("Temp", "Wind"))}
@@ -2594,10 +2602,9 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
     stop("Argument type should be a single character string.")
   }
   
-  ## check if pakcage akima is installed:
-  if (!(requireNamespace("akima"))) {
-    stop("Function pairplot requires package akima. Download and install package
-         akima from CRAN, and run again.")
+  ## check if package interp is installed:
+  if (!(requireNamespace("interp"))) {
+    stop("Function pairplot requires package interp.")
   }
 
 
@@ -2630,7 +2637,7 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
   
   # create plot:
   if (is.null(nvals)) {nvals <- 3}
-  xyz <- akima::interp(exp_dataset[,varnames[1]], exp_dataset[,varnames[2]],
+  xyz <- interp::interp(exp_dataset[,varnames[1]], exp_dataset[,varnames[2]],
                        pred_vals, duplicate = "mean")
   if (type == "heatmap" || type == "both") {
     if (is.null(match.call()$col)) {
@@ -2652,7 +2659,6 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
   if (type == "perspective") {
     persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y", ...)
   }
-  message("NOTE: function pairplot uses package 'akima', which has an ACM license. See also https://www.acm.org/publications/policies/software-copyright-notice.")
 }
 
 
@@ -2775,7 +2781,7 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
     coef_inds <- names(coefs)[!names(coefs) %in% c("rule", "description")]
   }
 
-  ## continue only continue when there are nonzero terms besides intercept:
+  ## continue only when there are nonzero terms besides intercept:
   if ((x$family %in% c("gaussian", "binomial", "poisson") && 
       sum(coefs$coefficient != 0) > 1L ) || 
       (x$family %in% c("mgaussian", "multinomial") && 
@@ -2811,7 +2817,7 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
       if (nrow(local_modmat) < 2) {stop("Selected subregion contains less than 2 observations, importances cannot be calculated")}
       ## x$x_scales should be used to get correct SDs for linear terms:
       if (x$family == "cox") {
-        ## cox prop haz model has no intercept, so should be omitted
+        ## cox prop hazard model has no intercept, so should be omitted
         sds <- apply(local_modmat, 2, sd, na.rm = TRUE)
       } else {
         sds <- c(0, apply(local_modmat, 2, sd, na.rm = TRUE))
@@ -2846,7 +2852,7 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
     ## baselearner importance is given by abs(coef*SD) (F&P section 6):
     if (x$family %in% c("multinomial", "mgaussian")) {
       baseimps <- data.frame(coefs, sd = sds)
-      baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) {x*sds}))
+      baseimps[,gsub("coefficient", "importance", coef_inds)] <- abs(sapply(baseimps[,coef_inds], function(x) x*sds))
     } else {
       baseimps <- data.frame(coefs, sd = sds, imp = abs(coefs$coefficient)*sds)
     }
@@ -2879,13 +2885,23 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
       if (grepl(" & ", baseimps$description[i])) {
         baseimps$nterms[i] <- length(gregexpr("&", baseimps$description)[[i]]) + 1L
       } else {
-        baseimps$nterms[i] <- 1L # if not, the number of terms = 1
+        baseimps$nterms[i] <- 1L # if not, the number of terms equals 1
+      }
+    }
+    
+    ## if no winsorizing is performed, descriptions look different then with winsorizing
+    ##    so add a temporary space AFTER description
+    if (!is.null(x$call$winsfrac)) {
+      if (x$call$winsfrac == 0) {
+        linear_term_ids <- which(baseimps$rule == baseimps$description)
+        for (i in linear_term_ids) {
+          baseimps$description[i] <- paste0(baseimps$description[i], " ")
+        }
       }
     }
     
     
     ## Step 2: Calculate variable importances:
-    
     if (x$family %in% c("mgaussian", "multinomial")) {
       varimps <- data.frame(varname = x$x_names, stringsAsFactors = FALSE)
       varimps[,gsub("coefficient", "importance", coef_inds)] <- 0
@@ -2895,43 +2911,43 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
     }
     
     for(i in 1:nrow(varimps)) {
-      
-      ## Get imps from rules and linear terms
+      ## Get imps from rules and linear functions
       for(j in 1:nrow(baseimps)) {
-        ## if the variable name appears in the rule:
+        
+        ## if the variable name appears in the description (of rule or linear term):
         ##   (Note: EXACT matches are needed, so 1) there should be a space before 
         ##     and after the variable name in the rule and thus 2) there should be 
         ##     a space added before the description of the rule)
-        if(grepl(paste0(" ", varimps$varname[i], " "), paste0(" ", baseimps$description[j]))) {
+        if (grepl(paste0(" ", varimps$varname[i], " "), paste0(" ", baseimps$description[j]))) {
           ## Count the number of times it appears in the rule
           n_occ <- length(gregexpr(paste0(" ", varimps$varname[i], " "),
                                    paste0(" ", baseimps$description[j]), fixed = TRUE)[[1]])
-          # Add to the importance of the variable
+          ## Add to the importance of the variable
           if (x$family %in% c("mgaussian", "multinomial")) {
             varimps[i, gsub("coefficient", "importance", coef_inds)] <- 
               varimps[i, gsub("coefficient", "importance", coef_inds)] + 
-              (n_occ * baseimps[j, gsub("coefficient", "importance", coef_inds)] / baseimps$nterms[j])
+            (n_occ * baseimps[j, gsub("coefficient", "importance", coef_inds)] / baseimps$nterms[j])
           } else {
             varimps$imp[i] <- varimps$imp[i] + (n_occ * baseimps$imp[j] / baseimps$nterms[j])
           }
         }
       }
-        
-      ## Get imps from factors
-      if (is.factor(x$data[ , varimps$varname[i]])) { # && 
-          # !is.ordered(x$data[ , varimps$varname[i]])) {
-        ## Sum baseimps$imp for which baseimps$rule has varimps$varname[i] as part of its name
-        if (x$family %in% c("mgaussian", "multinomial")) {
-          varimps[i, gsub("coefficient", "importance", coef_inds)] <-
-            varimps[i, gsub("coefficient", "importance", coef_inds)] +
-            colSums(baseimps[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE), 
-                             gsub("coefficient", "importance", coef_inds)])
-        } else {
-          varimps$imp[i] <- varimps$imp[i] + 
-            sum(baseimps$imp[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE)])
-        }
-      }
     }
+      
+    ## Get imps for factors
+    if (is.factor(x$data[ , varimps$varname[i]])) { # check if variable is a factor and add importance
+        # !is.ordered(x$data[ , varimps$varname[i]])) {
+      ## Sum baseimps$imp for which baseimps$rule has varimps$varname[i] as _part_ of its name
+      if (x$family %in% c("mgaussian", "multinomial")) {
+        varimps[i, gsub("coefficient", "importance", coef_inds)] <-
+          varimps[i, gsub("coefficient", "importance", coef_inds)] +
+          colSums(baseimps[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE), 
+                           gsub("coefficient", "importance", coef_inds)])
+      } else { # otherwise, simply add importance(s)
+        varimps$imp[i] <- varimps$imp[i] + 
+          sum(baseimps$imp[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE)])
+      }
+    } 
     
     
     ## Step 3: Return (and plot) importances:
@@ -3024,6 +3040,14 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
     
     baseimps <- data.frame(baseimps[, keep], stringsAsFactors = FALSE)
     row.names(baseimps) <- row.names(varimps) <- NULL
+    ## Remove added space AFTER description if winsorizing was performed
+    if (!is.null(x$call$winsfrac)) {
+      if (x$call$winsfrac == 0L) {
+        for (i in linear_term_ids) {
+          baseimps$description[i] <- substring(baseimps$description[i], first = 2L)
+        }
+      }
+    }
     
     return(invisible(list(varimps = varimps, baseimps = baseimps)))
     
@@ -3511,7 +3535,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", gamma = NULL,
     } else {
       nonzeroterms <- importance(x, plot = FALSE, global = TRUE, 
                                  penalty.par.val = penalty.par.val, 
-                                 standardize = standardize)$baseimps
+                                 standardize = standardize, gamma = gamma)$baseimps
     }
   }
 

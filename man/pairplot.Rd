@@ -80,13 +80,6 @@ the final prediction rule ensemble, an error will occur.
 
 See also section 8.1 of Friedman & Popescu (2008).
 }
-\note{
-Function \code{pairplot} uses package akima to construct interpolated 
-surfaces and  has an ACM license that restricts applications to non-commercial 
-usage, see 
-\url{https://www.acm.org/publications/policies/software-copyright-notice}
-Function \code{pairplot} prints a note referring to this ACM licence.
-}
 \examples{
 \donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
