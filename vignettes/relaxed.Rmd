@@ -3,7 +3,7 @@ title: "More sparse and relaxed: Fitting rule ensembles with the relaxed lasso"
 author: "Marjolein Fokkema"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Sparse and relaxed: Use of the relaxed lasso in fitting rule ensembles}
+  %\VignetteIndexEntry{More sparse and relaxed: Fitting rule ensembles with the relaxed lasso}
   %\VignetteEngine{knitr::rmarkdown}
   %\usepackage[utf8]{inputenc}
 ---
@@ -14,7 +14,7 @@ A beneficial property of the lasso penalty is that it shrinks coefficients to ze
 
 When fitting prediction rule ensembles (PREs), this may be a nuisance, especially when we want to enforce sparsity. In what follows, we show how we can easily select a smaller number of terms for the final ensemble, while retaining relatively high predictive accuracy, using the relaxed lasso. 
 
-The relaxed lasso was proposed by Meinshausen (2007). Investigations of Su et al. (2107) provide insight on why the relaxed lasso is beneficial [^1]. Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso" (accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
+The relaxed lasso was proposed by Meinshausen (2007). Investigations of Su et al. (2107) provide insight on why the relaxed lasso is beneficial[^1]. Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso" (accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
 
 [^1]: As explained by Su et al. (2017), the shrinkage of the lasso penalty introduces pseudo-noise. When the regularization parameter $\lambda$ is large, the estimated coefficients are seriously biased downwards, and the residuals still contain much of the effects associated with already selected variables. As strong variables get picked up, the shrinkage inflates pseudo-noise. If non-predictors are at least slightly correlated with this pseudo-noise, they will get picked up as predictors. Thus, for variable selection we might want a somewhat larger value of $\lambda$, but to reduce the pseudo-noise, we want to deshrink the non-zero coefficients. 
 

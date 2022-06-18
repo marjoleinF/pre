@@ -32,7 +32,7 @@ print.gpe <- function(
 #' \code{\link{coef.gpe}}, \code{\link{predict.gpe}}
 summary.gpe <- function(object, penalty.par.val = "lambda.1se", ...) {
   
-  if (class(object) != "gpe") {
+  if (!inherits(object, "gpe")) {
     stop("Argument 'object' should be of class 'gpe'.")
   }
   
