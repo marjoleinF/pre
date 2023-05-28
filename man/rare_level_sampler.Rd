@@ -88,15 +88,15 @@ dat$factor2 <- factor(rep(1:21, times = 5))
 samp_func <- rare_level_sampler(c("Species", "factor2"), data = dat, 
                                   sampfrac = .51, warning = TRUE)
 
-## Illustrate behavior of sampling function                                                                   
+## Illustrate what it does                                                                   
 N <- nrow(dat)
 wts <- rep(1, times = nrow(dat))
 set.seed(3)
 dat[samp_func(n = N, weights = wts), ] # single sample
 for (i in 1:500) dat[samp_func(n = N, weights = wts), ]
-warnings() # to illustrates warnings that may occur when fitting a full PRE
+warnings() # to illustrate warnings that may occur when fitting a full PRE
 
-## Illustrate use of function generator with function pre:
+## Illustrate use with function pre:
 ## (Note: low ntrees value merely to reduce computation time for the example)
 set.seed(42)
 # iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 20) # would yield error

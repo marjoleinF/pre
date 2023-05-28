@@ -58,6 +58,21 @@ test_that("Get previous results with airquality and pre function", {
   airq.ens <- pre(Ozone ~ ., data = airquality, use.grad = FALSE, ntrees = 10)
   # save_to_test(airq.ens, "airquality_w_pre_with_glmtree")
   expect_equal(airq.ens, read_to_test("airquality_w_pre_with_glmtree"), tolerance = 1.49e-08)
+  
+  #####
+  # Works with adaptive lasso
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data = airquality, ad.alpha = 0, ntrees = 10)
+  # save_to_test(airq.ens, "airquality_w_pre_with_adaptive_lasso")
+  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_adaptive_lasso"), tolerance = 1.49e-08)
+  
+  ####
+  # Works with relaxed adaptive lasso works
+  set.seed(42)
+  airq.ens <- pre(Ozone ~ ., data = airquality, ad.alpha = 0, relax = TRUE, ntrees = 10)
+  # save_to_test(airq.ens, "airquality_w_pre_with_relaxed_adaptive_lasso")
+  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_relaxed_adaptive_lasso"), tolerance = 1.49e-08)
+  
 })
 
 

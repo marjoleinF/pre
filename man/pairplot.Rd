@@ -42,8 +42,9 @@ trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
 \item{nvals}{optional numeric vector of length 2. For how many values of
-x1 and x2 should partial dependence be plotted? If \code{NULL}, all observed
-values for the two predictor variables specified will be used (see details).}
+x1 and x2 should partial dependence be plotted? If \code{NULL}, a grid of all possible
+combinations of the observed values of the two predictor variables specified will be used 
+(see details).}
 
 \item{pred.type}{character string. Type of prediction to be plotted on z-axis.
 \code{pred.type = "response"} gives fitted values for continuous outputs and
@@ -66,17 +67,23 @@ for plotting partial dependence and also supports `pre` models.
 \details{
 By default, partial dependence will be plotted for each combination
 of 20 values of the specified predictor variables. When \code{nvals = NULL} is
-specified a dependence plot will be created for every combination of the unique
-observed values of the two predictor variables specified. Therefore, using
-\code{nvals = NULL} will often result in long computation times, and / or
-memory allocation errors. Also, \code{\link{pre}} ensembles derived
-from training datasets that are very wide or long may result in long
-computation times and / or memory allocation errors. In such cases, reducing
-the values supplied to \code{nvals} will reduce computation time and / or
-memory allocation errors. When the nvals argument is supplied, values for the
+specified, a dependence plot will be created for every combination of the unique
+observed values of the two specified predictor variables. If \code{NA} instead of
+a numeric value is specified for one of the predictor variables, the all observed
+values for that variables will be used. Specifying \code{nvals = NULL} and 
+\code{nvals = c(NA, NA)} will yield the exact same result.
+
+High values, \code{NA} or \code{NULL} for \code{nvals} may result in long 
+computation times and/or memory allocation errors. Also, \code{\link{pre}} 
+ensembles derived from training datasets that are very wide or long may 
+result in long computation times and/or memory allocation errors. In such cases, reducing
+the values supplied to \code{nvals} will reduce computation time and/or
+memory allocation errors. 
+
+When numeric value(s) are specified for \code{nvals}, values for the
 minimum, maximum, and nvals - 2 intermediate values of the predictor variable
-will be plotted. Furthermore, if none of the variables specified appears in
-the final prediction rule ensemble, an error will occur.
+will be plotted. If none of the variables specified was
+selected for the final prediction rule ensemble, an error will be returned.
 
 See also section 8.1 of Friedman & Popescu (2008).
 }

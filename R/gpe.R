@@ -1,3 +1,5 @@
+utils::globalVariables(c(".offset"))
+
 #' @title Learner Functions Generators for gpe
 #' 
 #' @description 
@@ -132,7 +134,6 @@ gpe_trees <- function(
           }
         }
       } else if (family == "binomial"){
-        data2 <- data.frame(data, offset = 0)
         mt <- terms(formula, data = data)
         
         if(attr(mt, "response") != 1)
@@ -142,23 +143,26 @@ gpe_trees <- function(
           as.character((attr(mt, "variables")[[2]])), " ~ 1 |", paste0(
             attr(mt, "term.labels"), collapse = " + ")))
         n <- nrow(data)
-        
+        data$.offset = 0
         for(i in 1:ntrees) {
           # Take subsample of dataset:
           subsample <- sample_func(n = n, weights = weights)
-          subsampledata <- data2[subsample,]
+          subsampledata <- data[subsample,]
           # Grow tree on subsample:
           tree <- glmtree(
             glmtreeformula, data = subsampledata, family = "binomial", 
             maxdepth = maxdepth + 1,  
-            offset = offset, 
+            offset = .offset,
             epsilon = 1e-4) # we set the relative change in the deviance lower
                             # to speed up the computations
           # Collect rules from tree:
           rules <- c(rules, list.rules(tree))
           # Update offset:
-          data2$offset <- data2$offset + learnrate * predict(
+          data$.offset <- data$.offset + learnrate * predict(
             tree, newdata = data, type = "link")
+          if (i == ntrees) {
+            ## TODO: Remove offset from data
+          }
         }
       } else 
         stop("family '", family, "' is not implemented for gpe_trees")

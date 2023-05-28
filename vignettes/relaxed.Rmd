@@ -1,5 +1,5 @@
 ---
-title: "More sparse and relaxed: Fitting rule ensembles with the relaxed lasso"
+title: "More sparse, adaptive or relaxed: Fitting rule ensembles with relaxed and/or adaptive lasso"
 author: "Marjolein Fokkema"
 output: rmarkdown::html_vignette
 vignette: >
@@ -10,15 +10,36 @@ vignette: >
 
 ## Introduction
 
-A beneficial property of the lasso penalty is that it shrinks coefficients to zero. A less beneficial property is that, in the process, the lasso tends to overshrink the large coefficients too far to zero. Authors have argued that the lasso should "be considered as a *variable screener* rather than a *model selector*" (Su et al., 2017). It has a high true positive rate (i.e., high probability that a true predictor will be selected) at the cost of high false positive rate (i.e., high probability that a non-predictor will be selected). 
+### Standard lasso
 
-When fitting prediction rule ensembles (PREs), this may be a nuisance, especially when we want to enforce sparsity. In what follows, we show how we can easily select a smaller number of terms for the final ensemble, while retaining relatively high predictive accuracy, using the relaxed lasso. 
+A beneficial property of the lasso penalty is that it shrinks coefficients to zero. A less beneficial property is that, in the process, the lasso tends to overshrink the large coefficients too far to zero. Authors have argued that the lasso should "be considered as a *variable screener* rather than a *model selector*" (Su et al., 2017). There seems to be a trade-off between predictive accuracy and variable selection: The penalty parameter value optimal for selection will overshrink the large coefficients, making it suboptimal for prediction. The penalty parameter value optimal for prediction ("lambda.min") will undershrink the coefficients when the aim is to also perform variable selection. It yields a high true positive rate (i.e., high probability that a true predictor will be selected) at the cost of high false positive rate (i.e., high probability that a non-predictor will be selected). 
 
-The relaxed lasso was proposed by Meinshausen (2007). Investigations of Su et al. (2107) provide insight on why the relaxed lasso is beneficial[^1]. Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso" (accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
+When fitting prediction rule ensembles (PREs), this may be a nuisance, because often we want to enforce sparsity. In what follows, we show how we can easily select a smaller number of terms for the final ensemble, while retaining relatively high predictive accuracy, using the relaxed lasso. Furthermore, use of the adaptive lasso may further optimize selection and prediction.
 
-[^1]: As explained by Su et al. (2017), the shrinkage of the lasso penalty introduces pseudo-noise. When the regularization parameter $\lambda$ is large, the estimated coefficients are seriously biased downwards, and the residuals still contain much of the effects associated with already selected variables. As strong variables get picked up, the shrinkage inflates pseudo-noise. If non-predictors are at least slightly correlated with this pseudo-noise, they will get picked up as predictors. Thus, for variable selection we might want a somewhat larger value of $\lambda$, but to reduce the pseudo-noise, we want to deshrink the non-zero coefficients. 
 
-## Example: Predicting Ozone levels with a small number of rules
+### Relaxed lasso
+
+The relaxed lasso was originally proposed by Meinshausen (2007). Investigations of Su et al. (2107) provide insight on why the relaxed lasso is beneficial. Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". Function `pre` supports use of the relaxed lasso through passing of argument `relax`. A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso", accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
+
+
+### Adaptive lasso
+
+The adaptive lasso has been proposed by Zou (2006). It applies positive weighting factors to the lasso penalty to control the bias through shrinking coefficients with weights inversely proportional to their size. It thus aims to shrink small coefficients more and large coefficients less. It requires an initial estimate of the coefficients, for which OLS (if $N > p$) or ridge (if $N < p$) estimation is usually employed, to obtain a vector of weights. These weights can then be used to scale the predictor matrix, or to scale the penalty; both approaches have the same effect. 
+
+Function `pre` allows for adaptive lasso estimation through specification of argument `ad.alpha`. It first uses elastic net regression for computing penalty weights. 
+The initial ridge estimates are also obtained using the `cv.glmnet` function. An elastic net penalty is thus applied by default for computing the weights, use of ridge regression is recommended and by specifying `ad.alpha = 0`. Lasso regression can be used by specifying `ad.alpha = 1` and OLS can be used by specifying `ad.penalty = 0`. Next, the inverse of the absolute values of the estimated coefficients are supplied as penalty factors to the `cv.glmnet` function, which will be default use `alpha = 1`, but other values for the elastic-net penalty mixing parameter can be specified. For the initial and final estimates, the same fold assignments are used in the cross validation.
+
+
+### Relaxed adaptive lasso
+
+It should not come as a surprise that a combination has also been proposed: The relaxed adaptive lasso (Zhang et al., 2022). It can easily be employed through specifying both `ad.alpha = 0` and `relax = TRUE`.  
+
+An excellent discussion of the consistency, predictive and selection accuracy of the lasso and related methods can be found in the master's thesis of Kirkland (2014; pages 101-120). 
+
+
+## Example: Predicting Ozone levels with relaxed and/or adaptive lasso
+
+### Standard lasso
 
 ```{r}
 library("pre")
@@ -44,12 +65,45 @@ tab <- airq.ens$glmnet.fit$glmnet.fit
 tab <- print(tab)
 ```
 
-```{r, echo=FALSE, fig.width=5, fig.height=3.5}
-plot(airq.ens$glmnet.fit)
+```{r, echo=FALSE}
+## Overwrite glmnet plotting function, because secondary x axis does
+## not use cex.axis
+plot.cv.glmnet <- function (x, sign.lambda = 1, ...) 
+{
+    cvobj = x
+    xlab = expression(Log(lambda))
+    if (sign.lambda < 0) 
+        xlab = paste("-", xlab, sep = "")
+    plot.args = list(x = sign.lambda * log(cvobj$lambda), y = cvobj$cvm, 
+        ylim = range(cvobj$cvup, cvobj$cvlo), xlab = xlab, ylab = cvobj$name, 
+        type = "n")
+    new.args = list(...)
+    new.args$cex.axis = new.args$cex.lab = new.args$cex = .7
+    new.args$cex.main = .85
+    if (length(new.args)) 
+        plot.args[names(new.args)] = new.args
+    do.call("plot", plot.args)
+    glmnet:::error.bars(sign.lambda * log(cvobj$lambda), cvobj$cvup, cvobj$cvlo, 
+        width = 0.01, col = "darkgrey")
+    points(sign.lambda * log(cvobj$lambda), cvobj$cvm, pch = 20, 
+        col = "red")
+    axis(side = 3, at = sign.lambda * log(cvobj$lambda), labels = paste(cvobj$nz), 
+        tick = FALSE, line = 0, cex.axis = .7)
+    abline(v = sign.lambda * log(cvobj$lambda.min), lty = 3)
+    abline(v = sign.lambda * log(cvobj$lambda.1se), lty = 3)
+    invisible()
+}
 ```
 
 ```{r, eval=FALSE}
 plot(airq.ens$glmnet.fit)
+```
+
+```{r, echo=FALSE, fig.width=5, fig.height=3}
+plot(airq.ens$glmnet.fit)
+```
+
+```{r, eval=FALSE}
 tab <- airq.ens$glmnet.fit$glmnet.fit
 tab <- print(tab)
 ```
@@ -58,27 +112,72 @@ tab <- print(tab)
 tab[9:16, ]
 ```
 
-From the `Df` and `Lambda` column, we can see that a $\lambda$ value of `r tab$Lambda[which(tab$Df == 5)[1]]` would result in a final ensemble comprising five terms. However, from the plot above, which shows the cross-validated error ($y$-axis) against the value of penalty parameter $\lambda$ on the lower $x$-axis, and the corresponding number of selected terms on the upper $x$-axis, we see that this would yield substantially higher error. In part, this is due to overshrinkage, which we can mitigate using the relaxed lasso, which 'unshrinks' the non-zero coefficients.
+From the `Df` and `Lambda` columns, we can see that a $\lambda$ value of `r tab$Lambda[which(tab$Df == 5)[1]]` would result in a final ensemble comprising five terms. However, from the plot above, which shows the CV error ($y$-axis) against the value of penalty parameter $\lambda$ (bottom $x$-axis) and the corresponding number of selected terms (top $x$-axis), we see that this would yield substantially higher error. In part, this is due to overshrinkage, which we can mitigate using the relaxed lasso, which deshrinks the non-zero coefficients towards their unpenalized values.
 
 
-## Relaxed fits
+### Relaxed lasso
 
-We can use the relaxed lasso by specifying `relax = TRUE` when fitting rule ensemble using function `pre`: 
+We can employ the relaxed lasso by specifying `relax = TRUE` when fitting a rule ensemble:
 
 ```{r}
 set.seed(42)
 airq.ens.rel <- pre(Ozone ~ ., data = airq, relax = TRUE)
 ```
 
-If we specify `relax = TRUE`, the `gamma` argument (see `?cv.glmnet` for documentation on arguments `relax` and `gamma`) will by default be set to a range of five values in the interval [0, 1]. This can be overruled by specifying different values for argument `gamma` in the call to function `pre`. 
+If we specify `relax = TRUE`, the `gamma` argument (see `?cv.glmnet` for documentation on arguments `relax` and `gamma`) will by default be set to a range of five values in the interval [0, 1]. This can be overruled by specifying different values for argument `gamma` in the call to function `pre` (but which is seldom necessary). 
 
 Let us take a look at the regularization paths for the relaxed fits:
 
-```{r, fig.width=6, fig.height=3.5}
+```{r, echo=FALSE}
+## OVerwrite glmnet plotting function, because secondary x axis and legend do
+## not use cex, cex.axis or cex.lab arguments
+plot.cv.relaxed <- function (x, se.bands = TRUE, cex = .7, cex.axis= .7, 
+                             cex.lab = .7, cex.main = .85,...) 
+{
+    xr = x$relaxed
+    oldpar = par(mar = c(4, 4, 3, 4))
+    on.exit(par(oldpar))
+    statlist = xr$statlist
+    gamma = xr$gamma
+    ngamma = length(gamma)
+    ylim = range(unlist(lapply(statlist, "[[", "cvm")))
+    if (se.bands) {
+        cvup = lapply(statlist, "[[", "cvup")
+        cvlo = lapply(statlist, "[[", "cvlo")
+        ylim = range(ylim, unlist(cvup), unlist(cvlo))
+    }
+    xlim = log(range(unlist(lapply(statlist, "[[", "lambda"))) + 
+        1e-05)
+    cvcolors = rainbow(ngamma, start = 0.1, end = 1)
+    with(statlist[[ngamma]], plot(log(lambda), cvm, type = "n", 
+        xlab = expression(Log(lambda)), ylab = x$name, ylim = ylim, 
+        xlim = xlim, cex = cex, cex.axis= cex.axis, cex.lab = cex.lab,
+        cex.main = cex.main))
+    if (se.bands) {
+        for (i in seq(ngamma)) with(statlist[[i]], polygon(c(log(lambda), 
+            rev(log(lambda))), c(cvup, rev(cvlo)), col = "floralwhite", 
+            border = "antiquewhite"))
+    }
+    for (i in seq(ngamma)) with(statlist[[i]], lines(log(lambda), 
+        cvm, lwd = 1, col = cvcolors[i]))
+    mins = log(c(xr$lambda.min, xr$lambda.1se))
+    abline(v = mins, lty = 3)
+    dof = statlist[[1]]$nzero
+    lambda = statlist[[1]]$lambda
+    axis(side = 3, at = log(lambda), labels = paste(dof), tick = FALSE, 
+        line = 0, cex = cex, cex.axis= cex.axis, cex.lab = cex.lab)
+    shape::colorlegend(posy = c(0.2, 0.8), posx = c(0.93, 0.945) - 0.03, 
+        col = rainbow(ngamma, start = 0.1, end = 1), zlim = c(0, 
+            1), zval = gamma, main = expression(gamma), digit = 2, cex=cex)
+    invisible()
+}
+```
+
+```{r, fig.width=5, fig.height=3}
 plot(airq.ens.rel$glmnet.fit)
 ```
 
-We obtained one regularization path for each value of $\gamma$. The path with $\gamma = 1$ is the default lasso path. Lower values of $\gamma$ 'unshrink' the value of the non-zero coefficients of the lasso towards their unpenalized values. We see that for the $\lambda$ value yielding the minimum MSE (indicated by the left-most vertical dotted line), the value of $\gamma$ does not make a lot of difference for the MSE, but when $\lambda$ values increase, higher values of $\gamma$ tend to yield lower MSE. 
+We obtained one regularization path for each value of $\gamma$. The path for $\gamma = 1$ is the default lasso path. Lower values of $\gamma$ 'unshrink' the value of the non-zero coefficients of the lasso towards their unpenalized values. We see that for the $\lambda$ value yielding the minimum MSE (indicated by the left-most vertical dotted line), the value of $\gamma$ does not make a lot of difference for the MSE, but when $\lambda$ values increase, higher values of $\gamma$ tend to yield lower MSE. 
 
 For model selection using the `"lambda.min"` criterion, by default the $\lambda$ and $\gamma$ combination yielding the lowest CV error is returned. For the `"lambda.1se"` criterion, the $\lambda$ and $\gamma$ combination yielding the sparsest solution within 1 standard error of the error criterion of the minimum is returned:
 
@@ -118,7 +217,7 @@ Also note that in the code chunk above we refer to the `penalty.par.val` argumen
 
 
 
-## Forward stepwise selection
+### Forward stepwise selection with the relaxed lasso
 
 Using $\gamma = 0$ amounts to a forward stepwise selection approach, with entry order of the variables (rules and linear terms) determined by the lasso. This approach can be useful if we want a rule ensemble with low complexity and high generalizability, and especially when we want to decide a-priori on the number of terms we want to retain. By specifying a high value of $\lambda$, we can retain a small number of rules, while specifying $\gamma = 0$ will provide unbiased (unpenalized) coefficients. This avoids the overshrinking of large coefficients. In terms of predictive accuracy, this approach may not perform best, but if low complexity (interpretability) is most important, this is a very useful approach, which does not reduce predictive accuracy too much.
 
@@ -142,12 +241,39 @@ Note we have retained the exact same set of terms with the unpenalized relaxed l
 To evaluate predictive accuracy of the final fitted model, and to estimate generalization error to unseen observations, cross-validation would be more appropriate than using training data for fitting and evaluating the model. To that end, function `cvpre` can for example be used.
 
 
+### Adaptive lasso
+
+Finally, we fit a PRE with adaptive lasso to predict `Ozone` levels:
+
+```{r}
+set.seed(42)
+airq.ens.ad <- pre(Ozone ~ ., data = airq, ad.alpha = 0)
+summary(airq.ens.ad)
+```
+
+The adaptive lasso did not provide a sparser ensemble, while the mean CV error suggests better predictive accuracy than the standard, but not the relaxed, lasso. Adaptive lasso settings can further be adjusted by specification of argument `ad.penalty`.
+
+We can also fit a rule ensemble using the relaxed adaptive lasso:
+
+```{r}
+set.seed(42)
+airq.ens.rel.ad <- pre(Ozone ~ ., data = airq, relax = TRUE, ad.alpha = 0)
+print(airq.ens.rel.ad)
+```
+
+The summary suggests that the relaxed adaptive lasso provides highest predictive accuracy compared to the standard, the relaxed and the adaptive lasso, when using the default `"lambda.1se"` criterion. Note however that the training data have been used to generate the rules, to estimate the weights for the penalty factors using ridge regression and to estimate the final lasso model. Thus, the printed CV error can provide an overly optimistic estimate of predictive accuracy. To obtain an honest estimate of predictive accuracy, it should be computed on a separate test dataset or using an additional layer of cross validation (e.g., using function `cvpre` or other approach).
+
+
+### Conclusion
+
+As a rule of thumb, the relaxed lasso and possibly forward-stepwise selection based on the relaxed lasso yield sparser ensembles. The relaxed adaptive lasso might perform better in terms of predictive accuracy.
+
 
 ## Session info
 
-In case you obtained different results, these results were obtained using the following:
+In case you obtained different results, the results above were obtained using the following:
 
-```{r}
+```{r, echo=FALSE}
 sessionInfo()
 ```
 
@@ -156,6 +282,12 @@ sessionInfo()
 
 Hastie, T., Tibshirani, R., & Tibshirani, R. J. (2017). Extended comparisons of best subset selection, forward stepwise selection, and the lasso. *arXiv:1707.08692*, https://arxiv.org/abs/1707.08692.
 
+Kirklan, L.-A. (2014). LASSO - Simultaneous shrinkage and selection via the L1 norm. Master's thesis, University of Pretoria. https://www.researchgate.net/publication/325929497_LASSO_-_Simultaneous_shrinkage_and_selection_via_the_L1_norm
+
 Meinshausen, N. (2007). Relaxed lasso. *Computational Statistics & Data Analysis, 52*(1), 374-393. https://doi.org/10.1016/j.csda.2006.12.019
 
 Su, W., Bogdan, M., & Candes, E. (2017). False discoveries occur early on the lasso path. *The Annals of Statistics, 45*(5), 2133-2150. https://doi.org/10.1214/16-AOS1521
+
+Zhang, R., Zhao, T., Lu, Y., & Xu, X. (2022). Relaxed Adaptive Lasso and its asymptotic results. *Symmetry, 14*(7), 1422. https://doi.org/10.3390/sym14071422
+
+Zou, H. (2006). The adaptive lasso and its oracle properties. *Journal of the American Statistical Association, 101*(476), 1418-1429. https://doi.org/10.1198/016214506000000735

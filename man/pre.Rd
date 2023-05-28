@@ -8,6 +8,8 @@ pre(
   formula,
   data,
   family = gaussian,
+  ad.alpha = NA,
+  ad.penalty = "lambda.min",
   use.grad = TRUE,
   weights,
   type = "both",
@@ -62,6 +64,18 @@ strongly advised but not required. If \code{family} is not specified,
 Otherwise, the program will try to make an informed guess, based on the 
 class of the response variable specified in \code{formula}. als see Examples 
 below.}
+
+\item{ad.alpha}{Alpha value to be used for computing the penalty weights for the
+adaptive lasso. Defaults to \code{NA}, yielding standard lasso estimation. 
+To use adaptive lasso, specify a value between (and including) 0 and 1. A value of
+0 will yield ridge-estimated penalty weights for computing the final (lasso) 
+penalized model. See \code{vignette("relaxed", "pre")} or 
+argument \code{alpha} of \code{\link[glmnet]{cv.glmnet}}.}
+
+\item{ad.penalty}{Penalty parameter value to be used for computing the penalty 
+weights for the adaptive lasso. Defaults to \code{"lambda.min"}. If OLS instead
+of elastic net regression should be used to compute weights, specify 
+\code{ad.penalty = 0}. See also \code{vignette("relaxed", "pre")}.}
 
 \item{use.grad}{logical. Should gradient boosting with regression trees be
 employed when \code{learnrate > 0}? If \code{TRUE}, use trees fitted by 
@@ -188,6 +202,9 @@ methods and functions in package \code{pre} is selected using the 'minimum
 cross validated error plus 1 standard error' criterion. All functions and 
 methods for objects of class \code{pre} take a \code{penalty.parameter.val} 
 argument, which can be used to select a different criterion.
+
+If only a set of rules needs to be generated, but the final regression model
+should not be fitted, specify the hidden argument \code{fit.final = FALSE}.
 }
 \description{
 Function \code{pre} derives a sparse ensemble of rules and/or linear functions for 
@@ -195,7 +212,7 @@ prediction of a continuous, binary, count, multinomial, multivariate
 continuous or survival response.
 }
 \details{
-Note: obervations with missing values will be removed prior to 
+Note that obervations with missing values will be removed prior to 
 analysis (and a warning printed).
 
 In some cases, duplicated variable names may appear in the model.
@@ -263,6 +280,12 @@ airq <- airquality[complete.cases(airquality), ]
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airq)
 airq.ens
+## Use relaxed lasso to estimate final model
+airq.ens.rel <- pre(Ozone ~ ., data = airq, relax = TRUE)
+airq.ens.rel
+## Use adaptive lasso to estimate final model
+airq.ens.ad <- pre(Ozone ~ ., data = airq, ad.alpha = 0)
+airq.ens.ad
 
 ## Fit pre to a binary response:
 airq2 <- airquality[complete.cases(airquality), ]

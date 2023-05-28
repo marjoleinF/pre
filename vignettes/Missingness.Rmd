@@ -10,7 +10,7 @@ vignette: >
 
 ## Introduction
 
-To deal with missing data, multiple imputation is the golden standard (Schafer & Graham, 2002). With GLMs, the models fitted on each imputed dataset can then be pooled. For non-parameteric methods like prediction rule ensembles, such pooling is more difficult. Little research has been performed on how to best deal with missing data in fitting prediction rule ensembles, but there are currently three options:
+To deal with missing data, multiple imputation is the golden standard (Schafer & Graham, 2002). With GLMs, the models fitted on each imputed dataset can then be pooled. For non-parametric methods like prediction rule ensembles, such pooling is more difficult. Little research has been performed on how to best deal with missing data in fitting prediction rule ensembles, but there are currently three options:
 
 * Listwise deletion. Although the default in `pre()`, this is certainly the least favorable option.
 
@@ -26,7 +26,7 @@ Below, we provide examples for the first three approaches described above. In fu
 
 ## Example: Predicting wind speed
 
-For the examples, we will be predicting Wind speels using the `airquality` dataset (we focus on predicting the `wind` variable, because it does not have missing values,  while variables `Ozone` and `Solar.R` do):
+For the examples, we will be predicting Wind speeds using the `airquality` dataset (we focus on predicting the `wind` variable, because it does not have missing values,  while variables `Ozone` and `Solar.R` do):
 
 ```{r, results='hide', message=FALSE, warning=FALSE, fig.width=5}
 head(airquality)
@@ -165,7 +165,7 @@ coef.agg <- function(object, ...) {
       coefs$coefficient[first_match] + coefs$coefficient[i]
   }
   ## Remove duplicates:
-  coefs <- coefs[-duplicates, ]
+  if (length(duplicates) > 0) coefs <- coefs[-duplicates, ]
   ## Check if there are- duplicate linear terms left and repeat:
   duplicates <- which(duplicated(coefs$rule))
   for (i in duplicates) {
@@ -173,7 +173,7 @@ coef.agg <- function(object, ...) {
     coefs$coefficient[first_match] <- 
       coefs$coefficient[first_match] + coefs$coefficient[i]
   }
-  coefs <- coefs[-duplicates, ]
+  if (length(duplicates) > 0) coefs <- coefs[-duplicates, ]
   ## Return results:
   coefs
 }

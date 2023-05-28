@@ -51,7 +51,9 @@ train <- sample(1:sum(complete.cases(airquality)), size = 100)
 set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),][train,])
 predict(airq.ens)
-predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])}
+predict(airq.ens, newdata = airquality[complete.cases(airquality),][-train,])
+
+}
 }
 \seealso{
 \code{\link{pre}}, \code{\link{plot.pre}}, 

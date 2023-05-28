@@ -1,3 +1,22 @@
+Changes in Version 1.0.7 (2023-..-..)
+
+  - Function mi_pre added, to allow for fitting a single prediction rule
+      ensemble on multiply imputed datasets.
+      
+  - Arguments ad_alpha and ad_penalty have been added to function pre(), 
+      allowing for fitting the final rule ensemble using adaptive lasso. 
+      See documentation of function pre and vignette("relaxed", "pre").
+     
+     
+      
+
+Changes in Version 1.0.6 (2023-02-13)
+
+  - No major changes.
+
+
+
+
 Changes in Version 1.0.5 (2022-06-10)
 
   - No major changes, several bug fixes, dependence on package akima 
