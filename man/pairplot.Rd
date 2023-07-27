@@ -13,6 +13,9 @@ pairplot(
   penalty.par.val = "lambda.1se",
   nvals = c(20L, 20L),
   pred.type = "response",
+  newdata = NULL,
+  xlab = NULL,
+  ylab = NULL,
   ...
 )
 }
@@ -51,6 +54,16 @@ combinations of the observed values of the two predictor variables specified wil
 fitted probabilities for nominal outputs. \code{pred.type = "link"} gives fitted
 values for continuous outputs and linear predictor values for nominal outputs.}
 
+\item{newdata}{Optional \code{data.frame} in which to look for variables 
+with which to predict. If \code{NULL}, the \code{data.frame} used to fit the 
+original ensemble will be used.}
+
+\item{xlab}{character. Label to be printed on the x-axis. If \code{NULL},
+the first elements of the supplied \code{varnames} will be printed on the x-axis.}
+
+\item{ylab}{character. Label to be printed on the y-axis. If \code{NULL},
+the second element of the supplied \code{varnames} will be printed on the y-axis.}
+
 \item{...}{Further arguments to be passed to \code{\link[graphics]{image}}, 
 \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on
 whether \code{type} is specified to be \code{"heatmap"}, \code{"contour"}, \code{"both"} 
@@ -65,27 +78,39 @@ datasets, package `plotmo` (Milborrow, 2019) provides more efficient functions
 for plotting partial dependence and also supports `pre` models.
 }
 \details{
+Partial dependence functions are described in section 8.1 of Friedman & 
+Popescu (2008).
+
 By default, partial dependence will be plotted for each combination
 of 20 values of the specified predictor variables. When \code{nvals = NULL} is
 specified, a dependence plot will be created for every combination of the unique
 observed values of the two specified predictor variables. If \code{NA} instead of
-a numeric value is specified for one of the predictor variables, the all observed
+a numeric value is specified for one of the predictor variables, all observed
 values for that variables will be used. Specifying \code{nvals = NULL} and 
 \code{nvals = c(NA, NA)} will yield the exact same result.
 
-High values, \code{NA} or \code{NULL} for \code{nvals} may result in long 
-computation times and/or memory allocation errors. Also, \code{\link{pre}} 
+High values, \code{NA} or \code{NULL} for \code{nvals} result in long 
+computation times and possibly memory problems. Also, \code{\link{pre}} 
 ensembles derived from training datasets that are very wide or long may 
-result in long computation times and/or memory allocation errors. In such cases, reducing
+result in long computation times and/or memory allocation errors. 
+In such cases, reducing
 the values supplied to \code{nvals} will reduce computation time and/or
 memory allocation errors. 
 
 When numeric value(s) are specified for \code{nvals}, values for the
 minimum, maximum, and nvals - 2 intermediate values of the predictor variable
-will be plotted. If none of the variables specified was
-selected for the final prediction rule ensemble, an error will be returned.
+will be plotted. 
 
-See also section 8.1 of Friedman & Popescu (2008).
+Alternatively, \code{newdata} can be specified to provide a different (smaller) 
+set of observations to compute partial dependence over.
+If \code{mi_pre} was used to derive the original rule ensemble, 
+\code{newdata = "mean.mi"} can be specified. This 
+will result in an average dataset being computed over the imputed datasets, 
+which are then used to compute partial dependence functions. This greatly 
+reduces the number of observations and thereby computation time.
+
+If none of the variables specified with argument \code{varnames} was
+selected for the final prediction rule ensemble, an error will be returned.
 }
 \examples{
 \donttest{set.seed(42)

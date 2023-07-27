@@ -67,11 +67,17 @@ test_that("Get previous results with airquality and pre function", {
   expect_equal(airq.ens, read_to_test("airquality_w_pre_with_adaptive_lasso"), tolerance = 1.49e-08)
   
   ####
-  # Works with relaxed adaptive lasso works
+  # Works with relaxed adaptive lasso
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data = airquality, ad.alpha = 0, relax = TRUE, ntrees = 10)
   # save_to_test(airq.ens, "airquality_w_pre_with_relaxed_adaptive_lasso")
   expect_equal(airq.ens, read_to_test("airquality_w_pre_with_relaxed_adaptive_lasso"), tolerance = 1.49e-08)
+  
+  ####
+  # Relaxed (adaptive) lasso works with function opt_par_vals
+  a <- capture.output(get_opt_pars(airq.ens, nonzero = 2))
+  # save_to_test(a, "airquality_w_relaxed_pre_with_get_opt_pars")
+  expect_equal(a, read_to_test("airquality_w_relaxed_pre_with_get_opt_pars"), tolerance = 1.49e-08)
   
 })
 

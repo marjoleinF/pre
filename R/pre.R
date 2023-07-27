@@ -1171,6 +1171,16 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
     replicate(n = ntrees, sample(1:n, size = round(sampfrac * n), 
            replace = FALSE, prob = weights))
   }
+  if (is.list(subsample)) {
+    ## Add 0s to all samples that do not have maximum length (selecting row 0 return nothing)
+    ## and return a
+    max_length <- max(sapply(subsample, length))
+    subsample <- sapply(subsample, function(x) {
+      if (length(x) < max_length) {
+        x <- c(x, rep(0L, times = max_length - length(x)))
+      }
+      x})
+  }
   if (verbose) cat(" Done!\n\n")
   
   ## Grow trees:
@@ -1796,8 +1806,9 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se",
   }
   
   cl <- match.call()
-
+    
   if (inherits(object$glmnet.fit, "cv.relaxed")) {
+    cl$gamma <- eval(cl$gamma)
     
     ## check if gamma value is specified, and if so whether it is a single, proper value
     if (!is.null(cl$gamma)) {
@@ -1810,6 +1821,8 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se",
              ".")
       }
     }
+    
+    cl$penalty.par.val <- eval(cl$penalty.par.val)
         
     if (penalty.par.val == "lambda.1se") {
       lambda_ind <- object$glmnet.fit$relaxed$index["1se", 1]
@@ -1857,6 +1870,8 @@ summary.pre <- function(object, penalty.par.val = "lambda.1se",
         object$glmnet.fit$name, "\n\n", sep = "")
     
   } else { ## default, non-relaxed lasso was fitted
+    
+    cl$penalty.par.val <- eval(cl$penalty.par.val)
     
     if (!is.null(cl$gamma)) { 
       warning("A value for gamma was specified, but will be ignored because the rule ensemble was not fit using relax = TRUE")
@@ -2277,6 +2292,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   }
   
   ## check if proper penalty.par.val argument is specified:
+  penalty.par.val <- eval(penalty.par.val)  
   if (!(length(penalty.par.val) == 1L)) {
     stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!(penalty.par.val%in% c("lambda.min", "lambda.1se")) && 
@@ -2287,6 +2303,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
   ## check if gamma value is specified, and if so whether it is a single value
   cl <- match.call()
   if (!is.null(cl$gamma)) {
+    cl$gamma <- eval(cl$gamma)
     if (!(length(cl$gamma) == 1L && cl$gamma >= 0 && cl$gamma <= 1)) {
       stop("Argument gamma has been supplied, but should be a single numeric value [0, 1].")
     }
@@ -2427,19 +2444,31 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 #' values for continuous outputs and linear predictor values for nominal outputs.
 #' @param ylab character. Label to be printed on the y-axis.
+#' @param xlab character. Label to be printed on the x-axis. If \code{NULL},
+#' the supplied \code{varname} will be printed on the x-axis.
+#' @param newdata Optional \code{data.frame} in which to look for variables 
+#' with which to predict. If \code{NULL} (the default), the \code{data.frame} used to fit the 
+#' original ensemble will be used. Smaller subsets of the original data can
+#' be specified to (substantially) reduce computation time. See Details.
 #' @param ... Further arguments to be passed to 
 #' \code{\link[graphics]{plot.default}}.
 #' @details By default, a partial dependence plot will be created for each unique
-#' observed value of the specified predictor variable. When the number of unique
-#' observed values is large, this may take a long time to compute. In that case,
-#' specifying the \code{nvals} argument can substantially reduce computing time. When the
+#' observed value of the specified predictor variable. See also section 8.1 of 
+#' Friedman & Popescu (2008).
+#' 
+#' When the number of unique observed values is large, partial dependence functions
+#' can take a very long time to compute. Specifying the \code{nvals} argument 
+#' can substantially reduce computation time. When the
 #' \code{nvals} argument is supplied, values for the minimum, maximum, and \code{(nvals - 2)}
 #' intermediate values of the predictor variable will be plotted. Note that \code{nvals}
 #' can be specified only for numeric and ordered input variables. If the plot is
 #' requested for a nominal input variable, the \code{nvals} argument will be
 #' ignored and a warning printed.
 #' 
-#' See also section 8.1 of Friedman & Popescu (2008).
+#' Alternatively, \code{newdata} can be specified to provide a different (smaller) 
+#' set of observations to compute partial dependence over.
+#' If \code{mi_pre} was used to derive the original rule ensemble, 
+#' function \code{mean_mi} can be used for this.
 #' 
 #' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -2454,20 +2483,27 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' @export
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                        nvals = NULL, type = "response", ylab = "predicted", 
-                       gamma = NULL, ...)
+                       gamma = NULL, newdata = NULL, xlab = NULL, ...)
 {
  
-  ## Check family:
+  ## Check family
   if (object$family %in% c("mgaussian", "multinomial")) {
     stop("Function singleplot not implemented yet for multivariate and multinomial outcomes.")
   }
   
-  ## Check if proper object argument is specified: 
+  ## Check if newdata supplied matches original data
+  if (!is.null(newdata)) {
+    if (!all(object$x_names %in% colnames(newdata))) {
+      stop("Newdata must contain all predictors used to fit original ensemble.")
+    }
+  }
+  
+  ## Check if proper object argument is specified
   if (!inherits(object, "pre")) {
     stop("Argument object should be an object of class 'pre'")
   }
   
-  ## Check if proper varname argument is specified: 
+  ## Check if proper varname argument is specified
   if (length(varname) != 1L || !is.character(varname)) {
     stop("Argument varname should be a character vector of length 1.")
   } else if (!(varname %in% object$x_names)) {
@@ -2479,7 +2515,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
     }
   }
   
-  ## Check if proper penalty.par.val argument is specified: 
+  ## Check if proper penalty.par.val argument is specified
   if (length(penalty.par.val) != 1L) {
     stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!( penalty.par.val %in% c("lambda.min", "lambda.1se") || 
@@ -2505,7 +2541,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
     }
   }
   
-  ## Check if proper nvals argument is specified: 
+  ## Check if proper nvals argument is specified
   if (!is.null(nvals)) {
     if (length(nvals) != 1L || nvals != as.integer(nvals)) {
       stop("Argument nvals should be an integer vector of length 1.")
@@ -2516,22 +2552,27 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
     }
   }
   
-  ## Check if proper type argument is specified: 
+  ## Check if proper type argument is specified
   if (length(type) != 1L || !is.character(type)) {
     stop("Argument type should be a single character string.")
   }
   
-  # Generate expanded dataset:
+  ## Generate expanded dataset
+  if (is.null(newdata)) newdata <- object$data
   if (is.null(nvals)) {
-    newx <- unique(object$data[ , varname])
+    newx <- unique(newdata[ , varname])
   } else {
     newx <- seq(
-      min(object$data[ , varname]), max(object$data[ , varname]), length = nvals)
+      min(newdata[ , varname]), max(newdata[ , varname]), length = nvals)
   }
-  exp_dataset <- object$data[rep(row.names(object$data), times = length(newx)),]
-  exp_dataset[,varname] <- rep(newx, each = nrow(object$data))
+  exp_dataset <- if (is.null(newdata)) {
+    newdata[rep(row.names(newdata), times = length(newx)), ]
+  } else {
+    newdata[rep(row.names(newdata), times = length(newx)), ]
+  }
+  exp_dataset[ , varname] <- rep(newx, each = nrow(newdata))
   
-  # get predictions:
+  ## get predictions
   if (is.null(gamma)) {
     exp_dataset$predy <- predict.pre(object, newdata = exp_dataset, type = type,
                                     penalty.par.val = penalty.par.val)
@@ -2541,10 +2582,11 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                                      gamma = gamma)
   }
   
-  # create plot:
+  ## create plot
   plot(aggregate(
     exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean),
-    type = "l", ylab = ylab, xlab = varname, ...)
+    type = "l", ylab = ylab, xlab = if (is.null(xlab)) varname else xlab, 
+    ...)
 }
 
 
@@ -2580,31 +2622,52 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' \code{pred.type = "response"} gives fitted values for continuous outputs and
 #' fitted probabilities for nominal outputs. \code{pred.type = "link"} gives fitted
 #' values for continuous outputs and linear predictor values for nominal outputs.
+#' @param xlab character. Label to be printed on the x-axis. If \code{NULL},
+#' the first elements of the supplied \code{varnames} will be printed on the x-axis.
+#' @param ylab character. Label to be printed on the y-axis. If \code{NULL},
+#' the second element of the supplied \code{varnames} will be printed on the y-axis.
+#' @param newdata Optional \code{data.frame} in which to look for variables 
+#' with which to predict. If \code{NULL}, the \code{data.frame} used to fit the 
+#' original ensemble will be used.
 #' @param ... Further arguments to be passed to \code{\link[graphics]{image}}, 
 #' \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on
 #' whether \code{type} is specified to be \code{"heatmap"}, \code{"contour"}, \code{"both"} 
 #' or \code{"perspective"}).
-#' @details By default, partial dependence will be plotted for each combination
+#' 
+#' @details 
+#' Partial dependence functions are described in section 8.1 of Friedman & 
+#' Popescu (2008).
+#' 
+#' By default, partial dependence will be plotted for each combination
 #' of 20 values of the specified predictor variables. When \code{nvals = NULL} is
 #' specified, a dependence plot will be created for every combination of the unique
 #' observed values of the two specified predictor variables. If \code{NA} instead of
-#' a numeric value is specified for one of the predictor variables, the all observed
+#' a numeric value is specified for one of the predictor variables, all observed
 #' values for that variables will be used. Specifying \code{nvals = NULL} and 
 #' \code{nvals = c(NA, NA)} will yield the exact same result.
 #' 
-#' High values, \code{NA} or \code{NULL} for \code{nvals} may result in long 
-#' computation times and/or memory allocation errors. Also, \code{\link{pre}} 
+#' High values, \code{NA} or \code{NULL} for \code{nvals} result in long 
+#' computation times and possibly memory problems. Also, \code{\link{pre}} 
 #' ensembles derived from training datasets that are very wide or long may 
-#' result in long computation times and/or memory allocation errors. In such cases, reducing
+#' result in long computation times and/or memory allocation errors. 
+#' In such cases, reducing
 #' the values supplied to \code{nvals} will reduce computation time and/or
 #' memory allocation errors. 
 #' 
 #' When numeric value(s) are specified for \code{nvals}, values for the
 #' minimum, maximum, and nvals - 2 intermediate values of the predictor variable
-#' will be plotted. If none of the variables specified was
-#' selected for the final prediction rule ensemble, an error will be returned.
+#' will be plotted. 
 #' 
-#' See also section 8.1 of Friedman & Popescu (2008).
+#' Alternatively, \code{newdata} can be specified to provide a different (smaller) 
+#' set of observations to compute partial dependence over.
+#' If \code{mi_pre} was used to derive the original rule ensemble, 
+#' \code{newdata = "mean.mi"} can be specified. This 
+#' will result in an average dataset being computed over the imputed datasets, 
+#' which are then used to compute partial dependence functions. This greatly 
+#' reduces the number of observations and thereby computation time.
+#' 
+#' If none of the variables specified with argument \code{varnames} was
+#' selected for the final prediction rule ensemble, an error will be returned.
 #' 
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
@@ -2620,20 +2683,28 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @export
 pairplot <- function(object, varnames, type = "both", gamma = NULL,
                      penalty.par.val = "lambda.1se", 
-                     nvals = c(20L, 20L), pred.type = "response", ...)
+                     nvals = c(20L, 20L), pred.type = "response", 
+                     newdata = NULL, xlab = NULL, ylab = NULL, ...)
 {
   
-  ## Check if proper object argument is specified: 
+  ## Check if proper object argument is specified
   if (!inherits(object, "pre")) {
     stop("Argument object should be an object of class 'pre'")
   }
   
-  ## Check family:
+  ## Check if newdata supplied matches original data
+  if (!is.null(newdata)) {
+    if (!all(object$x_names %in% colnames(newdata))) {
+      stop("Newdata must contain all predictors used to fit original ensemble.")
+    }
+  }
+  
+  ## Check family
   if (object$family %in% c("mgaussian", "multinomial")) {
     stop("Function pairplot not implemented yet for multivariate and multinomial outcomes.")
   }
   
-  ## Check if proper varnames argument is specified: 
+  ## Check if proper varnames argument is specified
   if (length(varnames) != 2L || !is.character(varnames)) {
     stop("Argument varnames should be a character vector of length 2.")
   } else if (!(all(varnames %in% object$x_names))) {
@@ -2648,7 +2719,7 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
     stop("3D partial dependence plots are currently not supported for factors.")
   }
   
-  ## Check if proper penalty.par.val argument is specified: 
+  ## Check if proper penalty.par.val argument is specified
   if (!(length(penalty.par.val) == 1)) {
     stop("Argument penalty.par.val should be a vector of length 1.")
   } else if (!(penalty.par.val %in% c("lambda.min", "lambda.1se") || 
@@ -2674,62 +2745,67 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
     }
   }
   
-  ## Check if proper nvals argument is specified: 
-  if (!(length(nvals) == 2 && all(nvals == as.integer(nvals)))) {
-    stop("Argument nvals should be an integer vector of length 2.")
-  }
-  if (length(uniq1 <- unique(object$data[ , varnames[1]])) < nvals[1] ||
-      length(uniq2 <- unique(object$data[ , varnames[2]])) < nvals[2]) {
-    warning(paste0("The nvals argument specified that predicted values should be computed for",
-                   nvals[1], " values of ", varnames[1], " and ", nvals[2], " values of ", varnames[2],
-                   ", respectively. The variables have ", uniq1, " and ", uniq2, 
-                   " unique observed values, respectively. Specifying nvals=NULL or NA for one of the predictors may reduce computation time."))
+  ## Check if proper nvals argument is specified 
+  if (is.null(nvals)) nvals <- c(NA, NA)
+  
+  if (!any(is.na(nvals))) {
+    if (!(length(nvals) == 2 && all(nvals == as.integer(nvals)))) {
+      stop("Argument nvals should be an integer vector of length 2.")
+    }
+    if (length(unique(object$data[ , varnames[1]])) < nvals[1] ||
+        length(unique(object$data[ , varnames[2]])) < nvals[2]) {
+      uniq1 <- unique(object$data[ , varnames[1]])
+      uniq2 <- unique(object$data[ , varnames[2]])
+      warning(paste0("The nvals argument specified that predicted values should be computed for",
+                     nvals[1], " values of ", varnames[1], " and ", nvals[2], " values of ", varnames[2],
+                     ", respectively. The variables have ", uniq1, " and ", uniq2, 
+                     " unique observed values, respectively. Specifying nvals=NULL or NA for one of the predictors may reduce computation time."))
+    }
   }
   
-  ## Check if proper type argument is specified: 
+  ## Check if proper type argument is specified
   if (!(length(type) == 1 && is.character(type))) {
     stop("Argument type should be equal to 'heatmap', 'contour', 'both' or 'perspective'.")
   }
   
-  ## Check if proper pred.type argument is specified: 
+  ## Check if proper pred.type argument is specified
   if (!(length(type) == 1 && is.character(type))) {
     stop("Argument type should be a single character string.")
   }
   
-  ## check if package interp is installed:
+  ## check if package interp is installed
   if (!(requireNamespace("interp"))) {
     stop("Function pairplot requires package interp.")
   }
-
-
   
-  # generate expanded dataset:
+  ## generate expanded dataset
+  if (is.null(newdata)) newdata <- object$data
   if (is.null(nvals)) {
-    newx1 <- sort(unique(object$data[ , varnames[1]]))
-    newx2 <- sort(unique(object$data[ , varnames[2]]))
+    newx1 <- sort(unique(newdata[ , varnames[1]]))
+    newx2 <- sort(unique(newdata[ , varnames[2]]))
   } else {
     newx1 <- if(is.na(nvals)[1]) {
-      sort(unique(unique(object$data[ , varnames[1]])))
+      sort(unique(unique(newdata[ , varnames[1]])))
     } else {
-      seq(min(object$data[ , varnames[1]]), max(object$data[ , varnames[1]]),
+      seq(min(newdata[ , varnames[1]]), max(newdata[ , varnames[1]]),
           length = nvals[1])
     }
     newx2 <- if(is.na(nvals)[2]) {
-      sort(unique(unique(object$data[ , varnames[2]])))
+      sort(unique(unique(newdata[ , varnames[2]])))
     } else {
-      seq(min(object$data[ , varnames[2]]), max(object$data[ , varnames[2]]),
+      seq(min(newdata[ , varnames[2]]), max(newdata[ , varnames[2]]),
           length = nvals[2])
     }
   }
   nobs1 <- length(newx1)
   nobs2 <- length(newx2)
   nobs <- nobs1*nobs2
-  exp_dataset <- object$data[rep(row.names(object$data), times = nobs), ]
-  exp_dataset[,varnames[1]] <- rep(newx1, each = nrow(object$data)*nobs2)
-  exp_dataset[,varnames[2]] <- rep(rep(newx2, each = nrow(object$data)),
+  exp_dataset <- newdata[rep(row.names(newdata), times = nobs), ]
+  exp_dataset[ , varnames[1]] <- rep(newx1, each = nrow(newdata)*nobs2)
+  exp_dataset[ , varnames[2]] <- rep(rep(newx2, each = nrow(newdata)),
                                    times = nobs1)
   
-  # get predictions:
+  ## compute predictions
   if (is.null(gamma)) {
     pred_vals <- predict.pre(object, newdata = exp_dataset, type = pred.type,
                             penalty.par.val = penalty.par.val)
@@ -2738,32 +2814,34 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
                              penalty.par.val = penalty.par.val, gamma = gamma)
   }
   
-  # create plot:
-  if (is.null(nvals)) {nvals <- 3}
-  xyz <- interp::interp(exp_dataset[,varnames[1]], exp_dataset[,varnames[2]],
+  ## create plot
+  xyz <- interp::interp(exp_dataset[ , varnames[1]], exp_dataset[ , varnames[2]],
                        pred_vals, duplicate = "mean")
   if (type == "heatmap" || type == "both") {
     if (is.null(match.call()$col)) {
       colors <- rev(c("#D33F6A", "#D95260", "#DE6355", "#E27449", "#E6833D", 
                "#E89331", "#E9A229", "#EAB12A", "#E9C037", "#E7CE4C", 
                "#E4DC68", "#E2E6BD"))
-      image(xyz, xlab = varnames[1], ylab = varnames[2], 
+      image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+            ylab = if (is.null(ylab)) varnames[2] else ylab, 
             col = colors, ...)
     } else {
-      image(xyz, xlab = varnames[1], ylab = varnames[2], ...)
+      image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+            ylab = if (is.null(ylab)) varnames[2] else ylab, ...)
     }
     if (type == "both") {
       contour(xyz, add = TRUE)
     }
   }
   if (type == "contour") {
-    contour(xyz, xlab = varnames[1], ylab = varnames[2], ...) 
+    contour(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+            ylab = if (is.null(ylab)) varnames[2] else ylab, ...) 
   }
   if (type == "perspective") {
-    persp(xyz, xlab = varnames[1], ylab = varnames[2], zlab = "predicted y", ...)
+    persp(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+          ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted y", ...)
   }
 }
-
 
 
 
@@ -3124,7 +3202,7 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
             plotnames <- abbreviate(plotnames, minlength = abbreviate)
           }
           barplot(height = varimps$imp, names.arg = plotnames, ylab = ylab,
-                main = main, ...)
+                main = main, cex.axis = cex.axis, ...)
         }
       }
     }
@@ -4498,3 +4576,101 @@ rare_level_sampler <- function(factors, data, sampfrac = .5, warning = FALSE) {
   }
   ret
 }
+
+
+
+#' Get the optimal lambda and gamma parameter values for an ensemble of given size
+#'
+#' Function \code{get_opt_pars} finds the optimal values of lambda and gamma for
+#' an ensembles comprising the specified number of terms.
+#' 
+#' @param object an object of class \code{\link{pre}} that was fit using the relaxed lasso.
+#' If an object of class \code{\link{pre}} is specified that was not fit using the relaxed lasso,
+#' an error will be printed.
+#' @param nonzero maximum number of terms to retain.
+#' @param plusminus number of terms above and below \code{nonzero} for which CV results will be printed.
+#' 
+#' @return The lambda and gamma values that yield optimal predictive accuracy for the specified
+#' number of terms. These are invisibly returned, see Examples on how to use them. A sentence
+#' describing what the optimal values are is printed to the command line, with an overview of
+#' the performance (in terms of cross-validated accuracy and the number of terms retained) of 
+#' lambda values near the optimum. If the specified number of terms to retain is lower than
+#' what would be obtained using the \code{lambda.min} or \code{lambda.1se} criterion, a warning
+#' will also be printed.
+#' @examples \donttest{
+#' ## Fit a rule ensemble to predict Ozone concentration
+#' airq <- airquality[complete.cases(airquality), ]
+#' set.seed(42)
+#' airq.ens <- pre(Ozone ~ ., data = airq, relax = TRUE)
+#' 
+#' ## Inspect the result (default lambda.1se criterion)
+#' airq.ens
+#' 
+#' ## Inspect the lambda path 
+#' ## (lower x-axis gives lambda values, upper x-axis corresponding no. of non-zero terms)
+#' \dontrun{plot(airq.ens$glmnet.fit)}
+#' 
+#' ## Accuracy still quite good with only 5 terms, obtain corresponding parameter values
+#' opt_pars <- get_opt_pars(airq.ens, nonzero = 5)
+#' opt_pars
+#' 
+#' ## Use the parameter values for interpretation and prediction, e.g.
+#' predict(airq.ens, newdat = airq[c(22, 33), ], penalty = opt_pars$lambda, gamma = opt_pars$gamma)
+#' summary(airq.ens, penalty = opt_pars$lambda, gamma = opt_pars$gamma)
+#' print(airq.ens, penalty = opt_pars$lambda, gamma = opt_pars$gamma)
+#' }
+#' @seealso \code{\link{pre}}
+#' @export
+get_opt_pars <- function(object, nonzero, plusminus = 3) {
+  
+  ## Check if nonzero occurs in lambda path, otherwise warn and take nearest number
+  if (!nonzero %in% object$glmnet.fit$nzero) {
+    nonzero <- object$glmnet.fit$nzero[names(which.min((nonzero - object$glmnet.fit$nzero)^2))[1L]]
+    warning(paste("Specified value for nonzero argument does not occur on the lambda path. Results are returned for", nonzero, "non-zero terms."), 
+            immediate. = TRUE)
+  }
+  
+  ## For relaxed lasso
+  if (!is.null(object$call$relax) && object$call$relax) {
+    
+    ## warn if non-optimal sparsity and accuracy are requested
+    if (object$glmnet.fit$relaxed$nzero.1se < nonzero) {
+      warning("The requested number of non-zero terms is larger than the ", object$glmnet.fit$relaxed$nzero.1se, 
+              " non-zero terms retained with the lambda.1se criterion. Both complexity and cross-validated error are lower when using the lambda.1se criterion.", 
+              immediate. = TRUE)
+    }
+    if (object$glmnet.fit$relaxed$nzero.min < nonzero) {
+      warning("The requested number of non-zero terms is larger than the ", object$glmnet.fit$relaxed$nzero.min, 
+              " non-zero terms retained with the lambda.min criterion. Both complexity and cross-validated error are lower when using the lambda.min criterion.", 
+              immediate. = TRUE)
+    } 
+    ## Get optimal lambda and gamma values for requested number of nonzero terms
+    gammas <- names(object$glmnet.fit$relaxed$statlist)
+    optimal_gammas <- gammas[apply(sapply(gammas, function(x) object$glmnet.fit$relaxed$statlist[[x]]$cvm), 1L, which.min)]
+    df <- data.frame(lambda = object$glmnet.fit$lambda,
+                     number_of_nonzero_terms = object$glmnet.fit$nzero,
+                     optimal_gamma = optimal_gammas,
+                     mean_cv_error = NA)
+    svals <- as.numeric(substring(rownames(df)[df$number_of_nonzero_terms == nonzero], first = 2))
+    svals <- (min(svals) - plusminus):(max(svals) + plusminus)
+    svals <- paste0("s", svals[svals %in% 0:(nrow(df)+1)])
+    df <- df[svals, ]
+    for (i in rownames(df)) {
+      df[i, "mean_cv_error"] <- data.frame(object$glmnet.fit$relaxed$statlist[[df[i, "optimal_gamma"]]])[i, "cvm"]
+    }
+    df$optimal_gamma <- substring(df$optimal_gamma, first = 3)
+    min_cvm <- which.min(df$mean_cv_error[df$number_of_nonzero_terms == nonzero])
+    lambda <- df$lambda[df$number_of_nonzero_terms == nonzero][min_cvm]
+    gamma <- as.numeric(df$optimal_gamma[df$number_of_nonzero_terms == nonzero][min_cvm])
+    cat(paste0("The best ensemble with ", nonzero, " non-zero terms is obtained with a lambda value of ", 
+               round(lambda, digits= 6), " and a gamma value of ", gamma, ".\n\n"))
+    cat(paste0("Here is an overview of the performance of ensembles selected with the nearest lambda values:\n"))
+    print(df)
+    invisible(list(lambda = lambda, gamma = gamma))
+  } else { ## For non-relaxed lasso
+    stop("For obtaining an ensemble with a pre-specified number of non-zero terms, use of the relaxed lasso is strongly recommended. The specified ensemble was fit using standard lasso. Please refit the original ensemble using function pre() and additionally specifying relaxe = TRUE.")
+  }
+}
+
+
+

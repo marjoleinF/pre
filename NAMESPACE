@@ -33,7 +33,8 @@ export("caret_pre_model")
 export("explain")
 export("rare_level_sampler")
 export("mi_pre")
-
+export("mi_mean")
+export("get_opt_pars")
 
 import("Formula")
 import("glmnet")

@@ -36,15 +36,18 @@
 #' multiply imputed data. Essentially, it is a wrapper function around function
 #' \code{pre()}, the main differences relate to sampling for the tree induction
 #' and fold assignment for estimation of the coefficients for the final ensemble.
-#' Observations which occur repeatedly in the imputed datasets (but with 
-#' different imputed values) will be completely in- or excluded from each 
-#' sample or fold, to avoid overfitting.
 #' 
 #' Function \code{mi_pre} implements a so-called stacking approach to the analysis
 #' of imputed data (see also Wood et al., 2008), where imputed datasets are combined 
 #' into one large dataset.
 #' In addition to adjustments of the sampling procedures, adjustments to observation 
 #' weight are made to counter the artificial inflation of sample size.  
+#' 
+#' Observations which occur repeatedly across the imputed datasets will be 
+#' completely in- or excluded from each sample or fold, to avoid overfitting. Thus,
+#' complete observations instead of individual imputed observations are sampled,
+#' for tree and rule induction, as well as the cross-validation for selecting the
+#' penalty parameter values for the final ensemble.
 #' 
 #' It is assumed that data have already been imputed (using e.g.,
 #' R package mice or missForest), and therefore function \code{mi_pre} takes a 
@@ -59,6 +62,10 @@
 #' subjects with more missingness can, in some sense, be viewed as making the 
 #' optimization more like complete-case analysis, which might be problematic 
 #' for Missing at Random (MAR) and Missing not at Random (MNAR) scenarios."
+#' 
+#' @return An object of class \code{pre}.
+#' @export
+#' @seealso \code{\link{pre}} \code{\link{mi_mean}}
 #' 
 #' @references
 #' Du, J., Boss, J., Han, P., Beesley, L. J., Kleinsasser, M., Goutman, S.A., ... 
@@ -85,7 +92,7 @@
 #' 
 #' ## fit a rule ensemble to the imputed data
 #' set.seed(42)
-#' airq.ens.mi <- mi_pre(formula = Ozone ~ . , data = imp)}
+#' airq.ens.mi <- mi_pre(Ozone ~ . , data = imp)}
 mi_pre <- function(formula, data, ## As in pre()
                    weights = NULL, 
                    obs_ids = NULL,
@@ -158,5 +165,24 @@ mi_pre <- function(formula, data, ## As in pre()
   ## Apply pre
   pre(formula = formula, data = data, weights = weights, 
       foldid = foldid, sampfrac = samp_func, ...)
-  
+}
+
+
+
+#' Compute the average dataset over imputed datasets.
+#' 
+#' \code{mi_mean} computes the averages dataset over a list of imputed datasets.
+#' Can be used to reduce computation time of functions \code{singleplot} and 
+#' \code{pairplot}.
+#' 
+#' @param data List of imputed datasets to compute the average dataset over.
+#' 
+#' @details It is assumed every imputed dataset contains the same observations 
+#' (but not the same values) in the same order.
+#' @return A dataset that is the average over the imputed datasets specified
+#' with \code{data}.
+#' @export
+#' @seealso \code{\link{mi_pre}}, \code{\link{singleplot}}, \code{\link{pairplot}}
+mi_mean <- function(data) {
+  data.frame(apply(simplify2array(lapply(data, as.matrix)), 1:2, mean))
 }

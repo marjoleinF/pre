@@ -10,23 +10,27 @@ vignette: >
 
 ## Introduction
 
-To deal with missing data, multiple imputation is the golden standard (Schafer & Graham, 2002). With GLMs, the models fitted on each imputed dataset can then be pooled. For non-parametric methods like prediction rule ensembles, such pooling is more difficult. Little research has been performed on how to best deal with missing data in fitting prediction rule ensembles, but there are currently three options:
+To deal with missing data in parametric models, multiple imputation is the golden standard (Schafer & Graham, 2002). With GLMs, the models fitted on each imputed dataset can then be pooled. For non-parametric methods and prediction rule ensembles in particular, little if any research has been performed on how to best deal with missing data. There are currently three options:
 
 * Listwise deletion. Although the default in `pre()`, this is certainly the least favorable option.
 
-* Single imputation: Perform only a single imputation and fit a prediction rule ensemble on this single dataset. This is likely better than listwise deletion, but likely inferior to multiple imputation, but easy to implement.
+* Single imputation: Perform only a single imputation and fit a prediction rule ensemble on this single dataset. This is likely better than listwise deletion, but likely inferior to multiple imputation.
 
-* Multiple imputation approach by aggregating ensembles: Create multiple imputed datasets; fit a separate prediction rule ensemble to each of the imputed datasets; aggregate the ensembles into a single final ensemble. In terms of predictive accuracy, this approach will work well. It will, however, yield more complex ensembles than the former two approaches, and the next approach.
+* Multiple imputation approach followed by pooling. This approach takes multiple imputed datasets and fits a separate prediction rule ensemble to each of the imputed datasets, which are aggregated to form a final ensemble. 
 
-* Combining mean imputation with the Missing-In-Attributes approach. According to Josse et al. (2019), mean imputation and the Missing-In-Attributes approaches perform well from a prediction perspective. Furthermore, they are computationally inexpensive. 
+* Multiple imputation approach followed by stacking. This approach stacks the multiple imputed datasets into a single dataset and fits a single prediction rule ensemble to this dataset. Appropriate measures are employed during rule generation and estimation of the final model to prevent overfitting.  
 
-Below, we provide examples for the first three approaches described above. In future versions of package **`pre`**, the mean imputation combined with MIA approach will be implemented.
+Both multiple imputation approaches are expected to work similarly In terms of predictive accuracy, this approach will work well. ............. It will, however, yield more complex ensembles than the former two approaches, and the next approach.
+
+Alternatively, one might want to employ the Missing-In-Attributes approach for rule generation, followed by mean imputation for the final model.According to Josse et al. (2019), mean imputation and the Missing-In-Attributes approaches perform well from a prediction perspective and are computationally inexpensive. In future versions of package **`pre`**, mean imputation combined with MIA will hopefully be implemented.
+
+Below, we provide examples for the first three approaches described above. 
 
 
 
 ## Example: Predicting wind speed
 
-For the examples, we will be predicting Wind speeds using the `airquality` dataset (we focus on predicting the `wind` variable, because it does not have missing values,  while variables `Ozone` and `Solar.R` do):
+For the examples, we will be predicting Wind speeds using the `airquality` dataset (we focus on predicting the `wind` variable, because it does not have missing values, while variables `Ozone` and `Solar.R` do):
 
 ```{r, results='hide', message=FALSE, warning=FALSE, fig.width=5}
 head(airquality)
@@ -37,7 +41,7 @@ md.pattern(airquality, rotate.names = TRUE)
 
 ## Listwise Deletion
 
-This option is the default of function `pre()`:
+This option, although not recommended, is the default of function `pre()`:
 
 ```{r}
 library("pre")
@@ -66,7 +70,7 @@ We obtain a larger number of rules, and slightly lower cross-validated mean squa
 
 ## Multiple Imputation
 
-We perform multiple imputation by chained equations, using the predictive mean matching method. We generate 5 imputed datasets:
+We first perform multiple imputation by chained equations, using the predictive mean matching method. We generate 5 imputed datasets:
 
 ```{r, results='hide', message=FALSE, warning=FALSE, fig.width=7}
 set.seed(42)
@@ -79,13 +83,43 @@ We create a `list` with imputed datasets:
 imp1 <- complete(imp, action = "all", include = FALSE)
 ```
 
-We load the **`pre`** library:
+To deal with imputed data, we have two options: *Stacking* the imputed datasets or *pooling* the resulting ensembles. The former is likely most beneficial for retaining interpretability and therefore an experimental (!) version has been implemented in package **`pre`**.
+
+
+### Stacking imputed datasets
+
+Function `mi_pre` implements a so-called *stacking* approach (see also Wood et al., 2008), where imputed datasets are combined into one large dataset. In addition to adjustments of the sampling procedures, adjustments to observation weight are made to counter the artificial inflation of sample size. Function `mi_pre` takes a list of imputed datasets as input data, because it is assumed imputation has already been performed.
+
+Although the option to use the fraction of complete data for computing observation weight is provided through argument `compl_frac` of function `mi_pre`, users are not advised to use it. For example, Du et al. (2022) write: "An alternative weight specification, proposed in Wan et al. (2015), is $o_i = \frac{f_i}{D}$, where $f_i$ is the number of observed predictors out of the total number of predictors for subject $i$ [...] upweighting subjects with less missingness and downweighting subjects with more missingness can, in some sense, be viewed as making the optimization more like complete-case analysis, which might be problematic for Missing at Random (MAR) and Missing not at Random (MNAR) scenarios."
+
+We fit a rule ensemble to the imputed data using stacking:
 
 ```{r}
-library("pre")
+set.seed(42)
+airq.ens.sta <- mi_pre(Wind ~ . , data = imp1)
 ```
 
-We create a custom function that fits PREs to several datasets contained in a list:
+All `S3` methods for objects of class `pre` are also applicable to the ensembles resulting from application of function `mi_pre`, e.g.:
+
+```{r, fig.width=4, fig.height=7}
+summary(airq.ens.sta)
+coefs <- coef(airq.ens.sta)
+coefs[coefs$coefficient != 0, ]
+```
+
+Computation of partial dependence plots can become computationally prohibitive, especially with multiply-imputed data. To reduce computational load, function `mi_mean` computes the average imputed dataset, which can then be supplied to the `newdata` arguments of functions `singleplot` or `pairplot` to speed up computation of partial dependence plots:
+
+```{r}
+newdata <- mi_mean(imp1)
+singleplot(airq.ens.sta, newdata = newdata, varname = "Ozone")
+pairplot(airq.ens.sta, newdata = newdata, varnames = c("Ozone", "Solar.R"))
+```
+
+
+
+### Pooling
+
+To apply pooling, we create a custom function that fits PREs to several datasets contained in a list:
 
 ```{r}
 pre.agg <- function(datasets, ...) {
@@ -281,11 +315,15 @@ sessionInfo()
 
 ## References
 
+Du, J., Boss, J., Han, P., Beesley, L. J., Kleinsasser, M., Goutman, S.A., ... & Mukherjee, B. (2022). Variable selection with multiply-imputed datasets: choosing between stacked and grouped methods. *Journal of Computational and Graphical Statistics, 31*(4), 1063-1075. doi:10.1080/10618600.2022.2035739.
+
 Josse, J., Prost, N., Scornet, E., & Varoquaux, G. (2019). On the consistency of supervised learning with missing values. *arXiv preprint arXiv:1902.06931*. https://arxiv.org/abs/1902.06931
 
 Miles, A. (2016). Obtaining predictions from models fit to multiply imputed data. *Sociological Methods & Research, 45*(1), 175-185. https://doi.org/10.1177/0049124115610345
 
 Schafer, J. L., & Graham, J. W. (2002). Missing data: our view of the state of the art. *Psychological Methods, 7*(2), 147. https://doi.org/10.1037/1082-989X.7.2.147
+
+Wood, A. M., White, I. R., & Royston, P. (2008). How should variable selection be performed with multiply imputed data? *Statistics in Medicine, 27*(17), 3227-3246. https://doi.org/10.1002/sim.3177
 
 
 ```{r, echo = FALSE}

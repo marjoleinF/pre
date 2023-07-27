@@ -72,6 +72,9 @@ which should take arguments \code{n} (sample size) and \code{weights}.}
 \item{...}{Further arguments to be passed to
 \code{\link[glmnet]{cv.glmnet}}.}
 }
+\value{
+An object of class \code{pre}.
+}
 \description{
 Function \code{mi_pre} derives a sparse ensemble of rules and/or
 linear rules based on imputed data. The function is still experimental,
@@ -82,15 +85,18 @@ Experimental function to fit a prediction rule ensemble to
 multiply imputed data. Essentially, it is a wrapper function around function
 \code{pre()}, the main differences relate to sampling for the tree induction
 and fold assignment for estimation of the coefficients for the final ensemble.
-Observations which occur repeatedly in the imputed datasets (but with 
-different imputed values) will be completely in- or excluded from each 
-sample or fold, to avoid overfitting.
 
 Function \code{mi_pre} implements a so-called stacking approach to the analysis
 of imputed data (see also Wood et al., 2008), where imputed datasets are combined 
 into one large dataset.
 In addition to adjustments of the sampling procedures, adjustments to observation 
 weight are made to counter the artificial inflation of sample size.  
+
+Observations which occur repeatedly across the imputed datasets will be 
+completely in- or excluded from each sample or fold, to avoid overfitting. Thus,
+complete observations instead of individual imputed observations are sampled,
+for tree and rule induction, as well as the cross-validation for selecting the
+penalty parameter values for the final ensemble.
 
 It is assumed that data have already been imputed (using e.g.,
 R package mice or missForest), and therefore function \code{mi_pre} takes a 
@@ -122,7 +128,7 @@ imp <- as.list(complete(imp, action = "all"))
 
 ## fit a rule ensemble to the imputed data
 set.seed(42)
-airq.ens.mi <- mi_pre(formula = Ozone ~ . , data = imp)}
+airq.ens.mi <- mi_pre(Ozone ~ . , data = imp)}
 }
 \references{
 Du, J., Boss, J., Han, P., Beesley, L. J., Kleinsasser, M., Goutman, S.A., ... 
@@ -133,4 +139,7 @@ Graphical Statistics, 31(4), 1063-1075. \doi{10.1080/10618600.2022.2035739}.
 Wood, A. M., White, I. R., & Royston, P. (2008). How should variable selection 
 be performed with multiply imputed data? Statistics in medicine, 27(17), 
 3227-3246. \doi{10.1002/sim.3177}
+}
+\seealso{
+\code{\link{pre}} \code{\link{mi_mean}}
 }
