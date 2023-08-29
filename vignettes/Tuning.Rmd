@@ -47,7 +47,7 @@ library("ggplot2")
 
 The parameters of function `pre()` can be tuned using function `train()` from package **`caret`**. By default, squared error loss is minimized in case of numeric outcomes, which will be appropriate in many cases. (Weighted) misclassification error will be minimized by default for classification problems, which in most cases is not appropriate. In general, one should care about the quality of predicted probabilities, not just about the accuracy of the class labels assigned. Squared error loss on predicted probabilities (also known as the Brier score) should in many cases be preferred, or perhaps the area under the receiver operating curve.
 
-To adjust the default of optimizing classification error, we set up a custom function in order to optimize the Brier score or AUC. For numeric outcomes, this will not be necessary, and the `summaryFunction` of the `trainControl` function need not be specified (see next code chunk).
+To adjust the default of optimizing classification error, we set up a custom function in order to optimize the Brier score or AUC. For numeric outcomes, this will not be necessary, and the `summaryFunction` of the `trainControl` function need not be specified (see next chunk).
 
 ```{r}
 BigSummary <- function (data, lev = NULL, model = NULL) {
@@ -65,7 +65,7 @@ BigSummary <- function (data, lev = NULL, model = NULL) {
 }
 ```
 
-Next, we set up a control object for the `train()` function. Opinions may vary on what are the best setting for optimizing tuning parameters on a training dataset. Here, we take a 10-fold cross validation approach. Often, 10 repeats of 10-fold cross validation should be preferred, to make results less dependent on a single choice of folds. This can be done by setting `repeats = 10` instead of the default below: 
+Next, we set up a control object for the `train()` function. Opinions may vary on what are the best setting for optimizing tuning parameters on a training dataset. Here, we take a 10-fold cross validation approach. Often, 10 repeats of 10-fold cross validation should be preferred, to make results less dependent on a single choice of folds. This can be done by setting `repeats = 10` instead of the default below (here we use a single repeat to limit computation time): 
 
 ```{r}
 fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 1,
@@ -84,7 +84,7 @@ preGrid <- getModelInfo("pre")[[1]]$grid(
 head(preGrid)
 ```
 
-Note that tuning and fitting PREs can be computationally heavy, especially with increasing size of the tuning grid, and a smaller grid of tuning parameter values may be preferred. 
+Note that tuning and fitting PREs can be computationally heavy, especially with increasing size of the tuning grid, so a smaller grid of tuning parameter values may be preferred. 
 
 Note that the `ntrees` parameter is not included in the default grid-generating function (`getModelInfo("pre")[[1]]$grid`). One can deviate from the default of `ntrees = 500` by passing this argument calling function `train()` multiple times, and specifying a different value for `ntrees` each time (example provided below). The same goes for other arguments of function `pre()` that are not part of the default tuning parameters of **`caret`**'s method `"pre"`. 
 
@@ -114,6 +114,7 @@ pre_tune <- train(sexo ~ ., data = carrillo[train_ids, ], method = "pre",
                   maximize = TRUE)
 ```
 
+If your predictor variables contain one or more factors, it is best not to use the formula interface of function `train`. By default, `train` dummy codes all factors, which will be suboptimal for most tree-based methods. Then it is better to supply the predictors as a `data.frame` to argument `x`, and to supply the response (as a numeric or factor vector) to argument `y`. See also `?train`. 
 
 ```{r, eval=FALSE}
 set.seed(42)
@@ -123,7 +124,7 @@ pre_tune2 <- train(sexo ~ ., data = carrillo[train_ids, ], method = "pre",
                   metric = "Brier", maximize = TRUE)
 ```
 
-Some warnings (`Warning: from glmnet Fortran code (error code -83)`) will be reported, but these are not worrying; for some models, computations for some values in the $\lambda$ path could not be completed. 
+Some warnings (`Warning: from glmnet Fortran code (error code -83)`) may be reported, but these are not worrying; for some models, computations for some values in the $\lambda$ path could not be completed. 
 
 ```{r, echo=FALSE, eval=FALSE}
 save(pre_tune, pre_tune2, file = "Tuning_results.Rda")

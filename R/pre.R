@@ -2443,7 +2443,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' \code{type = "response"} gives fitted values for continuous outputs and
 #' fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 #' values for continuous outputs and linear predictor values for nominal outputs.
-#' @param ylab character. Label to be printed on the y-axis.
+#' @param ylab character. Label to be printed on the y-axis, defaults to the response
+#' variable name(s).
 #' @param xlab character. Label to be printed on the x-axis. If \code{NULL},
 #' the supplied \code{varname} will be printed on the x-axis.
 #' @param newdata Optional \code{data.frame} in which to look for variables 
@@ -2482,15 +2483,10 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' @seealso \code{\link{pre}}, \code{\link{pairplot}}
 #' @export
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
-                       nvals = NULL, type = "response", ylab = "predicted", 
-                       gamma = NULL, newdata = NULL, xlab = NULL, ...)
+                       nvals = NULL, type = "response", ylab = NULL, 
+                       gamma = NULL, newdata = NULL, xlab = NULL,  ...)
 {
  
-  ## Check family
-  if (object$family %in% c("mgaussian", "multinomial")) {
-    stop("Function singleplot not implemented yet for multivariate and multinomial outcomes.")
-  }
-  
   ## Check if newdata supplied matches original data
   if (!is.null(newdata)) {
     if (!all(object$x_names %in% colnames(newdata))) {
@@ -2583,10 +2579,21 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   }
   
   ## create plot
-  plot(aggregate(
-    exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean),
-    type = "l", ylab = ylab, xlab = if (is.null(xlab)) varname else xlab, 
-    ...)
+  if (object$family %in% c("multinomial", "mgaussian")) {
+    for (resp_name in colnames(exp_dataset$predy)) {
+      y_lab <- ifelse(is.null(ylab), resp_name, ylab) 
+      plot(aggregate(
+        exp_dataset$predy[ , resp_name], by = exp_dataset[varname], 
+        data = exp_dataset, FUN = mean), type = "l", ylab = y_lab, 
+        xlab = if (is.null(xlab)) varname else xlab, ...)
+    }
+  } else {
+    y_lab <- ifelse(is.null(ylab), object$y_names, ylab) 
+    plot(aggregate(
+      exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean),
+      type = "l", ylab = y_lab, xlab = if (is.null(xlab)) varname else xlab, 
+      ...)
+  }
 }
 
 
@@ -2698,12 +2705,7 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
       stop("Newdata must contain all predictors used to fit original ensemble.")
     }
   }
-  
-  ## Check family
-  if (object$family %in% c("mgaussian", "multinomial")) {
-    stop("Function pairplot not implemented yet for multivariate and multinomial outcomes.")
-  }
-  
+
   ## Check if proper varnames argument is specified
   if (length(varnames) != 2L || !is.character(varnames)) {
     stop("Argument varnames should be a character vector of length 2.")
@@ -2756,10 +2758,9 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
         length(unique(object$data[ , varnames[2]])) < nvals[2]) {
       uniq1 <- unique(object$data[ , varnames[1]])
       uniq2 <- unique(object$data[ , varnames[2]])
-      warning(paste0("The nvals argument specified that predicted values should be computed for",
-                     nvals[1], " values of ", varnames[1], " and ", nvals[2], " values of ", varnames[2],
-                     ", respectively. The variables have ", uniq1, " and ", uniq2, 
-                     " unique observed values, respectively. Specifying nvals=NULL or NA for one of the predictors may reduce computation time."))
+      warning(paste0("The nvals argument specified more values than the number of observed unique values of ",
+                     varnames[1], " and/or ", varnames[2], 
+                     ". Specifying nvals=NULL, or NA for one of the predictors may reduce computation time. "))
     }
   }
   
@@ -2815,31 +2816,65 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
   }
   
   ## create plot
-  xyz <- interp::interp(exp_dataset[ , varnames[1]], exp_dataset[ , varnames[2]],
-                       pred_vals, duplicate = "mean")
-  if (type == "heatmap" || type == "both") {
-    if (is.null(match.call()$col)) {
-      colors <- rev(c("#D33F6A", "#D95260", "#DE6355", "#E27449", "#E6833D", 
-               "#E89331", "#E9A229", "#EAB12A", "#E9C037", "#E7CE4C", 
-               "#E4DC68", "#E2E6BD"))
-      image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-            ylab = if (is.null(ylab)) varnames[2] else ylab, 
-            col = colors, ...)
-    } else {
-      image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-            ylab = if (is.null(ylab)) varnames[2] else ylab, ...)
+  if (object$family %in% c("mgaussian", "multinomial")) {
+    cl <- match.call()
+    for (resp_name in colnames(pred_vals)) {
+      main <- ifelse(is.null(cl$main), resp_name, cl$main)
+      xyz <- interp::interp(exp_dataset[ , varnames[1]], exp_dataset[ , varnames[2]],
+                            pred_vals[, resp_name], duplicate = "mean")
+      if (type == "heatmap" || type == "both") {
+        if (is.null(match.call()$col)) {
+          colors <- rev(c("#D33F6A", "#D95260", "#DE6355", "#E27449", "#E6833D", 
+                          "#E89331", "#E9A229", "#EAB12A", "#E9C037", "#E7CE4C", 
+                          "#E4DC68", "#E2E6BD"))
+          image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+                ylab = if (is.null(ylab)) varnames[2] else ylab, 
+                col = colors, main = main, ...)
+        } else {
+          image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+                ylab = if (is.null(ylab)) varnames[2] else ylab, main = main, ...)
+        }
+        if (type == "both") {
+          contour(xyz, add = TRUE)
+        }
+      }
+      if (type == "contour") {
+        contour(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+                ylab = if (is.null(ylab)) varnames[2] else ylab, main = main, ...) 
+      }
+      if (type == "perspective") {
+        persp(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+              ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted y", 
+              main = main, ...)
+      }
     }
-    if (type == "both") {
-      contour(xyz, add = TRUE)
+  } else { ## family is not multinomial or mgaussian
+    xyz <- interp::interp(exp_dataset[ , varnames[1]], exp_dataset[ , varnames[2]],
+                          pred_vals, duplicate = "mean")
+    if (type == "heatmap" || type == "both") {
+      if (is.null(match.call()$col)) {
+        colors <- rev(c("#D33F6A", "#D95260", "#DE6355", "#E27449", "#E6833D", 
+                        "#E89331", "#E9A229", "#EAB12A", "#E9C037", "#E7CE4C", 
+                        "#E4DC68", "#E2E6BD"))
+        image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+              ylab = if (is.null(ylab)) varnames[2] else ylab, 
+              col = colors, ...)
+      } else {
+        image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+              ylab = if (is.null(ylab)) varnames[2] else ylab, ...)
+      }
+      if (type == "both") {
+        contour(xyz, add = TRUE)
+      }
     }
-  }
-  if (type == "contour") {
-    contour(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-            ylab = if (is.null(ylab)) varnames[2] else ylab, ...) 
-  }
-  if (type == "perspective") {
-    persp(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-          ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted y", ...)
+    if (type == "contour") {
+      contour(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+              ylab = if (is.null(ylab)) varnames[2] else ylab, ...) 
+    }
+    if (type == "perspective") {
+      persp(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
+            ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted y", ...)
+    }
   }
 }
 
@@ -4581,8 +4616,8 @@ rare_level_sampler <- function(factors, data, sampfrac = .5, warning = FALSE) {
 
 #' Get the optimal lambda and gamma parameter values for an ensemble of given size
 #'
-#' Function \code{get_opt_pars} finds the optimal values of lambda and gamma for
-#' an ensembles comprising the specified number of terms.
+#' Function \code{prune_pre} returns the optimal values of lambda and gamma for
+#' the requested ensemble size.
 #' 
 #' @param object an object of class \code{\link{pre}} that was fit using the relaxed lasso.
 #' If an object of class \code{\link{pre}} is specified that was not fit using the relaxed lasso,
@@ -4611,7 +4646,7 @@ rare_level_sampler <- function(factors, data, sampfrac = .5, warning = FALSE) {
 #' \dontrun{plot(airq.ens$glmnet.fit)}
 #' 
 #' ## Accuracy still quite good with only 5 terms, obtain corresponding parameter values
-#' opt_pars <- get_opt_pars(airq.ens, nonzero = 5)
+#' opt_pars <- prune_pre(airq.ens, nonzero = 5)
 #' opt_pars
 #' 
 #' ## Use the parameter values for interpretation and prediction, e.g.
@@ -4621,12 +4656,12 @@ rare_level_sampler <- function(factors, data, sampfrac = .5, warning = FALSE) {
 #' }
 #' @seealso \code{\link{pre}}
 #' @export
-get_opt_pars <- function(object, nonzero, plusminus = 3) {
+prune_pre <- function(object, nonzero, plusminus = 3) {
   
   ## Check if nonzero occurs in lambda path, otherwise warn and take nearest number
   if (!nonzero %in% object$glmnet.fit$nzero) {
     nonzero <- object$glmnet.fit$nzero[names(which.min((nonzero - object$glmnet.fit$nzero)^2))[1L]]
-    warning(paste("Specified value for nonzero argument does not occur on the lambda path. Results are returned for", nonzero, "non-zero terms."), 
+    warning(paste0("Specified value of nonzero argument (", nonzero, ") does not occur on the lambda path. Results are returned for", nonzero, "non-zero terms, instead."), 
             immediate. = TRUE)
   }
   
@@ -4635,13 +4670,13 @@ get_opt_pars <- function(object, nonzero, plusminus = 3) {
     
     ## warn if non-optimal sparsity and accuracy are requested
     if (object$glmnet.fit$relaxed$nzero.1se < nonzero) {
-      warning("The requested number of non-zero terms is larger than the ", object$glmnet.fit$relaxed$nzero.1se, 
-              " non-zero terms retained with the lambda.1se criterion. Both complexity and cross-validated error are lower when using the lambda.1se criterion.", 
+      warning("The requested number of non-zero terms (", nonzero, ") is larger than the ", object$glmnet.fit$relaxed$nzero.1se, 
+              " non-zero terms retained with the lambda.1se criterion. Both complexity and cross-validated error will likely be lower (better) when using the lambda.1se criterion!", 
               immediate. = TRUE)
     }
     if (object$glmnet.fit$relaxed$nzero.min < nonzero) {
-      warning("The requested number of non-zero terms is larger than the ", object$glmnet.fit$relaxed$nzero.min, 
-              " non-zero terms retained with the lambda.min criterion. Both complexity and cross-validated error are lower when using the lambda.min criterion.", 
+      warning("The requested number of non-zero terms (", nonzero, ") is larger than the ", object$glmnet.fit$relaxed$nzero.min, 
+              " non-zero terms retained with the lambda.min criterion. Both complexity and cross-validated error will likely be lower (better) using the default lambda.min criterion!", 
               immediate. = TRUE)
     } 
     ## Get optimal lambda and gamma values for requested number of nonzero terms
@@ -4664,11 +4699,11 @@ get_opt_pars <- function(object, nonzero, plusminus = 3) {
     gamma <- as.numeric(df$optimal_gamma[df$number_of_nonzero_terms == nonzero][min_cvm])
     cat(paste0("The best ensemble with ", nonzero, " non-zero terms is obtained with a lambda value of ", 
                round(lambda, digits= 6), " and a gamma value of ", gamma, ".\n\n"))
-    cat(paste0("Here is an overview of the performance of ensembles selected with the nearest lambda values:\n"))
+    cat(paste0("Overview of performance of ensembles selected with the nearest lambda values:\n"))
     print(df)
     invisible(list(lambda = lambda, gamma = gamma))
   } else { ## For non-relaxed lasso
-    stop("For obtaining an ensemble with a pre-specified number of non-zero terms, use of the relaxed lasso is strongly recommended. The specified ensemble was fit using standard lasso. Please refit the original ensemble using function pre() and additionally specifying relaxe = TRUE.")
+    stop("For obtaining an ensemble with a pre-specified number of non-zero terms, use of the relaxed lasso is strongly recommended. The specified ensemble was fit using standard lasso. Please refit the original ensemble using function pre() and additionally specifying relax = TRUE.")
   }
 }
 

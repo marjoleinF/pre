@@ -34,7 +34,7 @@ export("explain")
 export("rare_level_sampler")
 export("mi_pre")
 export("mi_mean")
-export("get_opt_pars")
+export("prune_pre")
 
 import("Formula")
 import("glmnet")

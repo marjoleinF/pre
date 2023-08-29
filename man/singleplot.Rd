@@ -11,7 +11,7 @@ singleplot(
   penalty.par.val = "lambda.1se",
   nvals = NULL,
   type = "response",
-  ylab = "predicted",
+  ylab = NULL,
   gamma = NULL,
   newdata = NULL,
   xlab = NULL,
@@ -44,7 +44,8 @@ should the partial dependence plot be created?}
 fitted probabilities for nominal outputs. \code{type = "link"} gives fitted
 values for continuous outputs and linear predictor values for nominal outputs.}
 
-\item{ylab}{character. Label to be printed on the y-axis.}
+\item{ylab}{character. Label to be printed on the y-axis, defaults to the response
+variable name(s).}
 
 \item{gamma}{Mixing parameter for relaxed fits. See
 \code{\link[glmnet]{coef.cv.glmnet}}.}

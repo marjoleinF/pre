@@ -2,10 +2,16 @@ Changes in Version 1.0.7 (2023-..-..)
 
   - Function mi_pre added, to allow for fitting a single prediction rule
       ensemble on multiply imputed datasets.
+
+  - Function prune_pre added, to extract optimal penanalty values for an
+      ensemble of given size.
       
-  - Arguments ad_alpha and ad_penalty have been added to function pre(), 
-      allowing for fitting the final rule ensemble using adaptive lasso. 
-      See documentation of function pre and vignette("relaxed", "pre").
+  - Adaptive lasso has been implemented in function pre. Arguments ad_alpha 
+      and ad_penalty allow for fitting the final rule ensemble using adaptive 
+      lasso. See documentation of function pre and vignette("relaxed", "pre").
+
+  - Partial dependence plotting functions singleplot and pairplot now
+      also support multinomial and multivariate outcomes.
      
      
       
