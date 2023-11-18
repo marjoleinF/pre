@@ -12,6 +12,7 @@ singleplot(
   nvals = NULL,
   type = "response",
   ylab = NULL,
+  response = NULL,
   gamma = NULL,
   newdata = NULL,
   xlab = NULL,
@@ -46,6 +47,11 @@ values for continuous outputs and linear predictor values for nominal outputs.}
 
 \item{ylab}{character. Label to be printed on the y-axis, defaults to the response
 variable name(s).}
+
+\item{response}{numeric vector of length 1. Only relevant for multivariate gaussian 
+and multinomial responses. If \code{NULL} (default), PDPs for all response 
+variables or categories will be produced. A single integer can be specified, 
+indicating for which response variable or category PDPs should be produced.}
 
 \item{gamma}{Mixing parameter for relaxed fits. See
 \code{\link[glmnet]{coef.cv.glmnet}}.}
@@ -91,7 +97,16 @@ function \code{mean_mi} can be used for this.
 \examples{
 \donttest{set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
-singleplot(airq.ens, "Temp")}
+singleplot(airq.ens, "Temp")
+
+## For multinomial and mgaussian families, one PDP is created per category or outcome
+set.seed(42)
+airq.ens3 <- pre(Ozone + Wind ~ ., data = airq, family = "mgaussian")
+singleplot(airq.ens3, varname = "Day")
+
+set.seed(42)
+iris.ens <- pre(Species ~ ., data = iris, family = "multinomial")
+singleplot(iris.ens, varname = "Petal.Width")}
 }
 \references{
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 

@@ -2437,6 +2437,10 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' should correspond to the variable as described in the model formula used
 #' to generate the ensemble (i.e., including functions applied to the variable).
 #' @inheritParams print.pre
+#' @param response numeric vector of length 1. Only relevant for multivariate gaussian 
+#' and multinomial responses. If \code{NULL} (default), PDPs for all response 
+#' variables or categories will be produced. A single integer can be specified, 
+#' indicating for which response variable or category PDPs should be produced.  
 #' @param nvals optional numeric vector of length one. For how many values of x
 #' should the partial dependence plot be created?
 #' @param type character string. Type of prediction to be plotted on y-axis.
@@ -2479,11 +2483,21 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' 
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
-#' singleplot(airq.ens, "Temp")}
+#' singleplot(airq.ens, "Temp")
+#' 
+#' ## For multinomial and mgaussian families, one PDP is created per category or outcome
+#' set.seed(42)
+#' airq.ens3 <- pre(Ozone + Wind ~ ., data = airq, family = "mgaussian")
+#' singleplot(airq.ens3, varname = "Day")
+#' 
+#' set.seed(42)
+#' iris.ens <- pre(Species ~ ., data = iris, family = "multinomial")
+#' singleplot(iris.ens, varname = "Petal.Width")}
 #' @seealso \code{\link{pre}}, \code{\link{pairplot}}
 #' @export
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                        nvals = NULL, type = "response", ylab = NULL, 
+                       response = NULL,
                        gamma = NULL, newdata = NULL, xlab = NULL,  ...)
 {
  
@@ -2580,7 +2594,12 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
   
   ## create plot
   if (object$family %in% c("multinomial", "mgaussian")) {
-    for (resp_name in colnames(exp_dataset$predy)) {
+    resp_names <- if (is.null(response)) {
+      colnames(exp_dataset$predy) 
+    } else {
+      colnames(exp_dataset$predy)[response]
+    }
+    for (resp_name in resp_names) {
       y_lab <- ifelse(is.null(ylab), resp_name, ylab) 
       plot(aggregate(
         exp_dataset$predy[ , resp_name], by = exp_dataset[varname], 
@@ -2625,6 +2644,10 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' x1 and x2 should partial dependence be plotted? If \code{NULL}, a grid of all possible
 #' combinations of the observed values of the two predictor variables specified will be used 
 #' (see details).
+#' @param response numeric vector of length 1. Only relevant for multivariate gaussian 
+#' and multinomial responses. If \code{NULL} (default), PDPs for all response 
+#' variables or categories will be produced. A single integer can be specified, 
+#' indicating for which response variable or category PDPs should be produced.   
 #' @param pred.type character string. Type of prediction to be plotted on z-axis.
 #' \code{pred.type = "response"} gives fitted values for continuous outputs and
 #' fitted probabilities for nominal outputs. \code{pred.type = "link"} gives fitted
@@ -2636,6 +2659,8 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @param newdata Optional \code{data.frame} in which to look for variables 
 #' with which to predict. If \code{NULL}, the \code{data.frame} used to fit the 
 #' original ensemble will be used.
+#' @param main Title for the plot. If \code{NULL}, the name of the response
+#' will be printed.
 #' @param ... Further arguments to be passed to \code{\link[graphics]{image}}, 
 #' \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on
 #' whether \code{type} is specified to be \code{"heatmap"}, \code{"contour"}, \code{"both"} 
@@ -2678,7 +2703,16 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' 
 #' @examples \donttest{set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
-#' pairplot(airq.ens, c("Temp", "Wind"))}
+#' pairplot(airq.ens, c("Temp", "Wind"))
+#' 
+#' ## For multinomial and mgaussian families, one PDP is created per category or outcome
+#' set.seed(42)
+#' airq.ens3 <- pre(Ozone + Wind ~ ., data = airq, family = "mgaussian")
+#' pairplot(airq.ens3, varnames = c("Day", "Month"))
+#' 
+#' set.seed(42)
+#' iris.ens <- pre(Species ~ ., data = iris, family = "multinomial")
+#' pairplot(iris.ens, varname = c("Petal.Width", "Petal.Length")}}
 #' @export
 #' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -2689,10 +2723,13 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @seealso \code{\link{pre}}, \code{\link{singleplot}} 
 #' @export
 pairplot <- function(object, varnames, type = "both", gamma = NULL,
-                     penalty.par.val = "lambda.1se", 
+                     penalty.par.val = "lambda.1se", response = NULL,
                      nvals = c(20L, 20L), pred.type = "response", 
-                     newdata = NULL, xlab = NULL, ylab = NULL, ...)
-{
+                     newdata = NULL, xlab = NULL, ylab = NULL, main = NULL,
+                     ...) {
+  
+  
+  if (!require("interp")) stop("Function pairplot requires package interp, install interp first.")
   
   ## Check if proper object argument is specified
   if (!inherits(object, "pre")) {
@@ -2817,9 +2854,13 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
   
   ## create plot
   if (object$family %in% c("mgaussian", "multinomial")) {
-    cl <- match.call()
-    for (resp_name in colnames(pred_vals)) {
-      main <- ifelse(is.null(cl$main), resp_name, cl$main)
+    resp_names <- if (is.null(response)) {
+      colnames(pred_vals) 
+    } else {
+      colnames(pred_vals)[response]
+    }
+    for (resp_name in resp_names) {
+      main <- ifelse(is.null(main), resp_name, main)
       xyz <- interp::interp(exp_dataset[ , varnames[1]], exp_dataset[ , varnames[2]],
                             pred_vals[, resp_name], duplicate = "mean")
       if (type == "heatmap" || type == "both") {
@@ -2851,6 +2892,7 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
   } else { ## family is not multinomial or mgaussian
     xyz <- interp::interp(exp_dataset[ , varnames[1]], exp_dataset[ , varnames[2]],
                           pred_vals, duplicate = "mean")
+    main <- ifelse(is.null(main), object$y_names, main)
     if (type == "heatmap" || type == "both") {
       if (is.null(match.call()$col)) {
         colors <- rev(c("#D33F6A", "#D95260", "#DE6355", "#E27449", "#E6833D", 
@@ -2858,10 +2900,10 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
                         "#E4DC68", "#E2E6BD"))
         image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
               ylab = if (is.null(ylab)) varnames[2] else ylab, 
-              col = colors, ...)
+              col = colors, main = main, ...)
       } else {
         image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-              ylab = if (is.null(ylab)) varnames[2] else ylab, ...)
+              ylab = if (is.null(ylab)) varnames[2] else ylab, main = main, ...)
       }
       if (type == "both") {
         contour(xyz, add = TRUE)
@@ -2869,11 +2911,12 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
     }
     if (type == "contour") {
       contour(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-              ylab = if (is.null(ylab)) varnames[2] else ylab, ...) 
+              ylab = if (is.null(ylab)) varnames[2] else ylab, main = main, ...) 
     }
     if (type == "perspective") {
       persp(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-            ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted y", ...)
+            ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted y",
+            main = main, ...)
     }
   }
 }

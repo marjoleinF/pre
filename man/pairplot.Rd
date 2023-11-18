@@ -11,11 +11,13 @@ pairplot(
   type = "both",
   gamma = NULL,
   penalty.par.val = "lambda.1se",
+  response = NULL,
   nvals = c(20L, 20L),
   pred.type = "response",
   newdata = NULL,
   xlab = NULL,
   ylab = NULL,
+  main = NULL,
   ...
 )
 }
@@ -44,6 +46,11 @@ specified, with higher values yielding a sparser ensemble. To evaluate the
 trade-off between accuracy and sparsity of the final ensemble, inspect
 \code{pre_object$glmnet.fit} and \code{plot(pre_object$glmnet.fit)}.}
 
+\item{response}{numeric vector of length 1. Only relevant for multivariate gaussian 
+and multinomial responses. If \code{NULL} (default), PDPs for all response 
+variables or categories will be produced. A single integer can be specified, 
+indicating for which response variable or category PDPs should be produced.}
+
 \item{nvals}{optional numeric vector of length 2. For how many values of
 x1 and x2 should partial dependence be plotted? If \code{NULL}, a grid of all possible
 combinations of the observed values of the two predictor variables specified will be used 
@@ -63,6 +70,9 @@ the first elements of the supplied \code{varnames} will be printed on the x-axis
 
 \item{ylab}{character. Label to be printed on the y-axis. If \code{NULL},
 the second element of the supplied \code{varnames} will be printed on the y-axis.}
+
+\item{main}{Title for the plot. If \code{NULL}, the name of the response
+will be printed.}
 
 \item{...}{Further arguments to be passed to \code{\link[graphics]{image}}, 
 \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on
@@ -111,11 +121,6 @@ reduces the number of observations and thereby computation time.
 
 If none of the variables specified with argument \code{varnames} was
 selected for the final prediction rule ensemble, an error will be returned.
-}
-\examples{
-\donttest{set.seed(42)
-airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
-pairplot(airq.ens, c("Temp", "Wind"))}
 }
 \references{
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 

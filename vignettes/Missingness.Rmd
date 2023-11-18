@@ -10,21 +10,19 @@ vignette: >
 
 ## Introduction
 
-To deal with missing data in parametric models, multiple imputation is the golden standard (Schafer & Graham, 2002). With GLMs, the models fitted on each imputed dataset can then be pooled. For non-parametric methods and prediction rule ensembles in particular, little if any research has been performed on how to best deal with missing data. There are currently three options:
+To deal with missing data in parametric models, multiple imputation is the golden standard (Schafer & Graham, 2002). With GLMs, the models fitted on each imputed dataset can then be pooled. For non-parametric methods and specifically prediction rule ensembles, the jury is still out on how to best deal with missing data. There are several possible approaches:
 
-* Listwise deletion. Although the default in `pre()`, this is certainly the least favorable option.
+* Listwise deletion. Although the default in `pre()`, it is certainly the least favorable option.
 
-* Single imputation: Perform only a single imputation and fit a prediction rule ensemble on this single dataset. This is likely better than listwise deletion, but likely inferior to multiple imputation.
+* Single imputation: Perform only a single imputation and fit a prediction rule ensemble on this single dataset. This is likely better than listwise deletion, but likely inferior to multiple imputation. The main advantage is that a PRE can be fit as usual.
 
-* Multiple imputation approach followed by pooling. This approach takes multiple imputed datasets and fits a separate prediction rule ensemble to each of the imputed datasets, which are aggregated to form a final ensemble. 
+* Multiple imputation followed by pooling. This approach takes multiple imputed datasets and fits a separate prediction rule ensemble to each of the imputed datasets, which are aggregated to form a final ensemble. The main disadvantage is that this yields an ensemble of ensembles, which will be (much) more complex and thus less interpretable than a single PRE. 
 
-* Multiple imputation approach followed by stacking. This approach stacks the multiple imputed datasets into a single dataset and fits a single prediction rule ensemble to this dataset. Appropriate measures are employed during rule generation and estimation of the final model to prevent overfitting.  
+* Multiple imputation followed by stacking. This approach stacks the multiple imputed datasets and fits a single prediction rule ensemble to this dataset. Rule generation and estimation of the final model can be adjusted to counter the artificial inflation of sample size. The main advantage is that it yields a single PRE, while treating missing data in an optimal manner.   
 
-Both multiple imputation approaches are expected to work similarly In terms of predictive accuracy, this approach will work well. ............. It will, however, yield more complex ensembles than the former two approaches, and the next approach.
+An alternative, would be the Missing-In-Attributes approach for rule generation, followed by mean imputation for the final model. According to Josse et al. (2019), mean imputation and the Missing-In-Attributes approaches perform well from a prediction perspective and are computationally inexpensive. This will be implemented in future versions of package **`pre`**.
 
-Alternatively, one might want to employ the Missing-In-Attributes approach for rule generation, followed by mean imputation for the final model.According to Josse et al. (2019), mean imputation and the Missing-In-Attributes approaches perform well from a prediction perspective and are computationally inexpensive. In future versions of package **`pre`**, mean imputation combined with MIA will hopefully be implemented.
-
-Below, we provide examples for the first three approaches described above. 
+Below, we provide examples for the four approaches described above. 
 
 
 
