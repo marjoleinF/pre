@@ -1,0 +1,95 @@
+---
+title: "Speeding up computations"
+author: "Marjolein Fokkema"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Faster computation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
+bibliography: bib.bib
+csl: bib_style.csl
+---
+
+The computational load of function `pre` can be heavy. This vignette shows some ways to reduce it. 
+
+There are two main steps in fitting a rule ensemble: 1) Rule generation and 2) Estimation of the final ensemble. Both can be adjusted to reduce computational load. 
+
+
+## Faster rule generation
+
+### Tree fitting algorithm
+
+By default, `pre` uses the conditional inference tree algorithm [@HothyHorn06] as implemented in function `ctree` of `R` package `partykit` [@HothyZeil15] for rule induction. The main reason is that it does not present with a selection bias towards variables with a greater number of possible cut points. Yet, use of `ctree` brings a relatively heavy computational load:
+
+```{r}
+airq <- airquality[complete.cases(airquality), ]
+airq$Month <- factor(airq$Month)
+library("pre")
+set.seed(42)
+system.time(airq.ens <- pre(Ozone ~ ., data = airq))
+summary(airq.ens)
+```
+Computational load can be substantially reduced by employing the CART algorithm of [@BreiyFrie84] as implemented in function `rpart` from the package of the same name of @TheryAtki22. This can be specified through the `tree.unbiased` argument:
+
+```{r}
+set.seed(42)
+system.time(airq.ens.cart <- pre(Ozone ~ ., data = airq, tree.unbiased = FALSE))
+summary(airq.ens.cart)
+```
+Note, however, that the variable selection induced by fitting CART trees may also present in the final ensemble. Furthermore, use of CART trees will tend to result in more complex ensembles, because the default stopping criterion in `rpart` is considerably less conservative than that of `ctree`. As a result, many more rules may be created and retained.
+
+```{r, eval=FALSE, echo=FALSE}
+par(mfrow = c(1, 2))
+imps <- importance(airq.ens, cex.main = .7, main = "Variable importances (ctree)")
+imps$varimps
+imps <- importance(airq.ens.cart, cex.main = .7, main = "Variable importances (CART)")
+imps$varimps
+sort(sapply(airq, \(x) length(unique(x))), decr = TRUE)
+## number of possible cutpoints for Month is 5!
+```
+
+
+
+### Maximum rule depth
+
+Reducing tree (and therby rule) depth will reduce computational load of both rule fitting and estimation of the final ensemble: 
+
+```{r}
+set.seed(42)
+system.time(airq.ens.md <- pre(Ozone ~ ., data = airq, maxdepth = 1L))
+summary(airq.ens.md)
+```
+Likely, reducing the maximum depth will improve interpretability, but may decrease predictive accuracy for the final ensemble.
+
+
+### Number of trees
+
+By default, 500 trees are generated. Computation time can be reduced substantially by reducing the number of trees. This may of course negatively impact predictive accuracy. When using a smaller number of trees, it is likely beneficial to increase the learning rate (`learnrate = .01`, by default) accordingly: 
+
+```{r}
+set.seed(42)
+system.time(airq.ens.nt <- pre(Ozone ~ ., data = airq, ntrees = 100L, learnrate = .05))
+summary(airq.ens.nt)
+```
+
+## Faster estimation of the final ensemble
+
+Function `cv.glmnet` from package `glmnet` is used for fitting the final model. The relevant arguments of function `cv.glmnet` can be passed directly to function `pre`.
+
+
+### Parallel computation
+
+For example, parallel computation can be employed by specifying `par.final = TRUE` in the call to `pre` (and registering parallel beforehand, e.g., using `doMC`). Parallel computation will not affect performance of the final ensemble. Note that parallel computation will only reduce computation time for datasets with a (very) large number of observations. For smaller datasets, use of parallel computation may even be increased computation time. 
+
+
+
+### Number of cross-validation folds
+
+The number of cross-validation repetitions can be also be reduced, but this will likely affect predictive performance of the final ensemble.
+
+```{r}
+set.seed(42)
+system.time(airq.ens.nf <- pre(Ozone ~ ., data = airq, nfolds = 5L))
+summary(airq.ens.nf)
+```
+## References

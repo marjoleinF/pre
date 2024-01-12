@@ -180,9 +180,22 @@ mi_pre <- function(formula, data, ## As in pre()
 #' @details It is assumed every imputed dataset contains the same observations 
 #' (but not the same values) in the same order.
 #' @return A dataset that is the average over the imputed datasets specified
-#' with \code{data}.
+#' with \code{data}. For continuous predictors, the mean over imputed values is
+#' returned, for categorical predictors, the majority class ovder imputed values
+#' is returned. In case of a non-unique maximum, the value is sampled from the 
+#' class with identical maximum counts.
 #' @export
 #' @seealso \code{\link{mi_pre}}, \code{\link{singleplot}}, \code{\link{pairplot}}
 mi_mean <- function(data) {
-  data.frame(apply(simplify2array(lapply(data, as.matrix)), 1:2, mean))
+  mean_mi <- data[[1]]
+  choose_max <- \(x) sample(names(which(table(x) == min(table(x)))), size = 1L)
+  for (i in 1:ncol(data[[1L]])) {
+    if (is.factor(data[[1L]][ , i])) {
+      mean_mi[i] <- factor(apply(sapply(data, `[[`, i), 1L, choose_max), 
+                           levels = levels(data[[1L]][ , i]))
+    } else {
+      mean_mi[i] <- rowMeans(sapply(data, `[[`, i))
+    }
+  }
+  return(mean_mi)
 }

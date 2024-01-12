@@ -95,7 +95,8 @@ If \code{mi_pre} was used to derive the original rule ensemble,
 function \code{mean_mi} can be used for this.
 }
 \examples{
-\donttest{set.seed(42)
+\donttest{airq <- airquality[complete.cases(airquality), ]
+set.seed(42)
 airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 singleplot(airq.ens, "Temp")
 

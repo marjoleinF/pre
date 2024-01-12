@@ -70,9 +70,9 @@ We obtain a larger number of rules, and slightly lower cross-validated mean squa
 
 We first perform multiple imputation by chained equations, using the predictive mean matching method. We generate 5 imputed datasets:
 
-```{r, results='hide', message=FALSE, warning=FALSE, fig.width=7}
+```{r, message=FALSE, warning=FALSE, fig.width=7}
 set.seed(42)
-imp <- mice(airquality, m = 5)
+imp <- mice(airquality, m = 5, printFlag = FALSE)
 ```
 
 We create a `list` with imputed datasets:
@@ -176,7 +176,7 @@ Finally, the `coef` method should return the averaged / aggregated final PRE. Th
 
 3) In presence of identical rules and linear terms, it aggregates those rules and their coefficients into one rule / term, and adds together the scaled coefficients. 
 
-Note that linear terms that do not have the same winsorizing points will not be aggregated. Note that the labels of rules and variables may overlap between different datasets (e.g., the label `rule 12` may appear multiple times in the aggregated ensemble, but each `rule 12` will have different conditions).
+Note that linear terms of the same predictors, which obtained different winsorizing points across imputed datasets will be retained seperately and will not be aggregated. Note also that the labels of rules and variables may overlap between different datasets (e.g., the label `rule 12` may appear multiple times in the aggregated ensemble, but each `rule 12` will have different conditions).
 
 ```{r}
 coef.agg <- function(object, ...) {
@@ -313,15 +313,15 @@ sessionInfo()
 
 ## References
 
-Du, J., Boss, J., Han, P., Beesley, L. J., Kleinsasser, M., Goutman, S.A., ... & Mukherjee, B. (2022). Variable selection with multiply-imputed datasets: choosing between stacked and grouped methods. *Journal of Computational and Graphical Statistics, 31*(4), 1063-1075. doi:10.1080/10618600.2022.2035739.
+Du, J., Boss, J., Han, P., Beesley, L. J., Kleinsasser, M., Goutman, S.A., ... & Mukherjee, B. (2022). Variable selection with multiply-imputed datasets: choosing between stacked and grouped methods. *Journal of Computational and Graphical Statistics, 31*(4), 1063-1075. \doi{10.1080/10618600.2022.2035739}
 
 Josse, J., Prost, N., Scornet, E., & Varoquaux, G. (2019). On the consistency of supervised learning with missing values. *arXiv preprint arXiv:1902.06931*. https://arxiv.org/abs/1902.06931
 
-Miles, A. (2016). Obtaining predictions from models fit to multiply imputed data. *Sociological Methods & Research, 45*(1), 175-185. https://doi.org/10.1177/0049124115610345
+Miles, A. (2016). Obtaining predictions from models fit to multiply imputed data. *Sociological Methods & Research, 45*(1), 175-185. \doi{10.1177/0049124115610345}
 
-Schafer, J. L., & Graham, J. W. (2002). Missing data: our view of the state of the art. *Psychological Methods, 7*(2), 147. https://doi.org/10.1037/1082-989X.7.2.147
+Schafer, J. L., & Graham, J. W. (2002). Missing data: our view of the state of the art. *Psychological Methods, 7*(2), 147. \doi{10.1037/1082-989X.7.2.147}
 
-Wood, A. M., White, I. R., & Royston, P. (2008). How should variable selection be performed with multiply imputed data? *Statistics in Medicine, 27*(17), 3227-3246. https://doi.org/10.1002/sim.3177
+Wood, A. M., White, I. R., & Royston, P. (2008). How should variable selection be performed with multiply imputed data? *Statistics in Medicine, 27*(17), 3227-3246. \doi{10.1002/sim.3177}
 
 
 ```{r, echo = FALSE}

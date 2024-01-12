@@ -122,6 +122,21 @@ reduces the number of observations and thereby computation time.
 If none of the variables specified with argument \code{varnames} was
 selected for the final prediction rule ensemble, an error will be returned.
 }
+\examples{
+\donttest{airq <- airquality[complete.cases(airquality),]
+set.seed(42)
+airq.ens <- pre(Ozone ~ ., data = airq)
+pairplot(airq.ens, c("Temp", "Wind"))
+
+## For multinomial and mgaussian families, one PDP is created per category or outcome
+set.seed(42)
+airq.ens3 <- pre(Ozone + Wind ~ ., data = airq, family = "mgaussian")
+pairplot(airq.ens3, varnames = c("Day", "Month"))
+
+set.seed(42)
+iris.ens <- pre(Species ~ ., data = iris, family = "multinomial")
+pairplot(iris.ens, varname = c("Petal.Width", "Petal.Length"))}
+}
 \references{
 Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.

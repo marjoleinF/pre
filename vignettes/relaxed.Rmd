@@ -14,6 +14,8 @@ A beneficial property of the lasso penalty is that it shrinks coefficients to ze
 
 When fitting prediction rule ensembles (PREs), the high false-positive selection rate of the lasso may be a nuisance, because often we want to obtain a sparse set of rules and linear terms. This vignette aims to show how the relaxed and adaptive lassos may deliver sparser ensembles, while retaining (relatively) high predictive accuracy.
 
+An excellent discussion of consistency, predictive performance and selection accuracy of the lasso and its variations is provided in the master's thesis of Kirkland (2014; pages 101-120). 
+
 
 ### Relaxed lasso
 
@@ -31,7 +33,7 @@ Function `pre` allows for adaptive lasso estimation through specification of arg
 
 It should not come as a surprise that a combination has also been proposed: The relaxed adaptive lasso (Zhang et al., 2022). It can easily be employed through specifying both `ad.alpha = 0` and `relax = TRUE`.  
 
-An excellent discussion of the consistency, predictive and selection accuracy of the lasso and related methods can be found in the master's thesis of Kirkland (2014; pages 101-120). 
+
 
 
 ## Example: Predicting Ozone levels with relaxed and/or adaptive lasso
@@ -198,15 +200,15 @@ Use of the relaxed lasso improves accuracy and sparsity of the final ensemble. R
 
 Hastie, T., Tibshirani, R., & Tibshirani, R. J. (2017). Extended comparisons of best subset selection, forward stepwise selection, and the lasso. *arXiv:1707.08692*, https://arxiv.org/abs/1707.08692.
 
-Kirklan, L.-A. (2014). LASSO - Simultaneous shrinkage and selection via the L1 norm. Master's thesis, University of Pretoria. https://www.researchgate.net/publication/325929497_LASSO_-_Simultaneous_shrinkage_and_selection_via_the_L1_norm
+Kirklan, L.-A. (2014). LASSO - Simultaneous shrinkage and selection via the L1 norm. Master's thesis, University of Pretoria. www_dot_researchgate_dot_net/publication/325929497_LASSO_-_Simultaneous_shrinkage_and_selection_via_the_L1_norm (replace _dot_ with a period and there you go, this is just to avoid issues on CRAN submission)
 
-Meinshausen, N. (2007). Relaxed lasso. *Computational Statistics & Data Analysis, 52*(1), 374-393. https://doi.org/10.1016/j.csda.2006.12.019
+Meinshausen, N. (2007). Relaxed lasso. *Computational Statistics & Data Analysis, 52*(1), 374-393. \doi{10.1016/j.csda.2006.12.019}
 
-Su, W., Bogdan, M., & Candes, E. (2017). False discoveries occur early on the lasso path. *The Annals of Statistics, 45*(5), 2133-2150. https://doi.org/10.1214/16-AOS1521
+Su, W., Bogdan, M., & Candes, E. (2017). False discoveries occur early on the lasso path. *The Annals of Statistics, 45*(5), 2133-2150. \doi{10.1214/16-AOS1521}
 
-Zhang, R., Zhao, T., Lu, Y., & Xu, X. (2022). Relaxed Adaptive Lasso and its asymptotic results. *Symmetry, 14*(7), 1422. https://doi.org/10.3390/sym14071422
+Zhang, R., Zhao, T., Lu, Y., & Xu, X. (2022). Relaxed Adaptive Lasso and its asymptotic results. *Symmetry, 14*(7), 1422. \doi{10.3390/sym14071422}
 
-Zou, H. (2006). The adaptive lasso and its oracle properties. *Journal of the American Statistical Association, 101*(476), 1418-1429. https://doi.org/10.1198/016214506000000735
+Zou, H. (2006). The adaptive lasso and its oracle properties. *Journal of the American Statistical Association, 101*(476), 1418-1429. \doi{10.1198/016214506000000735}
 
 ## Session info
 

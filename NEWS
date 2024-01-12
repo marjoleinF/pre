@@ -1,9 +1,12 @@
-Changes in Version 1.0.7 (2023-..-..)
+Changes in Version 1.0.7 (2024-11-01)
 
+  - Bug fixed in computation of importances: factors included as linear
+      terms did not contribute to variable importances. Now they do.
+  
   - Function mi_pre added, to allow for fitting a single prediction rule
       ensemble on multiply imputed datasets.
 
-  - Function prune_pre added, to extract optimal penanalty values for an
+  - Function prune_pre added, to extract optimal penalty values for an
       ensemble of given size.
       
   - Adaptive lasso has been implemented in function pre. Arguments ad_alpha 
@@ -12,6 +15,9 @@ Changes in Version 1.0.7 (2023-..-..)
 
   - Partial dependence plotting functions singleplot and pairplot now
       also support multinomial and multivariate outcomes.
+
+  - Vignette added detailing how function pre's computatation time can be 
+      reduced.
      
      
       

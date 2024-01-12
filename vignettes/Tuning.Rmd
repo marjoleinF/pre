@@ -215,5 +215,5 @@ Efron, B. (2020). Prediction, estimation, and attribution. *International Statis
 
 Hand, D. J. (2006). Classifier technology and the illusion of progress. *Statistical Science, 21*(1), 1-14.
 
-Fokkema, M. (2020). Fitting Prediction Rule Ensembles with R package **`pre`**. *Journal of Statistical Software, 92*, 1-30. https://doi.org/10.18637/jss.v092.i12
+Fokkema, M. (2020). Fitting Prediction Rule Ensembles with R package **`pre`**. *Journal of Statistical Software, 92*, 1-30. \doi{10.18637/jss.v092.i12}
 

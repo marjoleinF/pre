@@ -1,3 +1,9 @@
+## TODO: Implement rug plots for quantiles in singleplot() and pairplot
+
+## TODO: Fix local variable importances. E.g., implement centering in explain. Or do someth
+
+## TODO: Implement condition filtering for rules involving multiple splits on the same variable
+
 ## TODO: Shorten code for argument checking: 
 ##          Group variables and check each group like: 
 ##          L <- list(A, B, C) all(sapply(L, class) == "matrix") or any(is.na(unlist(L)))
@@ -1469,11 +1475,6 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       return.dupl.compl = TRUE, sparse = sparse, 
       keep_rulevars = TRUE)
   
-    #complements.removed <- rules_obj$complements.removed
-    #duplicates.removed <- rules_obj$duplicates.removed
-    #rules <- rules_obj$rules
-    #rulevars <- rules_obj$rulevars
-  
     if (verbose && (removeduplicates || removecomplements)) 
       cat("\n\nA total of", length(rules_obj$duplicates.removed) + length(rules_obj$complements.removed), "generated rules were perfectly collinear with earlier rules and removed from the initial ensemble. \n(fit$duplicates.removed and fit$complements.removed show which, if any).")
     
@@ -1483,7 +1484,7 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
   } else {
     warn <- "No prediction rules could be derived from dataset. " 
     if (tree.unbiased) {
-      warn <- paste0(warn, "Consider increasing the criterion for implementing splits and/or turning off the Bonferroni correction by specifying tree.control=")
+      warn <- paste0(warn, "Consider increasing the criterion for implementing splits and/or turning off the Bonferroni correction through specification of argument tree.control.")
       if (use.grad) {
         warn <- paste0(warn, "ctree_control(alpha = .5, testtype='Univariate'). ")
       } else {
@@ -2481,7 +2482,8 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' Milborrow, S. (2019). plotmo: Plot a model's residuals, response, and partial 
 #' dependence plots. \url{https://CRAN.R-project.org/package=plotmo}
 #' 
-#' @examples \donttest{set.seed(42)
+#' @examples \donttest{airq <- airquality[complete.cases(airquality), ]
+#' set.seed(42)
 #' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
 #' singleplot(airq.ens, "Temp")
 #' 
@@ -2701,8 +2703,9 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' If none of the variables specified with argument \code{varnames} was
 #' selected for the final prediction rule ensemble, an error will be returned.
 #' 
-#' @examples \donttest{set.seed(42)
-#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),])
+#' @examples \donttest{airq <- airquality[complete.cases(airquality),]
+#' set.seed(42)
+#' airq.ens <- pre(Ozone ~ ., data = airq)
 #' pairplot(airq.ens, c("Temp", "Wind"))
 #' 
 #' ## For multinomial and mgaussian families, one PDP is created per category or outcome
@@ -2712,7 +2715,7 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' 
 #' set.seed(42)
 #' iris.ens <- pre(Species ~ ., data = iris, family = "multinomial")
-#' pairplot(iris.ens, varname = c("Petal.Width", "Petal.Length")}}
+#' pairplot(iris.ens, varname = c("Petal.Width", "Petal.Length"))}
 #' @export
 #' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
 #' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
@@ -2728,8 +2731,10 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
                      newdata = NULL, xlab = NULL, ylab = NULL, main = NULL,
                      ...) {
   
-  
-  if (!require("interp")) stop("Function pairplot requires package interp, install interp first.")
+  ## check if package interp is installed
+  if (!(requireNamespace("interp"))) {
+    stop("Function pairplot requires package interp, install package interp first.")
+  }
   
   ## Check if proper object argument is specified
   if (!inherits(object, "pre")) {
@@ -2809,11 +2814,6 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
   ## Check if proper pred.type argument is specified
   if (!(length(type) == 1 && is.character(type))) {
     stop("Argument type should be a single character string.")
-  }
-  
-  ## check if package interp is installed
-  if (!(requireNamespace("interp"))) {
-    stop("Function pairplot requires package interp.")
   }
   
   ## generate expanded dataset
@@ -3191,22 +3191,22 @@ importance.pre <- function(x, standardize = FALSE, global = TRUE,
           }
         }
       }
+  
+      ## Get imps for factors
+      if (is.factor(x$data[ , varimps$varname[i]])) { # check if variable is a factor and add importance
+          # !is.ordered(x$data[ , varimps$varname[i]])) {
+        ## Sum baseimps$imp for which baseimps$rule has varimps$varname[i] as _part_ of its name
+        if (x$family %in% c("mgaussian", "multinomial")) {
+          varimps[i, gsub("coefficient", "importance", coef_inds)] <-
+            varimps[i, gsub("coefficient", "importance", coef_inds)] +
+            colSums(baseimps[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE), 
+                             gsub("coefficient", "importance", coef_inds)])
+        } else { # otherwise, simply add importance(s)
+          varimps$imp[i] <- varimps$imp[i] + 
+            sum(baseimps$imp[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE)])
+        }
+      } 
     }
-      
-    ## Get imps for factors
-    if (is.factor(x$data[ , varimps$varname[i]])) { # check if variable is a factor and add importance
-        # !is.ordered(x$data[ , varimps$varname[i]])) {
-      ## Sum baseimps$imp for which baseimps$rule has varimps$varname[i] as _part_ of its name
-      if (x$family %in% c("mgaussian", "multinomial")) {
-        varimps[i, gsub("coefficient", "importance", coef_inds)] <-
-          varimps[i, gsub("coefficient", "importance", coef_inds)] +
-          colSums(baseimps[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE), 
-                           gsub("coefficient", "importance", coef_inds)])
-      } else { # otherwise, simply add importance(s)
-        varimps$imp[i] <- varimps$imp[i] + 
-          sum(baseimps$imp[grepl(varimps$varname[i], baseimps$rule, fixed = TRUE)])
-      }
-    } 
     
     
     ## Step 3: Return (and plot) importances:

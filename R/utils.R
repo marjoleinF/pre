@@ -5,6 +5,7 @@
 delete_duplicates_complements <- function(
   rules, data, removecomplements = TRUE, removeduplicates = TRUE,
   return.dupl.compl = FALSE, sparse = FALSE, keep_rulevars = FALSE) {
+  
   ## Generate rule variables:
   rulevars <- if(sparse)
     .get_rules_mat_sparse(data, rules) else
@@ -238,17 +239,17 @@ list.rules <- function (x, i = NULL, removecomplements = TRUE,
       ret <- lapply(i, list.rules, x = x, simplify = FALSE)
     }
     
-    # Find the first rules. We will only keep one of these
+    ## Find the first rules. We will only keep one of these:
     
     ## TODO: If we apply non-negativity constraints,
     ## the rule that is kept should correlate positively
     ## with the outcome, if we apply negativity constraint,
-    ## the rule that is kep should correlate negatively with 
+    ## the rule that is kept should correlate negatively with 
     ## the response.
     ## I.e., if  'lower.limits = 0' or 'upper.limits = 0' was used in calling pre()
     ##
     ## Easier solution may be to just not remove first rule here
-    ## E..g, employ rm.firstrule argument (which is true by default)
+    ## E.g., employ rm.firstrule argument (which is true by default)
     if (removecomplements) {
       first_rules <- unique(sapply(ret, "[[", 1))
       first_rule_remove <- first_rules[2]

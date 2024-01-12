@@ -11,7 +11,10 @@ mi_mean(data)
 }
 \value{
 A dataset that is the average over the imputed datasets specified
-with \code{data}.
+with \code{data}. For continuous predictors, the mean over imputed values is
+returned, for categorical predictors, the majority class ovder imputed values
+is returned. In case of a non-unique maximum, the value is sampled from the 
+class with identical maximum counts.
 }
 \description{
 \code{mi_mean} computes the averages dataset over a list of imputed datasets.
