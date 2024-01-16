@@ -1,5 +1,5 @@
 ---
-title: "More adaptive or relaxed: Fitting sparser rule ensembles with relatex and/or adaptive lasso"
+title: "More adaptive or relaxed: Fitting sparser rule ensembles with relaxed and/or adaptive lasso"
 author: "Marjolein Fokkema"
 output: rmarkdown::html_vignette
 vignette: >

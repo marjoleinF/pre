@@ -129,23 +129,24 @@ delete_duplicates_complements <- function(
 }
 
 # see https://stackoverflow.com/a/51457395/5861244
-duplicated.dgCMatrix <- function (dgCMat, MARGIN) {
+duplicated.dgCMatrix <- function (x, incomparables = NULL, MARGIN, ...) {
+  ## incomparables = NULL added to match duplicated generic: function(x, incomparables, ...)
   MARGIN <- as.integer(MARGIN)
-  n <- nrow(dgCMat)
-  p <- ncol(dgCMat)
-  J <- rep(1:p, diff(dgCMat@p))
-  I <- dgCMat@i + 1
-  x <- dgCMat@x
+  n <- nrow(x)
+  p <- ncol(x)
+  J <- rep(1:p, diff(x@p))
+  I <- x@i + 1
+  X <- x@x
   if (MARGIN == 1L) {
     ## check duplicated rows
-    names(x) <- J
-    RowLst <- split(x, I)
+    names(X) <- J
+    RowLst <- split(X, I)
     is_empty <- setdiff(1:n, I)
     result <- duplicated.default(RowLst)
   } else if (MARGIN == 2L) {
     ## check duplicated columns
-    names(x) <- I
-    ColLst <- split(x, J)
+    names(X) <- I
+    ColLst <- split(X, J)
     is_empty <- setdiff(1:p, J)
     result <- duplicated.default(ColLst)
   } else {

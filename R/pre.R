@@ -4041,7 +4041,7 @@ plot.pre <- function(x, penalty.par.val = "lambda.1se", gamma = NULL,
 
 
 ## Internal function for creating legend for corplot:
-image.scale <- function(z, col, breaks, axis.pos = 4, add.axis = TRUE) {
+image_scale <- function(z, col, breaks, axis.pos = 4, add.axis = TRUE) {
   poly <- vector(mode = "list", length(col))
   for(i in seq(poly)) {
     poly[[i]] <- c(breaks[i], breaks[i+1], breaks[i+1], breaks[i])
@@ -4170,7 +4170,7 @@ corplot <- function(object, penalty.par.val = "lambda.1se", colors = NULL,
   ## plot legend:
   par(fig = fig.legend, new = TRUE)
   col_inds <- round(seq(1, length(colors), length.out = length(legend.breaks)-1))
-  image.scale(z = legend.breaks,
+  image_scale(z = legend.breaks,
               col = colors[col_inds],
               axis.pos = 4,
               breaks = legend.breaks)
