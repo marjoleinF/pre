@@ -6,11 +6,13 @@ vignette: >
   %\VignetteIndexEntry{Tuning parameters of function pre}
   %\VignetteEngine{knitr::rmarkdown}
   %\usepackage[utf8]{inputenc}
+bibliography: bib.bib
+csl: bib_style.csl
 ---
 
 ## Introduction
 
-Function `pre()` has a substantial number of model-fitting parameters, which may be tuned so as to optimize predictive accuracy and/or interpretability (sparsity) of the final model. For many of the parameters, default settings will likely perform well. Here, we discuss the effects of several of the parameters on predictive accuracy and model complexity. Next, we illustrate how to optimize predictive accuracy for a binary classification problem using package **`caret`**. We do not explain each argument in detail; readers are referred to the documentation of function `pre()` for that, or Fokkema (2020). 
+Function `pre()` has a substantial number of model-fitting parameters, which may be tuned so as to optimize predictive accuracy and/or interpretability (sparsity) of the final model. For many of the parameters, default settings will likely perform well. Here, we discuss the effects of several of the parameters on predictive accuracy and model complexity. Next, we illustrate how to optimize predictive accuracy for a binary classification problem using package **`caret`**. We do not explain each argument in detail; readers are referred to the documentation of function `pre()` for that, or [@fokkema2020prediction]. 
 
 
 ## Tuning parameters
@@ -205,15 +207,8 @@ auc(response = carrillo[-train_ids, "sexo"], predictor = pre_preds_def)
 
 We obtained the best Brier score and AUC with the tuned parameter values. The difference in performance between tuned and default parameter settings is less than one standard error, but note the test set is very small in this example; larger test set size or (repeated) $k$-fold cross validation should be preferred in practice.  
 
-The default settings yielded a slightly sparser rule ensemble than the parameters optimizing predictive accuracy as measured by the Brier score. This will commonly be encountered: `pre`'s default settings prefer a sparser ensemble over an ensemble that perfectly optimizes predictive accuracy. Small differences in accuracy may often be swamped by real-world aspects of a data problem (Efron, 2020; Hand, 2006). 
+The default settings yielded a slightly sparser rule ensemble than the parameters optimizing predictive accuracy as measured by the Brier score. This will commonly be encountered: `pre`'s default settings prefer a sparser ensemble over an ensemble that perfectly optimizes predictive accuracy. Small differences in accuracy may often be swamped by real-world aspects of a data problem ([@efron2020prediction]; [@hand2006classifier]). 
 
 
 
 ## References
-
-Efron, B. (2020). Prediction, estimation, and attribution. *International Statistical Review, 88*, S28-S59.
-
-Hand, D. J. (2006). Classifier technology and the illusion of progress. *Statistical Science, 21*(1), 1-14.
-
-Fokkema, M. (2020). Fitting Prediction Rule Ensembles with R package **`pre`**. *Journal of Statistical Software, 92*, 1-30. \doi{10.18637/jss.v092.i12}
-
