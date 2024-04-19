@@ -136,7 +136,7 @@ set.seed(43)
 airq.agg <- pre.agg(imp1, formula = Wind ~ .)
 ```
 
-Note that we can used the ellipsis (`...`) to pass arguments to `pre` (see `?pre` for an overview of arguments that can be specified).
+Note that we can use the ellipsis (`...`) to pass arguments to `pre` (see `?pre` for an overview of arguments that can be specified).
 
 We now define `print`, `summary`, `predict` and `coef` methods to extract results from the fitted ensemble. Again, we can use the ellipsis (`...`) to pass arguments to the `print`, `summary`, `predict` and `coef` methods of function `pre` (see e.g., `?pre:::print.pre` for more info):
 
@@ -174,7 +174,7 @@ Finally, the `coef` method should return the averaged / aggregated final PRE. Th
 
 2) All rules and linear terms, with their coefficients scaled by the number of datasets; 
 
-3) In presence of identical rules and linear terms, it aggregates those rules and their coefficients into one rule / term, and adds together the scaled coefficients. 
+3) In the presence of identical rules and linear terms, it aggregates those rules and their coefficients into one rule / term, and adds together the scaled coefficients. 
 
 Note that linear terms of the same predictors, which obtained different winsorizing points across imputed datasets will be retained seperately and will not be aggregated. Note also that the labels of rules and variables may overlap between different datasets (e.g., the label `rule 12` may appear multiple times in the aggregated ensemble, but each `rule 12` will have different conditions).
 
@@ -301,7 +301,7 @@ boxplot(nterms, main = "Number of selected terms \nper missing-data method",
         cex.main = .8)
 ```
 
-In line with findings of Josse et al. (2019), we expect MIA to work better for rules than mean imputation. In future versions of package **`pre`**, we plan to implement MIA (for the rules) and combine it with mean imputation (for the linear terms).
+In line with findings of Josse et al. (2019), we expect MIA to work better for rules than mean imputation. In future versions of the package **`pre`**, we plan to implement MIA (for the rules) and combine it with mean imputation (for the linear terms).
 
 ## Session info
 
