@@ -65,7 +65,7 @@ BigSummary <- function (data, lev = NULL, model = NULL) {
 }
 ```
 
-Next, we set up a control object for the `train()` function. Opinions may vary on what are the best setting for optimizing tuning parameters on a training dataset. Here, we take a 10-fold cross validation approach. Often, 10 repeats of 10-fold cross validation should be preferred, to make results less dependent on a single choice of folds. This can be done by setting `repeats = 10` instead of the default below (here we use a single repeat to limit computation time): 
+Next, we set up a control object for the `train()` function. Opinions may vary on what the best setting is for optimizing tuning parameters on a training dataset. Here, we take a 10-fold cross validation approach. Often, 10 repeats of 10-fold cross validation should be preferred, to make results less dependent on a single choice of folds. This can be done by setting `repeats = 10` instead of the default below (here we use a single repeat to limit computation time): 
 
 ```{r}
 fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 1,
@@ -205,7 +205,7 @@ auc(response = carrillo[-train_ids, "sexo"], predictor = pre_preds_def)
 
 We obtained the best Brier score and AUC with the tuned parameter values. The difference in performance between tuned and default parameter settings is less than one standard error, but note the test set is very small in this example; larger test set size or (repeated) $k$-fold cross validation should be preferred in practice.  
 
-The default settings yielded a slightly sparser rule ensemble than the parameters optimizing predictive accuracy as measured by the Brier score. This will commonly be encountered: `pre`'s default settings prefer a sparser ensemble over an ensemble that perfectly optimizes predictive accuracy. Small differences in accuracy may often be swamped by real-world aspects of a data problem (Efron, 2020; Hand, 2009). 
+The default settings yielded a slightly sparser rule ensemble than the parameters optimizing predictive accuracy as measured by the Brier score. This will commonly be encountered: `pre`'s default settings prefer a sparser ensemble over an ensemble that perfectly optimizes predictive accuracy. Small differences in accuracy may often be swamped by real-world aspects of a data problem (Efron, 2020; Hand, 2006). 
 
 
 
