@@ -6,32 +6,34 @@ vignette: >
   %\VignetteIndexEntry{More sparse and relaxed: Fitting rule ensembles with the relaxed lasso}
   %\VignetteEngine{knitr::rmarkdown}
   %\usepackage[utf8]{inputenc}
+bibliography: bib.bib
+csl: bib_style.csl
 ---
 
 ## Introduction
 
-A beneficial property of the lasso penalty is that it shrinks coefficients to zero. Less beneficial is that in the process, the lasso tends to overshrink large coefficients. It has been argued that the lasso should "be considered as a *variable screener* rather than a *model selector*" (Su et al., 2017). There appears a trade-off between prediction and selection: The penalty parameter value optimal for variable selection will overshrink the large coefficients, making it suboptimal for prediction. The penalty parameter value optimal for prediction ("lambda.min") selects too many variables. The relaxed lasso and adaptive lasso have been proposed to improve upon this problem.
+A beneficial property of the lasso penalty is that it shrinks coefficients to zero. Less beneficial is that in the process, the lasso tends to overshrink large coefficients. It has been argued that the lasso should "be considered as a *variable screener* rather than a *model selector*" ([@su2017false]). There appears a trade-off between prediction and selection: The penalty parameter value optimal for variable selection will overshrink the large coefficients, making it suboptimal for prediction. The penalty parameter value optimal for prediction ("lambda.min") selects too many variables. The relaxed lasso and adaptive lasso have been proposed to improve upon this problem.
 
 When fitting prediction rule ensembles (PREs), the high false-positive selection rate of the lasso may be a nuisance, because often we want to obtain a sparse set of rules and linear terms. This vignette aims to show how the relaxed and adaptive lassos may deliver sparser ensembles, while retaining (relatively) high predictive accuracy.
 
-An excellent discussion of consistency, predictive performance and selection accuracy of the lasso and its variations is provided in the master's thesis of Kirkland (2014; pages 101-120). 
+An excellent discussion of consistency, predictive performance and selection accuracy of the lasso and its variations is provided in the master's thesis of [@Kirkland2014]. 
 
 
 ### Relaxed lasso
 
-The relaxed lasso was originally proposed by Meinshausen (2007). Investigations of Su et al. (2017) provide insight on why the relaxed lasso is beneficial. Hastie, Tibshirani & Tibshirani (2017) propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. Hastie et al. (2017) find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". Function `pre` supports use of the relaxed lasso through passing of argument `relax`. A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso", accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
+The relaxed lasso was originally proposed by [@meinshausen2007relaxed]. Investigations of [@su2017false] provide insight on why the relaxed lasso is beneficial. [@hastie2017extended] propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. [@hastie2017extended] find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". Function `pre` supports use of the relaxed lasso through passing of argument `relax`. A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso", accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
 
 
 ### Adaptive lasso
 
-The adaptive lasso has been proposed by Zou (2006). It applies positive weighting factors to the lasso penalty to control the bias through shrinking coefficients with weights inversely proportional to their size. It thus aims to shrink small coefficients more and large coefficients less. It requires an initial estimate of the coefficients, for which OLS (if $N > p$) or ridge (if $N < p$) estimation is usually employed, to obtain a vector of weights. These weights can then be used to scale the predictor matrix, or to scale the penalty; both approaches have the same effect. 
+The adaptive lasso has been proposed by [@hui2006the]. It applies positive weighting factors to the lasso penalty to control the bias through shrinking coefficients with weights inversely proportional to their size. It thus aims to shrink small coefficients more and large coefficients less. It requires an initial estimate of the coefficients, for which OLS (if $N > p$) or ridge (if $N < p$) estimation is usually employed, to obtain a vector of weights. These weights can then be used to scale the predictor matrix, or to scale the penalty; both approaches have the same effect. 
 
 Function `pre` allows for adaptive lasso estimation through specification of argument `ad.alpha`. It first uses ridge regression for computing penalty weights. In principle, any elastic net solution can be used, but use of ridge is recommended. Other solutions can be used by specifying the `ad.alpha` and `ad.penalty` arguments. Lasso regression can be used by specifying `ad.alpha = 1` and OLS can be used by specifying `ad.penalty = 0`. Next, the inverse of the absolute values of the estimated coefficients are supplied as penalty factors to the `cv.glmnet` function. For the initial and final estimates, the same fold assignments are used in the cross validation.
 
 
 ### Relaxed adaptive lasso
 
-It should not come as a surprise that a combination has also been proposed: The relaxed adaptive lasso (Zhang et al., 2022). It can easily be employed through specifying both `ad.alpha = 0` and `relax = TRUE`.  
+It should not come as a surprise that a combination has also been proposed: The relaxed adaptive lasso ([@zhang2022relaxed]). It can easily be employed through specifying both `ad.alpha = 0` and `relax = TRUE`.  
 
 
 
@@ -194,22 +196,6 @@ The summary suggests that the relaxed adaptive lasso provides the highest predic
 Use of the relaxed lasso improves accuracy and sparsity of the final ensemble. Relaxed lasso can be used to obtain an ensemble of pre-specified sparsity, that still provides good predictive performance. Use of the adaptive lasso penalties may further improve predictive accuracy.
 
 
-
-
-## References
-
-Hastie, T., Tibshirani, R., & Tibshirani, R. J. (2017). Extended comparisons of best subset selection, forward stepwise selection, and the lasso. *arXiv:1707.08692*, https://arxiv.org/abs/1707.08692.
-
-Kirklan, L.-A. (2014). LASSO - Simultaneous shrinkage and selection via the L1 norm. Master's thesis, University of Pretoria. www_dot_researchgate_dot_net/publication/325929497_LASSO_-_Simultaneous_shrinkage_and_selection_via_the_L1_norm (replace _dot_ with a period and there you go, this is just to avoid issues on CRAN submission)
-
-Meinshausen, N. (2007). Relaxed lasso. *Computational Statistics & Data Analysis, 52*(1), 374-393. \doi{10.1016/j.csda.2006.12.019}
-
-Su, W., Bogdan, M., & Candes, E. (2017). False discoveries occur early on the lasso path. *The Annals of Statistics, 45*(5), 2133-2150. \doi{10.1214/16-AOS1521}
-
-Zhang, R., Zhao, T., Lu, Y., & Xu, X. (2022). Relaxed Adaptive Lasso and its asymptotic results. *Symmetry, 14*(7), 1422. \doi{10.3390/sym14071422}
-
-Zou, H. (2006). The adaptive lasso and its oracle properties. *Journal of the American Statistical Association, 101*(476), 1418-1429. \doi{10.1198/016214506000000735}
-
 ## Session info
 
 In case you obtained different results, the results above were obtained using the following:
@@ -217,3 +203,5 @@ In case you obtained different results, the results above were obtained using th
 ```{r, echo=FALSE}
 sessionInfo()
 ```
+
+## References
