@@ -79,7 +79,7 @@ Function `cv.glmnet` from package `glmnet` is used for fitting the final model. 
 
 ### Parallel computation
 
-For example, parallel computation can be employed by specifying `par.final = TRUE` in the call to `pre` (and registering parallel beforehand, e.g., using `doMC`). Parallel computation will not affect performance of the final ensemble. Note that parallel computation will only reduce computation time for datasets with a (very) large number of observations. For smaller datasets, use of parallel computation may even be increased computation time. 
+For example, parallel computation can be employed by specifying `par.final = TRUE` in the call to `pre` (and registering parallel beforehand, e.g., using `doMC`). Parallel computation will not affect performance of the final ensemble. Note that parallel computation will only reduce computation time for datasets with a (very) large number of observations. For smaller datasets, the use of parallel computation may even increase computation time. 
 
 
 
