@@ -748,8 +748,11 @@ pre <- function(formula, data, family = gaussian, ad.alpha = NA, ad.penalty = "l
     rules <- NULL
     rulevars <- NULL
   } else {
+    list_dots <- list(...)
+    offset <- if (is.null(list_dots)) NULL else list_dots$offset
     rule_object <- try(pre_rules(formula = formula, 
                                  data = data,
+                                 offset = offset,
                                  weights = weights,
                                  y_names = y_names,
                                  x_names = x_names,
@@ -1130,11 +1133,9 @@ get_modmat <- function(
 }
 
 
-
-
 ## Rule learner for pre:
 pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
-                      y_names, x_names, 
+                      y_names, x_names, offset = offset, 
                       learnrate = .01, par.init = FALSE, sampfrac = .5, 
                       mtry = Inf, maxdepth = 3L, ntrees = 500, 
                       tree.control = ctree_control(), use.grad = TRUE, 
@@ -1390,8 +1391,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
       
     } else { ## use.grad is FALSE, employ (g)lmtrees with offset:
       
-      ## initialize with 0 offset:
-      data$.offset <- rep(0, times = nrow(data))
+      ## initialize with 0 offset (unless offset, which is a hidden argument, was specified)
+      data$.offset <- if (!is.null(offset)) offset else rep(0, times = nrow(data))
       
       for(i in 1:ntrees) {
         
