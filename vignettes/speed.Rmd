@@ -29,37 +29,48 @@ set.seed(42)
 system.time(airq.ens <- pre(Ozone ~ ., data = airq))
 summary(airq.ens)
 ```
-Computational load can be substantially reduced by employing the CART algorithm of [@BreiyFrie84] as implemented in function `rpart` from the package of the same name of @TheryAtki22. This can be specified through the `tree.unbiased` argument:
+
+Computational load can be substantially reduced by employing the CART algorithm of [@BreiyFrie84] as implemented in function `rpart` from the package of the same name by @TheryAtki22. This can be specified through the `tree.unbiased` argument:
 
 ```{r}
 set.seed(42)
 system.time(airq.ens.cart <- pre(Ozone ~ ., data = airq, tree.unbiased = FALSE))
 summary(airq.ens.cart)
 ```
-Note, however, that the variable selection induced by fitting CART trees may also present in the final ensemble. Furthermore, use of CART trees will tend to result in more complex ensembles, because the default stopping criterion in `rpart` is considerably less conservative than that of `ctree`. As a result, many more rules may be created and retained.
 
-```{r, eval=FALSE, echo=FALSE}
-par(mfrow = c(1, 2))
-imps <- importance(airq.ens, cex.main = .7, main = "Variable importances (ctree)")
-imps$varimps
-imps <- importance(airq.ens.cart, cex.main = .7, main = "Variable importances (CART)")
-imps$varimps
-sort(sapply(airq, \(x) length(unique(x))), decr = TRUE)
-## number of possible cutpoints for Month is 5!
+Alternatively, rules can be generated using the random-forest approach originally proposed by [@brei01] as implemented in function `randomForest` from the package of the same name by @LiawyWien02: 
+
+```{r}
+set.seed(42)
+system.time(airq.ens.rf <- pre(Ozone ~ ., data = airq, randomForest = TRUE))
+summary(airq.ens.rf)
 ```
 
+Note, however, that the resulting ensembles will likely be more complex and also present with a selection bias towards variables with a greater number of possible cutpoints. The higher complexity is also observed above, where CART and random forest resulted in a substantially larger number of terms. This is due to the default stopping criteria for `rpart` and `randomForest` being considerably less conservative than that of `ctree`. This will result in the generation of more and longer rules, which will also tend to increase complexity of the final ensemble. Furthermore, those algorithms prefer to split using variables with a larger number of cutpoints, and this bias may propagate to the final rule ensemble.
 
+```{r,echo=FALSE, eval=FALSE}
+sort(sapply(airq, \(x) length(unique(x))), decr = TRUE)
+par(mfrow = c(1, 3))
+importance(airq.ens, cex.lab = .7, cex.axis = .7, cex.main = .7, 
+           main = "Variable importances (ctree)")
+importance(airq.ens.cart, cex.lab = .7, cex.axis = .7, cex.main = .7, 
+           main = "Variable importances (CART)")
+imps.rf <- importance(airq.ens.rf, cex.lab = .7, cex.axis = .7, cex.main = .7, 
+                      main = "Variable importances (randomForest)")
+```
 
 ### Maximum rule depth
 
-Reducing tree (and therby rule) depth will reduce computational load of both rule fitting and estimation of the final ensemble: 
+Reducing tree (and thereby rule) depth will reduce computational load of both rule fitting and estimation of the final ensemble: 
 
 ```{r}
 set.seed(42)
 system.time(airq.ens.md <- pre(Ozone ~ ., data = airq, maxdepth = 1L))
 summary(airq.ens.md)
 ```
+
 Likely, reducing the maximum depth will improve interpretability, but may decrease predictive accuracy for the final ensemble.
+
 
 
 ### Number of trees
@@ -85,11 +96,12 @@ For example, parallel computation can be employed by specifying `par.final = TRU
 
 ### Number of cross-validation folds
 
-The number of cross-validation repetitions can be also be reduced, but this will likely affect predictive performance of the final ensemble.
+The number of cross-validation repetitions can be also be reduced, but this will probably not reduce computation time much and may negatively affect predictive performance of the final ensemble.
 
 ```{r}
 set.seed(42)
 system.time(airq.ens.nf <- pre(Ozone ~ ., data = airq, nfolds = 5L))
 summary(airq.ens.nf)
 ```
+
 ## References

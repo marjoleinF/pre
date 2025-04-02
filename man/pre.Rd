@@ -20,6 +20,7 @@ pre(
   ntrees = 500,
   confirmatory = NULL,
   singleconditions = FALSE,
+  randomForest = FALSE,
   winsfrac = 0.025,
   normalize = TRUE,
   standardize = FALSE,
@@ -61,8 +62,8 @@ to recode.}
 (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
 \code{\link[stats]{family}}). Specification of argument \code{family} is 
 strongly advised but not required. If \code{family} is not specified, 
-Otherwise, the program will try to make an informed guess, based on the 
-class of the response variable specified in \code{formula}. als see Examples 
+the program will try to make an informed guess, based on the 
+class of the response variable specified in \code{formula}. Also see Examples 
 below.}
 
 \item{ad.alpha}{Alpha value to be used for computing the penalty weights for the
@@ -87,7 +88,7 @@ higher complexity, but possibly higher predictive accuracy. See Details for
 supported combinations of \code{family}, \code{use.grad} and \code{learnrate}.}
 
 \item{weights}{optional vector of observation weights to be used for 
-deriving the ensemble.}
+fitting the ensemble.}
 
 \item{type}{character. Specifies type of base learners to include in the 
 ensemble. Defaults to \code{"both"} (initial ensemble will include both rules 
@@ -132,6 +133,16 @@ rules in the initial ensemble. If \code{TRUE}, all nodes will additionally be
 included as single-condition rules. If \code{"only"}, all nodes will be included 
 as single-condition rules only.}
 
+\item{randomForest}{use function \code{\link[randomForest]{randomForest}}
+of package of the same name for rule induction? If set to \code{TRUE}, 
+arguments \code{weights}, \code{ntree}, \code{mtry} and \code{maxdepth} 
+will be passed to
+\code{\link[randomForest]{randomForest}}. Argument \code{learnrate} will be 
+fixed to 0 and \code{sampfrac} will be ignored (preferences about sampling
+procedures should be passed to \code{tree.control} when using 
+\code{\link[randomForest]{randomForest}} which also allows to specify other 
+arguments of function \code{\link[randomForest]{randomForest}}.}
+
 \item{winsfrac}{numeric value \eqn{> 0} and \eqn{\le 0.5}. Quantiles of data 
 distribution to be used for 
 winsorizing linear terms. If set to 0, no winsorizing is performed. Note 
@@ -160,8 +171,9 @@ the final ensemble.}
 
 \item{tree.control}{list with control parameters to be passed to the tree 
 fitting function, generated using \code{\link[partykit]{ctree_control}},
-\code{\link[partykit]{mob_control}} (if \code{use.grad = FALSE}), or 
-\code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}).}
+\code{\link[partykit]{mob_control}} (if \code{use.grad = FALSE}), 
+\code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}), or
+\code{\link[randomForest]{randomForest}} (if \code{randomForest = TRUE}.}
 
 \item{tree.unbiased}{logical. Should an unbiased tree generation algorithm 
 be employed for rule generation? Defaults to \code{TRUE}, if set to 
@@ -212,10 +224,11 @@ prediction of a continuous, binary, count, multinomial, multivariate
 continuous or survival response.
 }
 \details{
-Note that obervations with missing values will be removed prior to 
-analysis (and a warning printed).
+Note that observations with missing values will be removed prior to 
+analysis (and a warning printed). See \code{vignette("missingness", "pre")} 
+an \code{\link{mi_pre}} for suggestions on how to better deal with missing values.
 
-In some cases, duplicated variable names may appear in the model.
+In some cases, duplicated variable names may occur in the final ensemble model.
 For example, the first variable is a factor named 'V1' and there are also
 variables named 'V10' and/or 'V11' and/or 'V12' (etc). Then for 
 for the binary factor V1, dummy contrast variables will be created, named 
@@ -265,6 +278,13 @@ TRUE \tab FALSE	\tab >0 \tab binomial	  \tab rpart \tab Single, factor with 2 le
 TRUE \tab FALSE	\tab >0 \tab poisson	  \tab rpart \tab Single, integer \cr
 TRUE \tab FALSE \tab >0 \tab cox         \tab rpart \tab Object of class 'Surv'
 }
+Alternatively, specifying \code{randomForest = TRUE} overrides all of these arguments and
+employs function \code{\link[randomForest]{randomForest}} from the package of the same
+name for rule induction. All arguments of function \code{\link[randomForest]{randomForest}}
+should be passed using the \code{tree.control} argument, except for arguments \code{formula}, 
+\code{data}, \code{mtry} and \code{ntrees}, because the other arguments of 
+function \code{\link[randomForest]{randomForest}} do not have identical counterparts in 
+function \code{\link{pre}}.
 
 If an error along the lines of 'factor ... has new levels ...' is encountered, 
 consult \code{?rare_level_sampler} for explanation and solutions.

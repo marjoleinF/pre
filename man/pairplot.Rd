@@ -18,6 +18,7 @@ pairplot(
   xlab = NULL,
   ylab = NULL,
   main = NULL,
+  rug = TRUE,
   ...
 )
 }
@@ -71,8 +72,13 @@ the first elements of the supplied \code{varnames} will be printed on the x-axis
 \item{ylab}{character. Label to be printed on the y-axis. If \code{NULL},
 the second element of the supplied \code{varnames} will be printed on the y-axis.}
 
-\item{main}{Title for the plot. If \code{NULL}, the name of the response
-will be printed.}
+\item{main}{character vector. Title(s) for the plot. If \code{NULL}, the name 
+of the response will be printed.}
+
+\item{rug}{logical. Ignored if \code{type = "perspective"}. Should a rug be 
+plotted on the x- and y-axes, representing the location of observed datapoint? 
+Note that the rugs will only show where values have been observed, not their 
+frequency/density.}
 
 \item{...}{Further arguments to be passed to \code{\link[graphics]{image}}, 
 \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on

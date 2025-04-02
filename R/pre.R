@@ -1,17 +1,13 @@
-## TODO: Implement rug plots for quantiles in singleplot() and pairplot
-
-## TODO: Fix local variable importances. E.g., implement centering in explain. Or do someth
-
+## TODO: Fix caret method, is does not seem to use penalty.par.val properly.
+## TODO: Implement (unit)  tests for pre(..., randomForest = TRUE) and get_rf_rules()
+## TODO: Fix local variable importances. E.g., implement centering in explain.
 ## TODO: Implement condition filtering for rules involving multiple splits on the same variable
-
 ## TODO: Shorten code for argument checking: 
 ##          Group variables and check each group like: 
 ##          L <- list(A, B, C) all(sapply(L, class) == "matrix") or any(is.na(unlist(L)))
-
 ## TODO: Implement functionality for missing-in-attributes approach for missing values
-## MIA is supported by ctree. Can then do mean imputation before glmnet. 
-## Will need some work with predict method?
-
+##       MIA is supported by ctree. Can then do mean imputation before glmnet. 
+##       Will need some work with predict method?
 ## TODO: Implement unit tests for correct passing of gamma argument
 ## TODO: Implement unit tests for function interact() without nullmods
 
@@ -47,8 +43,8 @@ utils::globalVariables("%dopar%")
 #' (e.g., \code{gaussian}, \code{binomial} or \code{poisson}, see 
 #' \code{\link[stats]{family}}). Specification of argument \code{family} is 
 #' strongly advised but not required. If \code{family} is not specified, 
-#' Otherwise, the program will try to make an informed guess, based on the 
-#' class of the response variable specified in \code{formula}. als see Examples 
+#' the program will try to make an informed guess, based on the 
+#' class of the response variable specified in \code{formula}. Also see Examples 
 #' below. 
 #' @param ad.alpha Alpha value to be used for computing the penalty weights for the
 #' adaptive lasso. Defaults to \code{NA}, yielding standard lasso estimation. 
@@ -69,7 +65,7 @@ utils::globalVariables("%dopar%")
 #' higher complexity, but possibly higher predictive accuracy. See Details for 
 #' supported combinations of \code{family}, \code{use.grad} and \code{learnrate}.
 #' @param weights optional vector of observation weights to be used for 
-#' deriving the ensemble.
+#' fitting the ensemble.
 #' @param type character. Specifies type of base learners to include in the 
 #' ensemble. Defaults to \code{"both"} (initial ensemble will include both rules 
 #' and linear functions). Other option are \code{"rules"} (prediction 
@@ -91,6 +87,15 @@ utils::globalVariables("%dopar%")
 #' creating each split in each tree. Ignored when \code{tree.unbiased=FALSE}.
 #' @param ntrees positive integer value. Number of trees to generate for the 
 #' initial ensemble.
+#' @param randomForest use function \code{\link[randomForest]{randomForest}}
+#' of package of the same name for rule induction? If set to \code{TRUE}, 
+#' arguments \code{weights}, \code{ntree}, \code{mtry} and \code{maxdepth} 
+#' will be passed to
+#' \code{\link[randomForest]{randomForest}}. Argument \code{learnrate} will be 
+#' fixed to 0 and \code{sampfrac} will be ignored (preferences about sampling
+#' procedures should be passed to \code{tree.control} when using 
+#' \code{\link[randomForest]{randomForest}} which also allows to specify other 
+#' arguments of function \code{\link[randomForest]{randomForest}}.
 #' @param confirmatory character vector. Specifies one or more confirmatory terms 
 #' to be included in the final ensemble. Linear terms can be specified as the 
 #' name of a predictor variable included in \code{data}, rules can be specified
@@ -141,8 +146,9 @@ utils::globalVariables("%dopar%")
 #' such as doMC or others.
 #' @param tree.control list with control parameters to be passed to the tree 
 #' fitting function, generated using \code{\link[partykit]{ctree_control}},
-#' \code{\link[partykit]{mob_control}} (if \code{use.grad = FALSE}), or 
-#' \code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}).
+#' \code{\link[partykit]{mob_control}} (if \code{use.grad = FALSE}), 
+#' \code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}), or
+#' \code{\link[randomForest]{randomForest}} (if \code{randomForest = TRUE}.
 #' @param tree.unbiased logical. Should an unbiased tree generation algorithm 
 #' be employed for rule generation? Defaults to \code{TRUE}, if set to 
 #' \code{FALSE}, rules will be generated employing the CART algorithm
@@ -154,10 +160,11 @@ utils::globalVariables("%dopar%")
 #' @param ... Further arguments to be passed to
 #' \code{\link[glmnet]{cv.glmnet}}.
 #' 
-#' @details Note that obervations with missing values will be removed prior to 
-#' analysis (and a warning printed).
+#' @details Note that observations with missing values will be removed prior to 
+#' analysis (and a warning printed). See \code{vignette("missingness", "pre")} 
+#' an \code{\link{mi_pre}} for suggestions on how to better deal with missing values.
 #' 
-#' In some cases, duplicated variable names may appear in the model.
+#' In some cases, duplicated variable names may occur in the final ensemble model.
 #' For example, the first variable is a factor named 'V1' and there are also
 #' variables named 'V10' and/or 'V11' and/or 'V12' (etc). Then for 
 #` selecting the final ensemble, if linear terms are also included,
@@ -208,6 +215,13 @@ utils::globalVariables("%dopar%")
 #' TRUE \tab FALSE	\tab >0 \tab poisson	  \tab rpart \tab Single, integer \cr
 #' TRUE \tab FALSE \tab >0 \tab cox         \tab rpart \tab Object of class 'Surv'
 #' }
+#' Alternatively, specifying \code{randomForest = TRUE} overrides all of these arguments and
+#' employs function \code{\link[randomForest]{randomForest}} from the package of the same
+#' name for rule induction. All arguments of function \code{\link[randomForest]{randomForest}}
+#' should be passed using the \code{tree.control} argument, except for arguments \code{formula}, 
+#' \code{data}, \code{mtry} and \code{ntrees}, because the other arguments of 
+#' function \code{\link[randomForest]{randomForest}} do not have identical counterparts in 
+#' function \code{\link{pre}}.
 #' 
 #' If an error along the lines of 'factor ... has new levels ...' is encountered, 
 #' consult \code{?rare_level_sampler} for explanation and solutions.
@@ -303,6 +317,7 @@ pre <- function(formula, data, family = gaussian, ad.alpha = NA, ad.penalty = "l
                 use.grad = TRUE, weights, type = "both", sampfrac = .5, 
                 maxdepth = 3L, learnrate = .01, mtry = Inf, ntrees = 500,
                 confirmatory = NULL, singleconditions = FALSE,
+                randomForest = FALSE, 
                 winsfrac = .025, normalize = TRUE, standardize = FALSE,
                 ordinal = TRUE, nfolds = 10L, tree.control, tree.unbiased = TRUE, 
                 removecomplements = TRUE, removeduplicates = TRUE, 
@@ -469,25 +484,32 @@ pre <- function(formula, data, family = gaussian, ad.alpha = NA, ad.penalty = "l
 
   ## Check if proper tree.control argument is specified:
   if (missing(tree.control)) {
-    if (tree.unbiased && use.grad) {
-      tree.control <- ctree_control(maxdepth = maxdepth[1], mtry = mtry)
-    } else if (tree.unbiased && !use.grad) {
-      tree.control <- mob_control(maxdepth = maxdepth[1] + 1, mtry = mtry)
-    } else if (!tree.unbiased) {
-      if (any(maxdepth > 29)) {
-        maxdepth[maxdepth > 29] <- 29L
-        warning("If tree.unbiased = FALSE, max(maxdepth) is 29.\n")
+    if (randomForest) {
+      tree.control <- list(mtry = mtry, ntree = ntrees)
+    } else {
+      if (tree.unbiased && use.grad) {
+        tree.control <- ctree_control(maxdepth = maxdepth[1], mtry = mtry)
+      } else if (tree.unbiased && !use.grad) {
+        tree.control <- mob_control(maxdepth = maxdepth[1] + 1, mtry = mtry)
+      } else if (!tree.unbiased) {
+        if (any(maxdepth > 29)) {
+          maxdepth[maxdepth > 29] <- 29L
+          warning("If tree.unbiased = FALSE, max(maxdepth) is 29.\n")
+        }
+        tree.control <- rpart.control(maxdepth = maxdepth[1L])
+        if (!is.infinite(mtry)) {
+          warning("Value specified for mtry will be ignored if tree.unbiased = FALSE and randomForest = FALSE.\n")
+        }
       }
-      tree.control <- rpart.control(maxdepth = maxdepth[1L])
-      if (!is.infinite(mtry)) {
-        warning("Value specified for mtry will be ignored if tree.unbiased = FALSE.\n")
-      }
-    }
+    } 
   } else {
     if (!is.list(tree.control)) {
       stop("Argument tree.control should specify a list of control parameters.\n")
     }
-    if (use.grad && tree.unbiased) {
+    if (randomForest) {
+      if (is.null(tree.control$mtry)) tree.control$mtry <- mtry
+      if (is.null(tree.control$ntree)) tree.control$ntree <- ntrees
+    } else if (use.grad && tree.unbiased) {
       if (!setequal(names(ctree_control()), names(tree.control))) {
         args_not_in_ctree_control <- names(tree.control)[which(
           !names(tree.control) %in% names(ctree_control()))]
@@ -533,7 +555,7 @@ pre <- function(formula, data, family = gaussian, ad.alpha = NA, ad.penalty = "l
   if (!is.null(tree.control$cluster)) {
     ## If cluster variable has been specified, make sure it is included in data 
     if (!inherits(tree.control$cluster, "name")) 
-      warning("A cluster argument was passed to argument tree.control, but it is not a name, so it might be ignored. ")
+      warning("A cluster argument was passed to argument tree.control, but it is not a name, so it might be ignored.")
     cluster <- data[ , as.character(tree.control$cluster)]
   }
   
@@ -543,7 +565,6 @@ pre <- function(formula, data, family = gaussian, ad.alpha = NA, ad.penalty = "l
     ## If cluster variable has been specified, make sure it is included in data 
     data[ , as.character(tree.control$cluster)] <- cluster
   }
-
 
   ## Coerce character and logical variables to factors:
   if (any(char_names <- sapply(data, is.character))) {
@@ -693,6 +714,9 @@ pre <- function(formula, data, family = gaussian, ad.alpha = NA, ad.penalty = "l
     }
   }
   
+  if (randomForest && !family %in% c("gaussian", "multinomial", "binomial")) 
+    stop("randomForest can only be used for rule generation for numeric and categorical response variables (i.e., gaussian, binomial or multinomial family).") 
+    
   if (family == "cox") {
     if (!requireNamespace("survival", quietly = TRUE)) {
       stop("For fitting a prediction rule ensemble with a survival response, package survival should be installed and loaded.\n")    
@@ -771,7 +795,8 @@ pre <- function(formula, data, family = gaussian, ad.alpha = NA, ad.penalty = "l
                                  removecomplements = removecomplements,
                                  tree.unbiased = tree.unbiased,
                                  return.dupl.compl = TRUE, 
-                                 sparse = sparse))
+                                 sparse = sparse,
+                                 randomForest = randomForest))
     if (inherits(rule_object, "try-error")) {
       if (grepl("has new levels", rule_object)) {
         stop(rule_object[1], paste("\n Hint: There may be a predictor variable which is a factor with rare levels, this likely yields problems for rule estimation. Consult ?rare_level_sampler"))
@@ -1133,6 +1158,99 @@ get_modmat <- function(
 }
 
 
+
+## Rule learner based on randomForest::randomForest
+get_rf_rules <- \(rf, x_names, data, formula, singleconditions = FALSE) {
+  
+  tree_list <- list()
+  for (i in 1:rf$ntree) {
+    tree_list[[i]] <- randomForest::getTree(rf, i, labelVar = TRUE)
+  }
+  
+  facs <- names(which(sapply(data[ , x_names], is.factor))) ## TODO; this might not deal with ordered factors well
+  fac_levs <- lapply(data[ , facs, drop = FALSE], levels)
+  
+  ## function that extracts all rules from a single tree
+  list_rules_func <- \(tree) {
+    
+    ## status: -1 is terminal, 1 is not
+    terminal_nodes <- which(tree$status == -1L)
+    tree$left_or_right_child <- (1:nrow(tree)) %in% tree$`left daughter`
+    tree$left_or_right_child <- c("root", ifelse(tree$left_or_right_child, "left", "right")[-1])
+    
+    conditions <- list()
+    for (i in sort(terminal_nodes, decreasing = TRUE)) {
+      
+      ## i counts terminal node to extract path from
+      ## j counts current node (only need to know if left or right)
+      ## parent counts parent of current node (need to get the split point)
+      
+      j <- i
+      parent <- c(which(tree$`left daughter` == j), which(tree$`right daughter` == j))
+      condition <- character()
+      
+      while (length(parent) > 0L) {
+        
+        ## we travel from the terminal node upwards through the tree, so every next condition
+        ## should precede the previous one
+        if (tree$left_or_right_child[j] == "left") { ## values <= or %in%
+          if (tree$`split var`[parent] %in% facs) {
+            levs <- fac_levs[[as.character(tree$`split var`[parent])]]
+            condition <- c(paste(tree$`split var`[parent], "%in%", 
+                                 paste0("c(",
+                                        paste0(
+                                          levs[as.logical(intToBits(as.integer(tree$`split point`[parent]))[1:length(levs)])],
+                                          collapse = ", "), ")")),
+                           condition)
+          } else {
+            condition <- c(paste(tree$`split var`[parent], "<=", tree$`split point`[parent]),
+                           condition)
+          }
+        } else if (tree$left_or_right_child[j] == "right") { ## values > or not %in%
+          if (tree$`split var`[parent] %in% facs) {
+            levs <- fac_levs[[as.character(tree$`split var`[parent])]]
+            condition <- c(paste(tree$`split var`[parent], "%in%", 
+                                 paste0("c(",
+                                        paste0(
+                                          levs[!as.logical(intToBits(as.integer(tree$`split point`[parent]))[1L:length(levs)])],
+                                          collapse = ", "), ")")),
+                           condition)
+          } else {
+            condition <- c(paste(tree$`split var`[parent], ">", tree$`split point`[parent]),
+                           condition)
+          }
+        }
+        j <- parent
+        parent <- c(which(tree$`left daughter` == j), which(tree$`right daughter` == j))
+      }
+      conditions[[i]] <- if (length(condition) > 2L) {
+        if (singleconditions) {
+          c(condition,
+            sapply(2L:length(condition), \(x) paste(condition[2L:x], collapse = " & ")))         
+        } else {
+          sapply(2L:length(condition), \(x) paste(condition[2L:x], collapse = " & "))
+        }
+      } else {
+        condition
+      }
+    }
+    conditions
+  }
+  
+  ## return all rules as a character vector
+  rules <- unlist(sapply(tree_list, list_rules_func))
+  rules <- rules[rules != ""]
+  unique(rules)
+  ## TODO: process removecomplements (defaults to TRUE) and/or removeduplicates (defaults to TRUE) here to save computation
+  ## (it is done after calling get_rf_rules anyway, but checking rule variables for being duplicates or complements is more expensive)
+  
+}
+
+
+
+
+
+
 ## Rule learner for pre:
 pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                       y_names, x_names, offset = offset, 
@@ -1142,9 +1260,8 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
                       family = "gaussian", verbose = FALSE, 
                       removeduplicates = TRUE, removecomplements = TRUE,
                       tree.unbiased = TRUE, return.dupl.compl = FALSE, 
-                      sparse = FALSE, singleconditions = FALSE) {
-  
-  n <- nrow(data)
+                      sparse = FALSE, singleconditions = FALSE, 
+                      randomForest = FALSE) {
   
   ## Make sure weights are found by tree-fitting functions.
   ## Most fitting functions search for weights like function lm() does:
@@ -1152,294 +1269,309 @@ pre_rules <- function(formula, data, weights = rep(1, nrow(data)),
   ## that is first in data and then in the environment of formula
   environment(formula) <- environment() 
   
-  ## Prepare glmtree arguments, if necessary:
-  if (!use.grad && tree.unbiased) {
-    
-    ## TODO: Must evaluate tree.control!
-    glmtree_args <- tree.control
-    glmtree_args$maxdepth <- maxdepth[1] + 1
-    glmtree_args$mtry <- mtry
-    glmtree_args$formula <- formula(paste(paste(y_names, " ~ 1 |"), 
-                                          paste(x_names, collapse = "+")))
-    if (!family == "gaussian") {
-      glmtree_args$family <- family      
+  if (randomForest) {
+    if (!requireNamespace("randomForest")) {
+      stop("Package randomForest has not been installed. Install it and rerun function pre.")
     }
+    if (verbose) cat("Fitting randomForest")
+    if (mtry > length(x_names)) tree.control$mtry <- length(x_names) ## avoids warning by randomForest
+    if (is.null(tree.control$maxnodes)) tree.control$maxnodes <- 2^maxdepth
+    rf <- do.call(randomForest::randomForest, 
+                  append(list(formula = formula, data = data, weights = weights), tree.control))
+    rules <- get_rf_rules(rf, x_names, data, singleconditions = FALSE)
+    if (verbose) cat("Done!\n\n")
   } else {
-    glmtree_args <- NULL
-  }
-
-  ## Set up subsamples (outside of the loop!):
-  if (verbose) cat("\nGenerating random samples...")
-  subsample <- if (is.function(sampfrac)) {
-    replicate(n = ntrees, sampfrac(n = n, weights = weights))
-  } else if (sampfrac == 1) {
-    replicate(n = ntrees, sample(1:n, size = n, replace = TRUE, prob = weights))
-  } else if (sampfrac < 1) {
-    replicate(n = ntrees, sample(1:n, size = round(sampfrac * n), 
-           replace = FALSE, prob = weights))
-  }
-  if (is.list(subsample)) {
-    ## Add 0s to all samples that do not have maximum length (selecting row 0 return nothing)
-    ## and return a
-    max_length <- max(sapply(subsample, length))
-    subsample <- sapply(subsample, function(x) {
-      if (length(x) < max_length) {
-        x <- c(x, rep(0L, times = max_length - length(x)))
-      }
-      x})
-  }
-  if (verbose) cat(" Done!\n\n")
-  
-  ## Grow trees:
-  if (learnrate == 0) {
+    n <- nrow(data)
     
-    ## Set up rule learning function:
-    fit_tree_return_rules <- function(formula, data, family = NULL, weights,
-                                      use.grad = TRUE, tree.unbiased = TRUE,
-                                      glmtree_args = NULL, tree.control = NULL) {
+    ## Prepare glmtree arguments, if necessary:
+    if (!use.grad && tree.unbiased) {
       
-      ## Make sure weights are found by tree-fitting functions.
-      ## Most fitting functions search for weights like e.g. lm() does:
-      ## weights, subset and offset are evaluated in the same way as variables in formula, 
-      ## that is, first in data and then in the environment of formula
-      environment(formula) <- environment()
-      
-      if (tree.unbiased) {
-        if (use.grad) { # employ ctree
-          tree <- ctree(formula = formula, data = data, weights = weights,
-                        control = tree.control)
-          return(list.rules(tree, removecomplements = removecomplements, 
-                 singleconditions = singleconditions))
-        } else { # employ (g)lmtree
-          glmtree_args$data <- data
-          glmtree_args$weights <- weights          
-          if (family == "gaussian") {
-            tree <- do.call(lmtree, args = glmtree_args)
-          } else {
-            tree <- do.call(glmtree, args = glmtree_args)
-          }
-          return(list.rules(tree, removecomplements = removecomplements, 
-                            singleconditions = singleconditions))
-        }
-      } else { # employ rpart
-        tree <- rpart(formula = formula, data = data, control = tree.control,
-                      weights = weights)
-        paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE)
-        paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
-        if (removecomplements) {
-          ## Omit first rule, as it is the complement of a later rule, by definition:
-          paths <- paths[-1]
-        }
-        return(paths)
+      ## TODO: Must evaluate tree.control!
+      glmtree_args <- tree.control
+      glmtree_args$maxdepth <- maxdepth[1] + 1
+      glmtree_args$mtry <- mtry
+      glmtree_args$formula <- formula(paste(paste(y_names, " ~ 1 |"), 
+                                            paste(x_names, collapse = "+")))
+      if (!family == "gaussian") {
+        glmtree_args$family <- family      
       }
+    } else {
+      glmtree_args <- NULL
     }
     
-    if (par.init) { # compute in parallel:
-      rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = c("partykit", "pre")) %dopar% {
-        
-        if (length(maxdepth) > 1L) {
-          if (use.grad) {
-            tree.control$maxdepth <- maxdepth[i]
-          } else if (tree.unbiased) {
-            glmtree_args$maxdepth <- maxdepth[i] + 1L
-          }
+    ## Set up subsamples (outside of the loop!):
+    if (verbose) cat("\nGenerating random samples...")
+    subsample <- if (is.function(sampfrac)) {
+      replicate(n = ntrees, sampfrac(n = n, weights = weights))
+    } else if (sampfrac == 1) {
+      replicate(n = ntrees, sample(1:n, size = n, replace = TRUE, prob = weights))
+    } else if (sampfrac < 1) {
+      replicate(n = ntrees, sample(1:n, size = round(sampfrac * n), 
+                                   replace = FALSE, prob = weights))
+    }
+    if (is.list(subsample)) {
+      ## Add 0s to all samples that do not have maximum length (selecting row 0 return nothing)
+      ## and return a
+      max_length <- max(sapply(subsample, length))
+      subsample <- sapply(subsample, function(x) {
+        if (length(x) < max_length) {
+          x <- c(x, rep(0L, times = max_length - length(x)))
         }
-        fit_tree_return_rules(data = data[subsample[ , i], ], 
-                              weights = weights[subsample[ , i]],
-                              formula = formula, 
-                              family = family, 
-                              use.grad = use.grad, 
-                              tree.unbiased = tree.unbiased, 
-                              glmtree_args = glmtree_args, 
-                              tree.control = tree.control)
+        x})
+    }
+    if (verbose) cat(" Done!\n\n")
+    
+    ## Grow trees
+    if (learnrate == 0) {
+      
+      ## Set up rule learning function:
+      fit_tree_return_rules <- function(formula, data, family = NULL, weights,
+                                        use.grad = TRUE, tree.unbiased = TRUE,
+                                        glmtree_args = NULL, tree.control = NULL) {
+        
+        ## Make sure weights are found by tree-fitting functions.
+        ## Most fitting functions search for weights like e.g. lm() does:
+        ## weights, subset and offset are evaluated in the same way as variables in formula, 
+        ## that is, first in data and then in the environment of formula
+        environment(formula) <- environment()
+        
+        if (tree.unbiased) {
+          if (use.grad) { ## employ ctree
+            tree <- partykit::ctree(formula = formula, data = data, 
+                                    weights = weights, control = tree.control)
+            return(list.rules(tree, removecomplements = removecomplements, 
+                              singleconditions = singleconditions))
+          } else { ## employ (g)lmtree
+            glmtree_args$data <- data
+            glmtree_args$weights <- weights          
+            if (family == "gaussian") {
+              tree <- do.call(partykit::lmtree, args = glmtree_args)
+            } else {
+              tree <- do.call(partykit::glmtree, args = glmtree_args)
+            }
+            return(list.rules(tree, removecomplements = removecomplements, 
+                              singleconditions = singleconditions))
+          }
+        } else { # employ rpart
+          tree <- rpart::rpart(formula = formula, data = data, 
+                               control = tree.control, weights = weights)
+          paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE)
+          paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
+          if (removecomplements) {
+            ## Omit first rule, as it is the complement of a later rule, by definition
+            paths <- paths[-1]
+          }
+          return(paths)
+        }
       }
       
-    } else { # compute in serial:
+      if (par.init) { ## compute in parallel
+        rules <- foreach::foreach(i = 1:ntrees, .combine = "c", .packages = c("partykit", "pre")) %dopar% {
+          
+          if (length(maxdepth) > 1L) {
+            if (use.grad) {
+              tree.control$maxdepth <- maxdepth[i]
+            } else if (tree.unbiased) {
+              glmtree_args$maxdepth <- maxdepth[i] + 1L
+            }
+          }
+          fit_tree_return_rules(data = data[subsample[ , i], ], 
+                                weights = weights[subsample[ , i]],
+                                formula = formula, 
+                                family = family, 
+                                use.grad = use.grad, 
+                                tree.unbiased = tree.unbiased, 
+                                glmtree_args = glmtree_args, 
+                                tree.control = tree.control)
+        }
+        
+      } else { ## compute in serial
+        
+        rules <- c()
+        if (verbose) {
+          cat("Fitting trees\n")
+          prog_bar <- txtProgressBar(min = 1, max = ntrees, style = 3)
+        }
+        for (i in 1:ntrees) {
+          
+          if (verbose) setTxtProgressBar(prog_bar, i)
+          
+          if (length(maxdepth) > 1L) {
+            if (use.grad) {
+              tree.control$maxdepth <- maxdepth[i]
+            } else if (tree.unbiased) {
+              glmtree_args$maxdepth <- maxdepth[i] + 1L
+            }
+          }
+          rules <- c(rules, 
+                     fit_tree_return_rules(data = data[subsample[ , i], ], 
+                                           weights = weights[subsample[ , i]],
+                                           formula = formula, 
+                                           family = family, 
+                                           use.grad = use.grad, 
+                                           tree.unbiased = tree.unbiased, 
+                                           glmtree_args = glmtree_args, 
+                                           tree.control = tree.control))
+          
+        }
+      }
       
-      rules <- c()
+    } else { ## learnrate > 0
+      
       if (verbose) {
         cat("Fitting trees\n")
         prog_bar <- txtProgressBar(min = 1, max = ntrees, style = 3)
       }
-      for (i in 1:ntrees) {
-        
-        if (verbose) setTxtProgressBar(prog_bar, i)
-        
-        if (length(maxdepth) > 1L) {
-          if (use.grad) {
-            tree.control$maxdepth <- maxdepth[i]
-          } else if (tree.unbiased) {
-            glmtree_args$maxdepth <- maxdepth[i] + 1L
-          }
-        }
-        rules <- c(rules, 
-                   fit_tree_return_rules(data = data[subsample[ , i], ], 
-                                         weights = weights[subsample[ , i]],
-                                         formula = formula, 
-                                         family = family, 
-                                         use.grad = use.grad, 
-                                         tree.unbiased = tree.unbiased, 
-                                         glmtree_args = glmtree_args, 
-                                         tree.control = tree.control))
-        
-      }
-    }
-  
-  } else { # learnrate > 0:
-    
-    if (verbose) {
-      cat("Fitting trees\n")
-      prog_bar <- txtProgressBar(min = 1, max = ntrees, style = 3)
-    }
-    
-    rules <- c() # initialize with empty rule vector
-    
-    if (use.grad) { ## use ctrees or rpart with y_learn and eta:
       
-      data_with_y_learn <- data
-      ## set initial y and eta value:
-      if (family == "gaussian") {
-        y <- data[[y_names]]
-        eta_0 <- weighted.mean(y, weights)
-        eta <- rep(eta_0, length(y))
-        data_with_y_learn[[y_names]] <- y - eta
-      } else if (family == "binomial") {
-        y <- data[[y_names]] == levels(data[[y_names]])[1]
-        eta_0 <- get_intercept_logistic(y, weights)
-        eta <- rep(eta_0, length(y))
-        p_0 <- 1 / (1 + exp(-eta))
-        data_with_y_learn[[y_names]] <- ifelse(y, log(p_0), log(1 - p_0))
-      } else if (family == "poisson") {
-        y <- data[[y_names]] 
-        eta_0 <- get_intercept_count(y, weights)
-        eta <- rep(eta_0, length(y))
-        data_with_y_learn[[y_names]] <- y - exp(eta)
-      } else if (family == "multinomial") {
-        y <- data[y_names]
-        ## create dummy variables:
-        y <- model.matrix(as.formula(paste0(" ~ ", y_names, " - 1")), data = y)
-        ## adjust formula used by ctree to involve multiple response variables:
-        formula <- as.formula(paste(paste(colnames(y), collapse = " + "), "~", 
-                                    paste(x_names, collapse = " + ")))
-        ## get y_learn:
-        eta_0 <- get_intercept_multinomial(y, weights)
-        eta <- t(replicate(n = nrow(y), expr = eta_0))
-        p_0 <- 1 / (1 + exp(-eta))
-        for (i in 1:ncol(y)) {
-          y[,i] <- ifelse(y[,i] == 1, log(p_0[,i]), log(1 - p_0[,i]))
-        }
-        ## omit original response and include dummy-coded response in data:
-        data_with_y_learn <- cbind(data[ , -which(names(data)== y_names), drop = FALSE], y)
-        multinomial_y_names <- names(y)
-      } else if (family == "mgaussian") {
-        y <- data[ , y_names]
-        eta_0 <- apply(y, 2, weighted.mean, weights = rep(1, nrow(y)))
-        eta <- t(replicate(n = nrow(y), expr = eta_0))
-        data_with_y_learn[,y_names] <- y - eta
-      } else if (family == "cox") {
-        ## Adjust formula used by ctree and rpart:
-        formula <- as.formula(paste0("pseudo_y ~ ", 
-                                     paste0(x_names, collapse = " + ")))
-        y <- data[ , y_names]
-        eta_0 <- 0
-        eta <- rep(0, times = nrow(data))
-        ngradient_CoxPH <- mboost::CoxPH()@ngradient
-        ## omit original response and include pseudo-y:
-        data_with_y_learn <- cbind(data[ , -which(names(data)== y_names), drop = FALSE], y)
-        data_with_y_learn$pseudo_y <- ngradient_CoxPH(y = y, f = eta, w = weights)
-      }
+      rules <- c() ## initialize with empty rule vector
       
-      for(i in 1L:ntrees) {
-
-        if (verbose) setTxtProgressBar(prog_bar, i)
-        if (length(maxdepth) > 1L) tree.control$maxdepth <- maxdepth[i]
+      if (use.grad) { ## use ctrees or rpart with y_learn and eta
         
-        ## Grow tree on subsample:
-        if (tree.unbiased) {
-          tree <- ctree(formula = formula, control = tree.control, 
-                        weights = weights[subsample[ , i]],
-                        data = data_with_y_learn[subsample[ , i], ])
-          ## Collect rules:
-          rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
-                                       singleconditions = singleconditions))
-        } else {
-          tree <- rpart(formula, control = tree.control, weights = weights[subsample[ , i]],
-                        data = data_with_y_learn[subsample[ , i], ])
-          paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE, pretty = 0)
-          paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
-          if (removecomplements) {
-            paths <- paths[-1]
-          }
-          
-          rules <- c(rules, paths)
-        }
-        
-        ## Update eta and y_learn:
-        eta <- eta + learnrate * predict(tree, newdata = data_with_y_learn)
-        if (family %in% c("gaussian", "mgaussian")) {
-          data_with_y_learn[ , y_names] <- y - eta
+        data_with_y_learn <- data
+        ## set initial y and eta value
+        if (family == "gaussian") {
+          y <- data[[y_names]]
+          eta_0 <- weighted.mean(y, weights)
+          eta <- rep(eta_0, length(y))
+          data_with_y_learn[[y_names]] <- y - eta
         } else if (family == "binomial") {
-          data_with_y_learn[[y_names]] <- get_y_learn_logistic(eta, y)
+          y <- data[[y_names]] == levels(data[[y_names]])[1]
+          eta_0 <- get_intercept_logistic(y, weights)
+          eta <- rep(eta_0, length(y))
+          p_0 <- 1 / (1 + exp(-eta))
+          data_with_y_learn[[y_names]] <- ifelse(y, log(p_0), log(1 - p_0))
         } else if (family == "poisson") {
-          data_with_y_learn[[y_names]] <- get_y_learn_count(eta, y)
+          y <- data[[y_names]] 
+          eta_0 <- get_intercept_count(y, weights)
+          eta <- rep(eta_0, length(y))
+          data_with_y_learn[[y_names]] <- y - exp(eta)
         } else if (family == "multinomial") {
-          data_with_y_learn[ , multinomial_y_names] <- get_y_learn_multinomial(eta, y)  
+          y <- data[y_names]
+          ## create dummy variables
+          y <- model.matrix(as.formula(paste0(" ~ ", y_names, " - 1")), data = y)
+          ## adjust formula used by ctree to involve multiple response variables
+          formula <- as.formula(paste(paste(colnames(y), collapse = " + "), "~", 
+                                      paste(x_names, collapse = " + ")))
+          ## get y_learn:
+          eta_0 <- get_intercept_multinomial(y, weights)
+          eta <- t(replicate(n = nrow(y), expr = eta_0))
+          p_0 <- 1 / (1 + exp(-eta))
+          for (i in 1:ncol(y)) {
+            y[,i] <- ifelse(y[,i] == 1, log(p_0[,i]), log(1 - p_0[,i]))
+          }
+          ## omit original response and include dummy-coded response in data
+          data_with_y_learn <- cbind(data[ , -which(names(data)== y_names), drop = FALSE], y)
+          multinomial_y_names <- names(y)
+        } else if (family == "mgaussian") {
+          y <- data[ , y_names]
+          eta_0 <- apply(y, 2, weighted.mean, weights = rep(1, nrow(y)))
+          eta <- t(replicate(n = nrow(y), expr = eta_0))
+          data_with_y_learn[,y_names] <- y - eta
         } else if (family == "cox") {
+          ## Adjust formula used by ctree and rpart:
+          formula <- as.formula(paste0("pseudo_y ~ ", 
+                                       paste0(x_names, collapse = " + ")))
+          y <- data[ , y_names]
+          eta_0 <- 0
+          eta <- rep(0, times = nrow(data))
+          ngradient_CoxPH <- mboost::CoxPH()@ngradient
+          ## omit original response and include pseudo y
+          data_with_y_learn <- cbind(data[ , -which(names(data)== y_names), drop = FALSE], y)
           data_with_y_learn$pseudo_y <- ngradient_CoxPH(y = y, f = eta, w = weights)
         }
-      }
-      
-    } else { ## use.grad is FALSE, employ (g)lmtrees with offset:
-      
-      ## initialize with 0 offset (unless offset, which is a hidden argument, was specified)
-      data$.offset <- if (!is.null(offset)) offset else rep(0, times = nrow(data))
-      
-      for(i in 1:ntrees) {
         
-        if (verbose) setTxtProgressBar(prog_bar, i)
-        
-        # Take subsample of dataset:
-        glmtree_args$data <- data[subsample[ , i], ]
-        glmtree_args$weights <- weights[subsample[ , i]]
-        glmtree_args$offset <- bquote(.offset)
-        
-        if (length(maxdepth) > 1L) {
-          glmtree_args$maxdepth <- maxdepth[i] + 1L
-        }
-        # Grow tree on subsample:
-        if (family == "gaussian") {
-          tree <- do.call(lmtree, args = glmtree_args)      
-        } else {
-          tree <- do.call(glmtree, args = glmtree_args) 
-        }
-        
-        # Collect rules:
-        rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
-                                     singleconditions = singleconditions))
-        # Update offset (note: do not use a dataset which includes the offset for prediction!!!):
-        if (learnrate > 0) {
-          if (family == "gaussian") {
-            data$.offset <- data$.offset + learnrate * 
-              predict(tree, newdata = data)
+        for(i in 1L:ntrees) {
+          
+          if (verbose) setTxtProgressBar(prog_bar, i)
+          if (length(maxdepth) > 1L) tree.control$maxdepth <- maxdepth[i]
+          
+          ## Grow tree on subsample
+          if (tree.unbiased) {
+            tree <- ctree(formula = formula, control = tree.control, 
+                          weights = weights[subsample[ , i]],
+                          data = data_with_y_learn[subsample[ , i], ])
+            ## Collect rules
+            rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
+                                         singleconditions = singleconditions))
           } else {
-            data$.offset <- data$.offset + learnrate * 
-              predict(tree, newdata = data, type = "link")
+            tree <- rpart(formula, control = tree.control, weights = weights[subsample[ , i]],
+                          data = data_with_y_learn[subsample[ , i], ])
+            paths <- path.rpart(tree, nodes = rownames(tree$frame), print.it = FALSE, pretty = 0)
+            paths <- unname(sapply(sapply(paths, `[`, index = -1), paste, collapse = " & ")[-1])
+            if (removecomplements) {
+              paths <- paths[-1]
+            }
+            
+            rules <- c(rules, paths)
+          }
+          
+          ## Update eta and y_learn
+          eta <- eta + learnrate * predict(tree, newdata = data_with_y_learn)
+          if (family %in% c("gaussian", "mgaussian")) {
+            data_with_y_learn[ , y_names] <- y - eta
+          } else if (family == "binomial") {
+            data_with_y_learn[[y_names]] <- get_y_learn_logistic(eta, y)
+          } else if (family == "poisson") {
+            data_with_y_learn[[y_names]] <- get_y_learn_count(eta, y)
+          } else if (family == "multinomial") {
+            data_with_y_learn[ , multinomial_y_names] <- get_y_learn_multinomial(eta, y)  
+          } else if (family == "cox") {
+            data_with_y_learn$pseudo_y <- ngradient_CoxPH(y = y, f = eta, w = weights)
+          }
+        }
+        
+      } else { ## use.grad is FALSE, employ (g)lmtrees with offset
+        
+        ## initialize with 0 offset (unless offset, which is a hidden argument, was specified)
+        data$.offset <- if (!is.null(offset)) offset else rep(0, times = nrow(data))
+        
+        for(i in 1:ntrees) {
+          
+          if (verbose) setTxtProgressBar(prog_bar, i)
+          
+          ## Take subsample of dataset
+          glmtree_args$data <- data[subsample[ , i], ]
+          glmtree_args$weights <- weights[subsample[ , i]]
+          glmtree_args$offset <- bquote(.offset)
+          
+          if (length(maxdepth) > 1L) {
+            glmtree_args$maxdepth <- maxdepth[i] + 1L
+          }
+          ## Grow tree on subsample
+          if (family == "gaussian") {
+            tree <- do.call(lmtree, args = glmtree_args)      
+          } else {
+            tree <- do.call(glmtree, args = glmtree_args) 
+          }
+          
+          ## Collect rules
+          rules <- c(rules, list.rules(tree, removecomplements = removecomplements,
+                                       singleconditions = singleconditions))
+          ## Update offset (note: do not use a dataset which includes the offset for prediction!!!):
+          if (learnrate > 0) {
+            if (family == "gaussian") {
+              data$.offset <- data$.offset + learnrate * 
+                predict(tree, newdata = data)
+            } else {
+              data$.offset <- data$.offset + learnrate * 
+                predict(tree, newdata = data, type = "link")
+            }
           }
         }
       }
     }
+    if (verbose) try(close(prog_bar), silent = TRUE)
   }
-  if (verbose) try(close(prog_bar), silent = TRUE)
   
   if (length(rules) > 0) {
-    # Keep unique, non-empty rules only:
+    ## Keep unique, non-empty rules only
     rules <- unique(rules[!rules==""])
     rules <- rules[!is.na(rules)]
     if (sparse) {
       rules <- .get_most_sparse_rule(rules, data)
     }
-    ## Adjust rule format of rpart rules:
-    if (!tree.unbiased) {
+    ## Adjust rule format if rpart generated rules
+    if (!tree.unbiased && mtry >= length(x_names)) {
       if (any(sapply(data, is.factor))) {
         # replace "=" by " %in% c('"
         for (i in names(data)[sapply(data, is.factor)]) { 
@@ -2457,8 +2589,13 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 #' with which to predict. If \code{NULL} (the default), the \code{data.frame} used to fit the 
 #' original ensemble will be used. Smaller subsets of the original data can
 #' be specified to (substantially) reduce computation time. See Details.
+#' @param rug logical. Should a rug be plotted on the x-axis, representing the 
+#' location of observed datapoint? Note that the rug will only show where values
+#' have been observed, not their frequency/density. 
 #' @param ... Further arguments to be passed to 
 #' \code{\link[graphics]{plot.default}}.
+#' @return A 1D partial dependence plot will be plotted. Invisibly, partial dependence
+#' values are returned.  
 #' @details By default, a partial dependence plot will be created for each unique
 #' observed value of the specified predictor variable. See also section 8.1 of 
 #' Friedman & Popescu (2008).
@@ -2501,7 +2638,7 @@ predict.pre <- function(object, newdata = NULL, type = "link",
 singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
                        nvals = NULL, type = "response", ylab = NULL, 
                        response = NULL,
-                       gamma = NULL, newdata = NULL, xlab = NULL,  ...)
+                       gamma = NULL, newdata = NULL, xlab = NULL, rug = TRUE, ...)
 {
  
   ## Check if newdata supplied matches original data
@@ -2602,20 +2739,25 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
     } else {
       colnames(exp_dataset$predy)[response]
     }
+    pd <- list()
     for (resp_name in resp_names) {
-      y_lab <- ifelse(is.null(ylab), resp_name, ylab) 
-      plot(aggregate(
-        exp_dataset$predy[ , resp_name], by = exp_dataset[varname], 
-        data = exp_dataset, FUN = mean), type = "l", ylab = y_lab, 
+      y_lab <- ifelse(is.null(ylab), resp_name, ylab)
+      pd[[resp_name]] <- aggregate(exp_dataset$predy[ , resp_name], 
+                                   by = exp_dataset[varname], 
+                                   data = exp_dataset, FUN = mean)
+      plot(pd[[resp_name]], type = "l", ylab = y_lab, 
         xlab = if (is.null(xlab)) varname else xlab, ...)
+      if (rug) rug(pd[[resp_name]][[varname]])
     }
   } else {
+    pd <- aggregate(exp_dataset$predy, by = exp_dataset[varname], 
+                    data = exp_dataset, FUN = mean)
     y_lab <- ifelse(is.null(ylab), object$y_names, ylab) 
-    plot(aggregate(
-      exp_dataset$predy, by = exp_dataset[varname], data = exp_dataset, FUN = mean),
-      type = "l", ylab = y_lab, xlab = if (is.null(xlab)) varname else xlab, 
-      ...)
+    plot(pd, type = "l", ylab = y_lab, 
+         xlab = if (is.null(xlab)) varname else xlab, ...)
+    if (rug) rug(pd[[varname]])
   }
+  invisible(pd)
 }
 
 
@@ -2662,8 +2804,12 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 #' @param newdata Optional \code{data.frame} in which to look for variables 
 #' with which to predict. If \code{NULL}, the \code{data.frame} used to fit the 
 #' original ensemble will be used.
-#' @param main Title for the plot. If \code{NULL}, the name of the response
-#' will be printed.
+#' @param main character vector. Title(s) for the plot. If \code{NULL}, the name 
+#' of the response will be printed.
+#' @param rug logical. Ignored if \code{type = "perspective"}. Should a rug be 
+#' plotted on the x- and y-axes, representing the location of observed datapoint? 
+#' Note that the rugs will only show where values have been observed, not their 
+#' frequency/density.
 #' @param ... Further arguments to be passed to \code{\link[graphics]{image}}, 
 #' \code{\link[graphics]{contour}} or \code{\link[graphics]{persp}} (depending on
 #' whether \code{type} is specified to be \code{"heatmap"}, \code{"contour"}, \code{"both"} 
@@ -2729,8 +2875,8 @@ singleplot <- function(object, varname, penalty.par.val = "lambda.1se",
 pairplot <- function(object, varnames, type = "both", gamma = NULL,
                      penalty.par.val = "lambda.1se", response = NULL,
                      nvals = c(20L, 20L), pred.type = "response", 
-                     newdata = NULL, xlab = NULL, ylab = NULL, main = NULL,
-                     ...) {
+                     newdata = NULL, xlab = NULL, ylab = NULL, main = NULL, 
+                     rug = TRUE, ...) {
   
   ## check if package interp is installed
   if (!(requireNamespace("interp"))) {
@@ -2860,10 +3006,15 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
     } else {
       colnames(pred_vals)[response]
     }
+    pd <- list()
+    if (!is.null(main)) {
+      if (length(main) == 1L) main <- rep(main, times = length(resp_names))
+    }
     for (resp_name in resp_names) {
-      main <- ifelse(is.null(main), resp_name, main)
+      main_tmp <- ifelse(is.null(main), resp_name, main[which(resp_names) == resp_name])
       xyz <- interp::interp(exp_dataset[ , varnames[1]], exp_dataset[ , varnames[2]],
                             pred_vals[, resp_name], duplicate = "mean")
+      pd[[resp_name]] <- xyz
       if (type == "heatmap" || type == "both") {
         if (is.null(match.call()$col)) {
           colors <- rev(c("#D33F6A", "#D95260", "#DE6355", "#E27449", "#E6833D", 
@@ -2871,25 +3022,38 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
                           "#E4DC68", "#E2E6BD"))
           image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
                 ylab = if (is.null(ylab)) varnames[2] else ylab, 
-                col = colors, main = main, ...)
+                col = colors, main = main_tmp, ...)
+          if (rug) {
+            rug(object$data[[varnames[1]]], side = 1)
+            rug(object$data[[varnames[2]]], side = 2)
+          }
         } else {
           image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-                ylab = if (is.null(ylab)) varnames[2] else ylab, main = main, ...)
+                ylab = if (is.null(ylab)) varnames[2] else ylab, main = main_tmp, ...)
+          if (rug) {
+            rug(object$data[[varnames[1]]], side = 1)
+            rug(object$data[[varnames[2]]], side = 2)
+          }
         }
         if (type == "both") {
           contour(xyz, add = TRUE)
         }
       }
       if (type == "contour") {
-        contour(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-                ylab = if (is.null(ylab)) varnames[2] else ylab, main = main, ...) 
+        contour(xyz, xlab = if (is.null(xlab)) varnames[1L] else xlab, 
+                ylab = if (is.null(ylab)) varnames[2L] else ylab, main = main_tmp, ...) 
+        if (rug) {
+          rug(object$data[[varnames[1]]], side = 1L)
+          rug(object$data[[varnames[2]]], side = 2L)
+        }
       }
       if (type == "perspective") {
         persp(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-              ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted y", 
-              main = main, ...)
+              ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted", 
+              main = main_tmp, ...)
       }
     }
+    invisible(pd)
   } else { ## family is not multinomial or mgaussian
     xyz <- interp::interp(exp_dataset[ , varnames[1]], exp_dataset[ , varnames[2]],
                           pred_vals, duplicate = "mean")
@@ -2902,9 +3066,17 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
         image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
               ylab = if (is.null(ylab)) varnames[2] else ylab, 
               col = colors, main = main, ...)
+        if (rug) {
+          rug(object$data[[varnames[1L]]], side = 1L)
+          rug(object$data[[varnames[2L]]], side = 2L)
+        }
       } else {
-        image(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-              ylab = if (is.null(ylab)) varnames[2] else ylab, main = main, ...)
+        image(xyz, xlab = if (is.null(xlab)) varnames[1L] else xlab, 
+              ylab = if (is.null(ylab)) varnames[2L] else ylab, main = main, ...)
+        if (rug) {
+          rug(object$data[[varnames[1L]]], side = 1L)
+          rug(object$data[[varnames[2L]]], side = 2L)
+        }
       }
       if (type == "both") {
         contour(xyz, add = TRUE)
@@ -2913,12 +3085,17 @@ pairplot <- function(object, varnames, type = "both", gamma = NULL,
     if (type == "contour") {
       contour(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
               ylab = if (is.null(ylab)) varnames[2] else ylab, main = main, ...) 
+      if (rug) {
+        rug(object$data[[varnames[1L]]], side = 1L)
+        rug(object$data[[varnames[2L]]], side = 2L)
+      }
     }
     if (type == "perspective") {
       persp(xyz, xlab = if (is.null(xlab)) varnames[1] else xlab, 
-            ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted y",
+            ylab = if (is.null(ylab)) varnames[2] else ylab, zlab = "predicted",
             main = main, ...)
     }
+    invisible(xyz)
   }
 }
 

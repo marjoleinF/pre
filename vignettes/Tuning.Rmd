@@ -19,9 +19,9 @@ Function `pre()` has a substantial number of model-fitting parameters, which may
 
 The following arguments of function `pre()` can be expected to affect predictive accuracy and complexity of the final ensemble (ordered roughly from most to least likely candidates to require tuning):
 
-* `learnrate`: Carefully tuning this parameter is likely to be the most beneficial in terms of predictive accuracy. There are no rules of thumb on how complexity and predictive accuracy will be affected by setting this argument to higher or lower than the default of 0.01. In light of the default value of `ntrees = 500`, the default of 0.01 is likely a very good starting points. Somewhat higher and lower values may be tried; lower values are likely beneficial only when argument `ntrees` is set to a higher value. A reasonable starting point would be to specify a grid search over `c(0.01, 0.05, 0.1)` or `c(0.005, 0.01, 0.025, 0.05, 0.1)`.
+* `learnrate`: Carefully tuning this parameter is likely to be the most beneficial in terms of predictive accuracy. There are no rules of thumb on how complexity and predictive accuracy will be affected by setting this argument higher or lower than the default of 0.01. In light of the default value of `ntrees = 500`, the default of 0.01 is likely a very good starting points. Somewhat higher and lower values may be tried; lower values are likely beneficial only when argument `ntrees` is set to a higher value. A reasonable starting point would be to specify a grid search over `c(0.01, 0.05, 0.1)` or `c(0.005, 0.01, 0.025, 0.05, 0.1)`.
 
-* `maxdepth`: The default of three generates rules with at most 3 conditions, which are relatively easy to interpret. Somewhat higher or lower values may be preferred. Setting ``maxdepth = 1` will yield a model with main effects of predictor variables only.
+* `maxdepth`: The default of three generates rules with at most three conditions, which are relatively easy to interpret. Somewhat higher or lower values may be preferred. Setting ``maxdepth = 1` will yield a model with main effects of predictor variables only.
 
 * `sampfrac`: Depending on training sample size, values higher or lower than the default of .5 may be beneficial. Often smaller samples require higher values of `sampfrac`, sometimes even a value of 1 can be most beneficial for predictive accuracy; for larger samples, lower `sampfrac` values may suffice (and will reduce computation time).
 
@@ -36,7 +36,8 @@ The following arguments of function `pre()` can be expected to affect predictive
 Furthermore, most methods for class `pre` (e.g., `predict`, `print`, `summary`, `coef`) take argument `penalty.par.val`, which by default is set to `lambda.1se`, as it tends to yield a good balance between predictive accuracy and complexity. Setting this argument to `lambda.min` may improve predictive accuracy but will also increase complexity of the final ensemble.  
 
 
-## Tuning parameters using package caret
+## Tuning parameters using package `caret`
+
 
 We first load the required libraries:
 
@@ -90,7 +91,7 @@ Note that tuning and fitting PREs can be computationally heavy, especially with 
 
 Note that the `ntrees` parameter is not included in the default grid-generating function (`getModelInfo("pre")[[1]]$grid`). One can deviate from the default of `ntrees = 500` by passing this argument calling function `train()` multiple times, and specifying a different value for `ntrees` each time (example provided below). The same goes for other arguments of function `pre()` that are not part of the default tuning parameters of **`caret`**'s method `"pre"`. 
 
-In this example, we focus on the (perhaps somewhat uninteresting, but useful as an example) problem of predicting sex `sexo` from the `carrillo` data included in package **`pre`** (type `?carrillo` for explanation of the data and variables).
+In this example, we focus on the (perhaps somewhat uninteresting but useful as an example) problem of predicting sex `sexo` from the `carrillo` data included in package **`pre`** (type `?carrillo` for explanation of the data and variables).
 
 We rename the levels of the outcome variable because the `train` function of **`caret`** does not appreciate when factor levels are numbers:  
 
@@ -116,7 +117,7 @@ pre_tune <- train(sexo ~ ., data = carrillo[train_ids, ], method = "pre",
                   maximize = TRUE)
 ```
 
-If your predictor variables contain one or more factors, it is best not to use the formula interface of function `train`. By default, `train` dummy codes all factors, which will be suboptimal for most tree-based methods. Then it is better to supply the predictors as a `data.frame` to argument `x`, and to supply the response (as a numeric or factor vector) to argument `y`. See also `?train`. 
+If your predictor variables contain one or more factors, it is best not to use the formula interface of function `train`. By default, `train` dummy codes all factors, which will be sub optimal for most tree-based methods. Then it is better to supply the predictors as a `data.frame` to argument `x`, and to supply the response (as a numeric or factor vector) to argument `y`. See also `?train`. 
 
 ```{r, eval=FALSE}
 set.seed(42)
@@ -209,6 +210,12 @@ We obtained the best Brier score and AUC with the tuned parameter values. The di
 
 The default settings yielded a slightly sparser rule ensemble than the parameters optimizing predictive accuracy as measured by the Brier score. This will commonly be encountered: `pre`'s default settings prefer a sparser ensemble over an ensemble that perfectly optimizes predictive accuracy. Small differences in accuracy may often be swamped by real-world aspects of a data problem ([@efron2020prediction]; [@hand2006classifier]). 
 
+
+# Using Breiman's random forests for rule generation
+
+Instead of gradient boosting, random forests (or bagging) can be employed for rule generation. As discussed above, function `pre` allows to use a random-forest style approach to rule generation by specifying argument `mtry`. Yet, the original random forest algorithm employed CART trees. Such trees can be employed by function `pre` by specifying `tree.unbiased = FALSE`, which will invoke function `rpart` from the package of the same name for rule induction. However, `rpart` does not provide an `mtry` (or similar) argument, so specifying `tree.unbiased = FALSE` does not allow for specifying other than the default `mtry = Inf`. Alternatively, `randomForest = TRUE` can be specified in order to generate rules using the exact random-forest approach originally proposed by [@brei01], as implemented in function `randomForest` from the package of the same name by @LiawyWien02. I have not carefully evaluated the effect on predictive performance, but @nalenz2018tree reported better performance with gradient boosting than with random forests. They also report a marginally better performance by adding rules from a random forest to those generated by gradient boosting, yet the gains seem very marginal. Combining the two is not (yet) possible in function `pre`. In any case, specifying `tree.unbiased` will reduce computation time, and specifying `randomForest` even more so. 
+
+Arguments `tree.unbiased` and `randomForest` cannot be tuned with `train`, so these arguments need to be passed directly to function `pre`, just like argument `ntrees` as shown above.
 
 
 ## References

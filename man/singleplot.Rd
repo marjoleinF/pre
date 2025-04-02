@@ -16,6 +16,7 @@ singleplot(
   gamma = NULL,
   newdata = NULL,
   xlab = NULL,
+  rug = TRUE,
   ...
 )
 }
@@ -64,8 +65,16 @@ be specified to (substantially) reduce computation time. See Details.}
 \item{xlab}{character. Label to be printed on the x-axis. If \code{NULL},
 the supplied \code{varname} will be printed on the x-axis.}
 
+\item{rug}{logical. Should a rug be plotted on the x-axis, representing the 
+location of observed datapoint? Note that the rug will only show where values
+have been observed, not their frequency/density.}
+
 \item{...}{Further arguments to be passed to 
 \code{\link[graphics]{plot.default}}.}
+}
+\value{
+A 1D partial dependence plot will be plotted. Invisibly, partial dependence
+values are returned.
 }
 \description{
 \code{singleplot} creates a partial dependence plot, which shows the effect of
