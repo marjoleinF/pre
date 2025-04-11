@@ -94,7 +94,7 @@ utils::globalVariables("%dopar%")
 #' \code{\link[randomForest]{randomForest}}. Argument \code{learnrate} will be 
 #' fixed to 0 and \code{sampfrac} will be ignored (preferences about sampling
 #' procedures should be passed to \code{tree.control} when using 
-#' \code{\link[randomForest]{randomForest}} which also allows to specify other 
+#' \code{\link[randomForest]{randomForest}}) which also allows to specify other 
 #' arguments of function \code{\link[randomForest]{randomForest}}.
 #' @param confirmatory character vector. Specifies one or more confirmatory terms 
 #' to be included in the final ensemble. Linear terms can be specified as the 
@@ -144,10 +144,11 @@ utils::globalVariables("%dopar%")
 #' @param par.final logical. Should parallel \code{foreach} be used to perform cross 
 #' validation for selecting the final ensemble? Must register parallel beforehand, 
 #' such as doMC or others.
-#' @param tree.control list with control parameters to be passed to the tree 
+#' @param tree.control a \code{list} with control parameters to be passed to the tree 
 #' fitting function, generated using \code{\link[partykit]{ctree_control}},
 #' \code{\link[partykit]{mob_control}} (if \code{use.grad = FALSE}), 
-#' \code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}), or
+#' \code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}). Or
+#' a list containing (n)one or more arguments that can be passed to function
 #' \code{\link[randomForest]{randomForest}} (if \code{randomForest = TRUE}.
 #' @param tree.unbiased logical. Should an unbiased tree generation algorithm 
 #' be employed for rule generation? Defaults to \code{TRUE}, if set to 
@@ -405,6 +406,12 @@ pre <- function(formula, data, family = gaussian, ad.alpha = NA, ad.penalty = "l
   if (!(length(type) == 1L && type %in% c("rules", "both", "linear"))) {
     stop("Argument type should be 'rules', 'linear' or 'both'.\n")
   }
+  
+  ## Check if user is trying to specify a random forest as in example Fokkema 2020 JSS
+  if (mtry < Inf && tree.unbiased == FALSE) {
+    message("Use of mtry argument with tree.unbiased = FALSE is not supported. Alternatively, it is supported through Breiman's (2000) original random forest algorithm, which can be used for rule generation by specifying randomForest = TRUE. See ?pre and argument randomForest for further info.")
+  }
+
   
   ## Check if proper sampfrac argument is specified:
   if (!is.function(sampfrac)) {

@@ -132,6 +132,8 @@ mi_pre <- function(formula, data, ## As in pre()
   
   ## Process data
   data <- do.call(rbind, data)
+  data <- model.frame(Formula::as.Formula(formula), data = data, na.action = NULL)
+  if (any(is.na(data)) stop("Imputed data contains missings, make sure all missing values are imputed.")
   obs_ids <- unlist(obs_ids)
   
   ## Compute weights
