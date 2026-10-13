@@ -6,21 +6,20 @@ bibliography: README.bib
 csl: inst/bib_style.csl
 ---
 
-# **`pre`**: an R package for deriving prediction rule ensembles
+# `pre`: an R package for fitting prediction rule ensembles
 
 ## Contents
 
 -   [Introduction](#introduction)
--   [Example: A rule ensemble for predicting ozone levels](#example-a-rule-ensemble-for-predicting-ozone-levels)
+-   [Example rule ensemble for predicting ozone levels](#example-a-rule-ensemble-for-predicting-ozone-levels)
 -   [Tools for interpretation](#tools-for-interpretation)
+    -   [SHAP values](#shap-values)
     -   [Importance measures](#importance-measures)
-    -   [Explaining individual predictions](#explaining-individual-predictions)
     -   [Partial dependence plots](#partial-dependence-plots)
     -   [Assessing presence of interactions](#assessing-presence-of-interactions)
-    -   [Correlations between selected terms](#correlations-between-selected-terms)
 -   [Tuning parameters of function pre](#tuning-parameters)
 -   [Dealing with missing values](#dealing-with-missing-values)
--   [Go sparser with relaxed lasso fits](#go-sparser-with-relaxed-lasso-fits)
+-   [Relaxed lasso (more sparse) fits](#relaxed-lasso-(more-sparse)-fits)
 -   [Generalized Prediction Ensembles: Combining MARS, rules and linear terms](#generalized-prediction-ensembles-combining-mars-rules-and-linear-terms)
 -   [Credits](#credits)
 -   [References](#references)
@@ -36,16 +35,15 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-**`pre`** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema20]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with several adjustments: 
+**`pre`** is an **R** package for deriving prediction rule ensembles for binary, multinomial, (multivariate) continuous, count and survival responses. Input variables may be numeric, ordinal and categorical. An extensive description of the implementation and functionality is provided in [@Fokkema20], an extensive introduction aimed at researchers in social sciences is provided in [@FokkemaStrobl20]. The package largely implements the algorithm for deriving prediction rule ensembles as described in [@Friedman08], with the following adjustments: 
 
-1. The package is completely **`R`** based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
+1. The package is completely `R` based, allowing users better access to the results and more control over the parameters used for generating the prediction rule ensemble.
 2. The unbiased tree induction algorithms of [@Hothorn06] is used for deriving prediction rules, by default. Alternatively, the (g)lmtree algorithm of [@Zeileis08] can be employed, or the classification and regression tree (CART) algorithm of [@Breiman84].
 3. The package supports a wider range of response variable types.
 4. The initial ensemble may be generated as a bagged, boosted and/or random forest ensemble.
 5. Hinge functions of predictor variables may be included as baselearners, as in the multivariate adaptive regression splines (MARS) approach of [@Friedman91], using function `gpe()`.
 6. Tools for explaining individual predictions are provided.  
 
-Note that **`pre`** is under development, and much work still needs to be done. Below, an introduction the the package is provided. [@Fokkema20] provides an extensive description of the fitting procedures implemented in function `pre()` and example analyses with more extensive explanations. An extensive introduction aimed at researchers in social sciences is provided in [@FokkemaStrobl20].  
 
 
 ## Example: A rule ensemble for predicting ozone levels
@@ -67,7 +65,7 @@ We can print the resulting ensemble (alternatively, we could use the `print` met
 airq.ens
 ```
 
-The first few lines of the printed results provide the penalty parameter value ($\lambda$) employed for selecting the final ensemble. By default, the '1-SE' rule is used for selecting $\lambda$; this default can be overridden by employing the `penalty.par.val` argument of the `print` method and other functions in the package. Note that the printed cross-validated error is calculated using the same data as was used for generating the rules and likely provides an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function ```cvpre()``` later on.
+The first few lines of the printed results provide the penalty parameter value ($\lambda$) employed for selecting the final ensemble. By default, the '1-SE' rule is used for selecting $\lambda$; this default can be overridden by employing the `penalty.par.val` argument of the `print` method and other functions in the package. Note that the printed cross-validated error is calculated using the same data as was used for generating the rules and likely provides an overly optimistic estimate of future prediction error. To obtain a more realistic prediction error estimate, we will use function `cvpre()` later on.
 
 Next, the printed results provide the rules and linear terms selected in the final ensemble, with their estimated coefficients. For rules, the `description` column provides the conditions. For linear terms (which were not selected in the current ensemble), the winsorizing points used to reduce the influence of outliers on the estimated coefficient would be printed in the `description` column. The `coefficient` column presents the estimated coefficient. These are regression coefficients, reflecting the expected increase in the response for a unit increase in the predictor, keeping all other predictors constant. For rules, the coefficient thus reflects the difference in the expected value of the response when the conditions of the rule are met, compared to when they are not.
 
@@ -104,12 +102,40 @@ airq.cv <- cvpre(airq.ens)
 
 The results provide the mean squared error (MSE) and mean absolute error (MAE) with their respective standard errors. These results are saved for later use in `aiq.cv$accuracy`. The cross-validated predictions, which can be used to compute alternative estimates of predictive accuracy, are saved in `airq.cv$cvpreds`. The folds to which observations were assigned are saved in `airq.cv$fold_indicators`.
 
-For tuning the parameters of function `pre()` so as to obtain optimal predictive accuracy, users are advised to use **`R`** package **`caret`**. A tutorial is provided as a vignette, accessible by typing `vignette("tuning", package = "pre")` in **`R`** or by going to https://cran.r-project.org/package=pre/vignettes/missingness.html in a browser and clicking on the corresponding link to the vignette.
+For tuning the parameters of function `pre()` so as to obtain optimal predictive accuracy, users are advised to use R package `caret`. A tutorial is provided as a vignette, accessible by typing `vignette("tuning", package = "pre")` in `R` or by going to https://cran.r-project.org/package=pre/vignettes/Missingness.html in a browser and clicking on the corresponding link to the vignette.
 
 
 ## Tools for interpretation
 
 Package **`pre`** provides several additional tools for interpretation of the final ensemble. These may be especially helpful for complex ensembles containing many rules and linear terms. 
+
+
+
+### SHAP values
+
+SHAP values quantify the contribution of individual predictors to a model's predictions. SHAP values quantify these contributions for specific observations, and therefore provide measures of *local* importance. Although exact SHAP values can be computationally expensive to obtain, in @spadaccini2025discovery we derived a simplified expression for computing exact marginal SHAP values for prediction rule ensembles. This functionality is implemented in function `shap`:
+
+```{r}
+airq.shaps <- shap(airq.ens, newdata = airq)
+```
+
+The resulting SHAP values can be visualized with package `shapviz`:
+
+
+```{r, fig.width=5.5,fig.height=4}
+library("shapviz")
+baseline <- mean(predict(airq.ens, newdata = airq))
+sv <- shapviz(object = airq.shaps$marginal, 
+              X = airq, 
+              baseline = baseline)
+sv_importance(sv, kind = "bee")
+```
+
+More information is provided in the SHAP vignette:
+
+```{r, eval=FALSE}
+vignette("shap", package = "pre")
+```
 
 
 ### Importance measures
@@ -127,25 +153,10 @@ include_graphics(sprintf("%simportance-1.png", opts_current$get("fig.path")))
 As we already observed in the printed ensemble, the plotted variable importances indicate that Temperature and Wind are most strongly associated with Ozone levels. Solar.R and Day are also associated with Ozone levels, but much less strongly. Variable Month is not plotted, which means it obtained an importance of zero, indicating that it is not associated with Ozone levels. We already observed this in the printed ensemble: Month did not appear in any of the selected terms. The variable and baselearner importances are saved for later use in `imps$varimps` and `imps$baseimps`, respectively. 
 
 
-### Explaining individual predictions
-
-We can obtain explanations of the predictions for individual observations using function `explain()`:
-
-```{r explain, fig.show = "hide"}
-par(mfrow = c(1, 2))
-expl <- explain(airq.ens, newdata = airq[1:2, ], cex = .8)
-```
-
-```{r, echo=FALSE, warning=FALSE, message=FALSE, out.width = "600px"}
-include_graphics(sprintf("%sexplain-1.png", opts_current$get("fig.path")))
-```
-
-The values of the rules and linear terms for each observation are saved in `expl$predictors`, their contributions in `expl$contribution` and the predicted values in `expl$predicted.value`.
-
 
 ### Partial dependence plots
 
-We can obtain partial dependence plots to assess the effect of single predictor variables on the outcome using the `singleplot()` function:
+We can obtain partial dependence plots to assess the effect of single predictors on the outcome using the `singleplot()` function:
 
 ```{r singleplot,  fig.show = "hide"}
 singleplot(airq.ens, varname = "Temp")
@@ -155,7 +166,7 @@ singleplot(airq.ens, varname = "Temp")
 include_graphics(sprintf("%ssingleplot-1.png", opts_current$get("fig.path")))
 ```
 
-We can obtain partial dependence plots to assess the effects of pairs of predictor variables on the outcome using the `pairplot()` function:
+We can obtain partial dependence plots to assess the effects of pairs of predictors on the outcome using the `pairplot()` function:
 
 ```{r pairplot, fig.show = "hide", warning=FALSE, message=FALSE}
 pairplot(airq.ens, varnames = c("Temp", "Wind"))
@@ -165,7 +176,7 @@ pairplot(airq.ens, varnames = c("Temp", "Wind"))
 include_graphics(sprintf("%spairplot-1.png", opts_current$get("fig.path")))
 ```
 
-Note that creating partial dependence plots is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. Milborrow's [-@Milb18] **`plotmo`** package provides more efficient functions for plotting partial dependence, which also support `pre` models. 
+Note that creating partial dependence plots is computationally intensive and computation time will increase fast with increasing numbers of observations and numbers of variables. Milborrow's [-@Milb18] `plotmo` package provides more efficient functions for plotting partial dependence, which also support `pre` models. 
 
 If the final ensemble does not contain many terms, inspecting individual rules and linear terms through the `print` method may be more informative than partial dependence plots. One of the main advantages of prediction rule ensembles is their interpretability: the predictive model contains only simple functions of the predictor variables (rules and linear terms), which are easy to grasp. Partial dependence plots are often much more useful for interpretation of complex models, like random forests for example.
 
@@ -187,7 +198,7 @@ int <- interact(airq.ens, nullmods = nullmods)
 include_graphics(sprintf("%sinteract-1.png", opts_current$get("fig.path")))
 ```
 
-The plotted variable interaction strengths indicate that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval (CI) of interaction stengths in the null interaction models (lighter grey bar represents the median, error bars represent the 90% CIs). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of boostrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
+The plotted variable interaction strengths indicate that Temperature and Wind may be involved in interactions, as their observed interaction strengths (darker grey) exceed the upper limit of the 90% confidence interval (CI) of interaction stengths in the null interaction models (lighter grey bar represents the median, error bars represent the 90% CIs). The plot indicates that Solar.R and Day are not involved in any interactions. Note that computation of null interaction models is computationally intensive. A more reliable result can be obtained by computing a larger number of bootstrapped null interaction datasets, by setting the `nsamp` argument of function `bsnullinteract()` to a larger value (e.g., 100).
 
 
 ### Correlations between selected terms 
@@ -211,7 +222,7 @@ To obtain an optimal set of model-fitting parameters, package **`caret`** @Kuhn0
 vignette("tuning", package = "pre")
 ```
 
-or go to https://cran.r-project.org/package=pre/vignettes/tuning.html in a browser.
+or go to https://cran.r-project.org/package=pre/vignettes/Tuning.html in a browser.
 
 
 ## Dealing with missing values
@@ -222,10 +233,10 @@ Some suggestions on how to deal with missing values are provided in the followin
 vignette("missingness", package = "pre")
 ```
 
-or go to https://cran.r-project.org/package=pre/vignettes/missingness.html in a browser. 
+or go to https://cran.r-project.org/package=pre/vignettes/Missingness.html in a browser. 
 
 
-## Go sparser with relaxed lasso fits
+## Relaxed lasso (more sparse) fits
 
 When sparsity (i.e., a final ensemble comprising only few terms) is of central importance, the so-called relaxed lasso can be employed. It allows for retaining a pre-specified (low) number of terms, with adequate predictive accuracy. An introduction and tutorial is provided in the following vignette:
 

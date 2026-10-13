@@ -28,7 +28,7 @@ eTerm(x, scale = 1/0.4)
 Wrapper functions for terms in gpe.
 }
 \details{
-The motivation to use wrappers is to ease getting the different terms as shown in the examples and to simplify the formula passed to \code{\link{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescales and/or winsorizes \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
+The motivation to use wrappers is to ease getting the different terms as shown in the examples and to simplify the formula passed to \code{\link[glmnet]{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescales and/or winsorizes \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
 }
 \examples{
 mt <- terms(

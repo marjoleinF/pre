@@ -45,34 +45,34 @@ gpe_earth(
 
 \item{parallel}{\code{TRUE}. Should basis functions be found in parallel?}
 
-\item{use_grad}{\code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2001) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).}
+\item{use_grad}{\code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link[partykit]{ctree}} instead of \code{\link[partykit]{glmtree}} as in Friedman (2001) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).}
 
-\item{tree.control}{\code{\link{ctree_control}} with options for the \code{\link{ctree}} function.}
+\item{tree.control}{\code{\link[partykit]{ctree_control}} with options for the \code{\link[partykit]{ctree}} function.}
 
 \item{winsfrac}{Quantile to winsorize linear terms. The value should be in \eqn{[0,0.5)}}
 
 \item{normalize}{\code{TRUE}. Should value be scaled by .4 times the inverse standard deviation? If \code{TRUE}, gives linear terms the same influence as a typical rule.}
 
-\item{degree}{Maximum degree of interactions in \code{\link{earth}} model.}
+\item{degree}{Maximum degree of interactions in \code{\link[earth]{earth}} model.}
 
-\item{nk}{Maximum number of basis functions in \code{\link{earth}} model.}
+\item{nk}{Maximum number of basis functions in \code{\link[earth]{earth}} model.}
 
 \item{ntrain}{Number of models to fit.}
 
 \item{cor_thresh}{A threshold on the pairwise correlation for removal of basis functions. This is similar to \code{remove_duplicates_complements}. One of the basis functions in pairs where the correlation exceeds the threshold is excluded. \code{NULL} implies no exclusion. Setting a value closer to zero will decrease the time needed to fit the final model.}
 }
 \value{
-A function that has formal arguments \code{formula}, \code{data}, \code{weights}, \code{sample_func}, \code{verbose}, \code{family}, \code{...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link{cv.glmnet}}
+A function that has formal arguments \code{formula}, \code{data}, \code{weights}, \code{sample_func}, \code{verbose}, \code{family}, \code{...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link[glmnet]{cv.glmnet}}.
 }
 \description{
 Functions to get "learner" functions for \code{\link{gpe}}.
 }
 \details{
-\code{gpe_trees} provides learners for tree method. Either \code{\link{ctree}} or \code{\link{glmtree}} from the \code{partykit} package will be used.
+\code{gpe_trees} provides learners for tree method. Either \code{\link[partykit]{ctree}} or \code{\link[partykit]{glmtree}} from the \code{partykit} package will be used.
 
 \code{gpe_linear} provides linear terms for the \code{gpe}.
 
-\code{gpe_earth} provides basis functions where each factor is a hinge function. The model is estimated with \code{\link{earth}}.
+\code{gpe_earth} provides basis functions where each factor is a hinge function. The model is estimated with \code{\link[earth]{earth}}.
 }
 \references{
 Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.

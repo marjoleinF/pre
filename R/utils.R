@@ -476,3 +476,222 @@ get_y_learn_multinomial <- function(eta, y) {
     r
   })
 }
+
+
+
+
+.get_rules_mat_dense <- function(data, rules){
+  if(length(rules) == 0)
+    return(NULL)
+  
+  expr <- parse(text = paste0("cbind(", paste0(rules, collapse = ", "), ")"))
+  x <- eval(expr, data)
+  colnames(x) <- names(rules)
+  x
+}
+
+.get_rules_mat_sparse <- function(data, rules){
+  if(length(rules) == 0)
+    return(NULL)
+  
+  # See https://stackoverflow.com/a/8844057/5861244. 
+  #
+  # if all rules where binary then we could use the `lsparseMatrix-classes`. 
+  # However, this will not work when we call `glmnet` as it requires a double
+  # matrix`
+  expr <- paste0("cbind_sparse_vec(", paste0(
+    'as(as.numeric(', rules, '), "sparseVector")', collapse = ", "), ")")
+  x <- eval(parse(text = expr), data)
+  colnames(x) <- names(rules)
+  x
+}
+
+
+
+
+
+
+#' Sampling function generator for specifying varying maximum tree depth 
+#' in a prediction rule ensemble (pre)
+#' 
+#' \code{maxdepth_sampler} generates a random sampling function, governed
+#' by a pre-specified average tree depth.
+#' 
+#' @param av.no.term.nodes integer of length one. Specifies the average 
+#' number of terminal nodes in trees used for rule inducation.
+#' @param av.tree.depth integer of length one. Specifies the average maximum
+#' tree depth in trees used for rule induction.
+#' @return Returns a random sampling function with single argument \code{ntrees},
+#' which can be supplied to the \code{maxdepth} argument of function 
+#' \code{\link{pre}} to specify varying tree depths.
+#' @details The original RuleFit implementation varying tree sizes for
+#' rule induction. Furthermore, it defined tree size in terms of the number
+#' of terminal nodes. In contrast, function \code{\link{pre}} defines the 
+#' maximum tree size in terms of a (constant) tree depth. Function 
+#' \code{maxdepth_sampler} allows for mimicing the behavior of the
+#' orignal RuleFit implementation. In effect, the maximum tree depth is 
+#' sampled from an exponential distribution with learning rate 
+#' \eqn{1/(\bar{L}-2)}, where \eqn{\bar{L} \ge 2} represents the
+#' average number of terminal nodes for trees in the ensemble. See
+#' Friedman & Popescu (2008, section 3.3). 
+#' @references Friedman, J. H., & Popescu, B. E. (2008). Predictive learning 
+#' via rule ensembles. \emph{The Annals of Applied Statistics, 2}(3), 916-954.
+#' @seealso \code{\link{pre}}
+#' @examples
+#' ## RuleFit default is max. 4 terminal nodes, on average:
+#' func1 <- maxdepth_sampler()
+#' set.seed(42)
+#' func1(10)
+#' mean(func1(1000))
+#' 
+#' ## Max. 16 terminal nodes, on average (equals average maxdepth of 4):
+#' func2 <- maxdepth_sampler(av.no.term.nodes = 16L)
+#' set.seed(42)
+#' func2(10)
+#' mean(func2(1000))
+#' 
+#' ## Max. tree depth of 3, on average:
+#' func3 <- maxdepth_sampler(av.tree.depth = 3)
+#' set.seed(42)
+#' func3(10)
+#' mean(func3(1000))
+#' 
+#' ## Max. 2 of terminal nodes, on average (always yields maxdepth of 1):
+#' func4 <- maxdepth_sampler(av.no.term.nodes = 2L)
+#' set.seed(42)
+#' func4(10)
+#' mean(func4(1000))
+#' 
+#' \donttest{## Create rule ensemble with varying maxdepth:
+#' set.seed(42)
+#' airq.ens <- pre(Ozone ~ ., data = airquality[complete.cases(airquality),],
+#'                 maxdepth = func1)
+#' airq.ens}
+#' @export
+maxdepth_sampler <- function(av.no.term.nodes = 4L, av.tree.depth = NULL) {
+  function(ntrees, ...) {
+    if (!is.null(av.tree.depth)) {
+      av.no.term.nodes <- 2^av.tree.depth
+    }
+    ceiling(log(2 + floor(rexp(ntrees, rate = 1 / (av.no.term.nodes - 2))), base = 2))
+  }
+}
+
+
+
+
+
+
+
+#' Dealing with rare factor levels in fitting prediction rule ensembles.
+#' 
+#' Provides a sampling function to be supplied to the \code{sampfrac}
+#' argument of function \code{pre}, making sure that each level of specified factor(s)
+#' are present in each sample.
+#' 
+#' @details Categorical predictor variables (factors) with rare levels may be problematic 
+#' in boosting algorithms employing sampling (which is employed by default in
+#' function \code{pre}).
+#' 
+#' If a sample in a given boosting iteration does not have any observations with a given
+#' (rare) level of a factor, while this level is present in the full training dataset, and 
+#' the factor is selected for splitting in the tree, then no prediction for that level of the factor
+#' can be generated, resulting in an error. Note that boosting methods other than \code{pre} that also 
+#' employ sampling (e.g., \code{gbm} or \code{xgboost}) may not generate an error in such cases, 
+#' but also do not document how intermediate predictions are generated in such a case. It is likely that
+#' these methods use one-hot-encoding of factors, which from a perspective of model interpretation 
+#' introduces new problems, especially when the aim is to obtain a sparse set of rules as in `pre`. 
+#'                               
+#' With function \code{pre()}, the rare-factor-level issue, if encountered, can be dealt with by the user 
+#' in one of the following ways (in random order):
+#' 
+#' \itemize{
+#' \item Use a sampling function that guarantees inclusion of rare factor levels in each sample. E.g., 
+#' use \code{rare_level_sampler}, yielding a sampling function which creates training samples 
+#' guaranteed to include each level of specified factor(s). Advantage: No loss of information, easy to implement, 
+#' guaranteed to solve the issue. Disadvantage: May result in oversampling 
+#' of observations with rare factor levels, potentially biasing results. The bias is likely small though, and 
+#' will be larger for smaller sample sizes and sampling fractions, and for larger numbers of rare
+#' levels. The latter will also increase computational demands. 
+#' \item Specify \code{learnrate = 0}. This results in a (su)bagging instead of boosting approach.
+#' Advantage: Eliminates the rare-factor-level issue completely, because intermediate predictions
+#' need not be computed. Disadvantage: Boosting with low learning rate often improves predictive accuracy.
+#' \item Data pre-processing: Before running function \code{pre()}, combine rare factor levels 
+#' with other levels of the factors. Advantage: Limited loss of information. Disadvantage: Likely, but 
+#' not guaranteed to solve the issue. 
+#' \item Data pre-processing: Apply one-hot encoding to the predictor matrix before applying function `pre()`. This can easily be 
+#' done through applying function \code{\link[stats]{model.matrix}}. Advantage: Guaranteed to solve the error,
+#' easy to implement. Disadvantage: One-hot-encoding increases the number of predictor variables 
+#' which may reduce interpretability and, but probably to a lesser extent, accuracy.                                     
+#' \item Data pre-processing: Remove observations with rare factor levels from the dataset
+#' before running function \code{pre()}. Advantage: Guaranteed to solve the error. Disadvantage: 
+#' Removing outliers results in a loss of information, and may bias the results.
+#' \item Increase the value of \code{sampfrac} argument of function \code{pre()}. Advantage: Easy to
+#' implement. Disadvantage: Larger samples are more likely but not guaranteed to contain all possible 
+#' factor levels, thus not guaranteed to solve the issue.
+#' }
+#' @return A sampling function, which generates sub- or bootstrap samples as usual in function \code{pre}, but 
+#' checks if all levels of the specified factor(s) are present and adds observation with those levels if not. 
+#' If \code{warning = TRUE}, a warning is issued).
+#' 
+#' @param factors Character vector with name(s) of factors with rare levels. 
+#' @inheritParams pre
+#' @param warning logical. Whether a warning should be printed if observations with
+#' rare factor levels are added to the training sample of the current iteration.
+#' 
+#' @examples
+#' ## Create dataset with two factors containing rare levels
+#' dat <- iris[iris$Species != "versicolor", ]
+#' dat <- rbind(dat, iris[iris$Species == "versicolor", ][1:5, ])
+#' dat$factor2 <- factor(rep(1:21, times = 5))
+#' 
+#' ## Set up sampling function
+#' samp_func <- rare_level_sampler(c("Species", "factor2"), data = dat, 
+#'                                   sampfrac = .51, warning = TRUE)
+#' 
+#' ## Illustrate what it does                                                                   
+#' N <- nrow(dat)
+#' wts <- rep(1, times = nrow(dat))
+#' set.seed(3)
+#' dat[samp_func(n = N, weights = wts), ] # single sample
+#' for (i in 1:500) dat[samp_func(n = N, weights = wts), ]
+#' warnings() # to illustrate warnings that may occur when fitting a full PRE
+#' 
+#' ## Illustrate use with function pre:
+#' ## (Note: low ntrees value merely to reduce computation time for the example)
+#' set.seed(42)
+#' # iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 20) # would yield error
+#' iris.ens <- pre(Petal.Width ~ . , data = dat, ntrees = 20, 
+#'   sampfrac = samp_func) # should work
+#' @seealso \code{\link{pre}}
+#' @export
+rare_level_sampler <- function(factors, data, sampfrac = .5, warning = FALSE) {
+  if (sampfrac < 1) {
+    replace <- FALSE
+  }  else if (sampfrac == 1) {
+    replace <- TRUE
+  }
+  ids <- list()
+  for (i in factors) {
+    ids[[i]] <- lapply(unique(data[ , i]), function(x) which(data[ , i] == x))
+    names(ids[[i]]) <- unique(data[ , i])
+  }
+  ret <- function(n, weights, sampfrac. = sampfrac, replace. = replace, ids. = ids,
+                  warning. = warning) {
+    ## Generate initial random sample:
+    sample_ids <- sample(1:n, size = ceiling(sampfrac.*n), replace = replace., 
+                         prob = weights)
+    for (i in names(ids.)) {
+      ## For every factor, for all levels, check if present in sample
+      for (j in names(ids.[[i]])) {
+        if (!any(ids[[i]][[j]] %in% sample_ids)) {
+          ## If not present, add an observation with that level to the sample
+          sample_ids <- c(sample_ids, sample(ids[[i]][[j]], size = 1))
+          if (warning.) warning("Added observation with level ", j, " for variable ", i," to current sample.")
+        }
+      }
+    }
+    return(sample_ids)
+  }
+  ret
+}

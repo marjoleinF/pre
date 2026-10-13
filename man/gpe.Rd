@@ -42,7 +42,7 @@ computations.}
 \code{weights}, \code{family} which returns a fit object. This can be changed 
 to test other "penalized trainers" (like other function that perform an L1 
 penalty or L2 penalty and elastic net penalty). Not using 
-\code{\link{cv.glmnet}} may cause other function for \code{gpe} objects to 
+\code{\link[glmnet]{cv.glmnet}} may cause other function for \code{gpe} objects to 
 fail. See \code{\link{gpe_cv.glmnet}}.}
 
 \item{model}{\code{TRUE} if the \code{data} should added to the returned object.}

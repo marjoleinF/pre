@@ -69,13 +69,18 @@ if(interactive()){
 #####
 # Prepare data sets for test
 
-data(PimaIndiansDiabetes, package = "mlbench", envir = environment())
+data(SynthDiabetes, package = "mlbench", envir = environment())
+## since Version 2.1-10, Pima Indians Diabetes data sets were removed from mlbench, 
+## "following their removals from the UCI Repository Of Machine Learning Repository."
+# The dataset has been replaced by a synthetic copy. 
+
+
 # We sub-sample to decrease computation time
 suppressWarnings(RNGversion("3.1.0"))
 set.seed(58594084)
-PimaIndiansDiabetes_full <- PimaIndiansDiabetes
-PimaIndiansDiabetes <- PimaIndiansDiabetes[
-  sample.int(nrow(PimaIndiansDiabetes), 200 , replace = FALSE), ]
+PimaIndiansDiabetes_full <- SynthDiabetes
+PimaIndiansDiabetes <- SynthDiabetes[
+  sample.int(nrow(SynthDiabetes), 200 , replace = FALSE), ]
 
 airquality <- airquality[complete.cases(airquality), ]
 

@@ -7,13 +7,13 @@
 gpe_cv.glmnet(...)
 }
 \arguments{
-\item{...}{arguments to \code{\link{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used.}
+\item{...}{arguments to \code{\link[glmnet]{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used.}
 }
 \value{
 Returns a function with formal arguments \code{x, y, weights, family} and returns a fit object.
 }
 \description{
-Default "penalizer function" generator \code{\link{gpe}} which uses \code{\link{cv.glmnet}}.
+Default "penalizer function" generator \code{\link{gpe}} which uses \code{\link[glmnet]{cv.glmnet}}.
 }
 \seealso{
 \code{\link{gpe}}

@@ -35,6 +35,7 @@ export("rare_level_sampler")
 export("mi_pre")
 export("mi_mean")
 export("prune_pre")
+export("shap")
 
 import("Formula")
 import("glmnet")

@@ -1,5 +1,5 @@
 ---
-title: "Tuning the parameters of function pre"
+title: "Tuning parameters of function pre"
 author: "Marjolein Fokkema"
 output: rmarkdown::html_vignette
 vignette: >

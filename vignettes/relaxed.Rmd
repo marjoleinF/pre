@@ -3,7 +3,7 @@ title: "More adaptive or relaxed: Fitting sparser rule ensembles with relaxed an
 author: "Marjolein Fokkema"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{More sparse and relaxed: Fitting rule ensembles with the relaxed lasso}
+  %\VignetteIndexEntry{More adaptive or relaxed: Fitting sparser rule ensembles with relaxed and/or adaptive lasso}
   %\VignetteEngine{knitr::rmarkdown}
   %\usepackage[utf8]{inputenc}
 bibliography: bib.bib
@@ -21,7 +21,7 @@ An excellent discussion of consistency, predictive performance and selection acc
 
 ### Relaxed lasso
 
-The relaxed lasso was originally proposed by [@meinshausen2007relaxed]. Investigations of [@su2017false] provide insight on why the relaxed lasso is beneficial. [@hastie2017extended] propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. [@hastie2017extended] find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". Function `pre` supports use of the relaxed lasso through passing of argument `relax`. A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso", accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
+The relaxed lasso was originally proposed by [@meinshausen2007relaxed]. Investigations of [@su2017false] provide insight on why the relaxed lasso is beneficial. [@hastie2020best] propose a simplified version of the relaxed lasso, which is implemented in package **`glmnet`** and can be employed in package **`pre`**. [@hastie2020best] find that "best subset selection generally performing better in high signal-to-noise (SNR) ratio regimes, and the lasso better in low SNR regimes" and that "the relaxed lasso [...] is the overall winner, performing just about as well as the lasso in low SNR scenarios, and as well as best subset selection in high SNR scenarios". Function `pre` supports use of the relaxed lasso through passing of argument `relax`. A short introduction to the relaxed lasso is provided in **`glmnet`** vignette "The Relaxed lasso", accessible in **`R`** by typing `vignette("relax", "glmnet")`. 
 
 
 ### Adaptive lasso
@@ -107,7 +107,7 @@ plot.cv.relaxed <- function (x, se.bands = TRUE, cex = .7, cex.axis= .7,
 plot(airq.ens.rel$glmnet.fit)
 ```
 
-We obtained one regularization path for each value of $\gamma$. $gamma$ is a mixing parameter, that determines the weight of the original lasso solution, relative to a solution containing only the selected variables, but with unpenalized coefficient estimates. The path for $\gamma = 1$ is the default lasso path, which we would also have obtained without specifying `relax = TRUE`. Lower values of $\gamma$ 'unshrink' the value of the non-zero coefficients of the lasso towards their unpenalized values. We see that for the $\lambda$ value yielding the minimum MSE (indicated by the left-most vertical dotted line), the value of $\gamma$ does not make a lot of difference for the MSE, but when $\lambda$ values increase, higher values of $\gamma$ tend to improve predictive performance. This is a common pattern for $\lambda$ and $\gamma$. 
+We obtained one regularization path for each value of $\gamma$. $\gamma$ is a mixing parameter, that determines the weight of the original lasso solution, relative to a solution containing only the selected variables, but with unpenalized coefficient estimates. The path for $\gamma = 1$ is the default lasso path, which we would also have obtained without specifying `relax = TRUE`. Lower values of $\gamma$ 'unshrink' the value of the non-zero coefficients of the lasso towards their unpenalized values. We see that for the $\lambda$ value yielding the minimum MSE (indicated by the left-most vertical dotted line), the value of $\gamma$ does not make a lot of difference for the MSE, but when $\lambda$ values increase, higher values of $\gamma$ tend to improve predictive performance. This is a common pattern for $\lambda$ and $\gamma$. 
 
 For model selection using the `"lambda.min"` criterion, by default the $\lambda$ and $\gamma$ combination yielding the lowest CV error is returned. For the `"lambda.1se"` criterion, the $\lambda$ and $\gamma$ combination yielding the sparsest solution within 1 standard error of the error criterion of the minimum is returned:
 

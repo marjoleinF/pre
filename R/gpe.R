@@ -12,25 +12,25 @@ utils::globalVariables(c(".offset"))
 #' @param maxdepth Maximum depth of trees. Will not have an effect if \code{tree.control} is used. 
 #' @param learnrate Learning rate for methods. Corresponds to the \eqn{\nu} parameter in Friedman & Popescu (2008).
 #' @param parallel \code{TRUE}. Should basis functions be found in parallel?
-#' @param use_grad \code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link{ctree}} instead of \code{\link{glmtree}} as in Friedman (2001) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).
-#' @param tree.control \code{\link{ctree_control}} with options for the \code{\link{ctree}} function.
+#' @param use_grad \code{TRUE}. Should binary outcomes use gradient boosting with regression trees when \code{learnrate > 0}? That is, use \code{\link[partykit]{ctree}} instead of \code{\link[partykit]{glmtree}} as in Friedman (2001) with a second order Taylor expansion instead of first order as in Chen and Guestrin (2016).
+#' @param tree.control \code{\link[partykit]{ctree_control}} with options for the \code{\link[partykit]{ctree}} function.
 #' @param winsfrac Quantile to winsorize linear terms. The value should be in \eqn{[0,0.5)}
 #' @param normalize \code{TRUE}. Should value be scaled by .4 times the inverse standard deviation? If \code{TRUE}, gives linear terms the same influence as a typical rule.
-#' @param degree Maximum degree of interactions in \code{\link{earth}} model.
-#' @param nk Maximum number of basis functions in \code{\link{earth}} model.
+#' @param degree Maximum degree of interactions in \code{\link[earth]{earth}} model.
+#' @param nk Maximum number of basis functions in \code{\link[earth]{earth}} model.
 #' @param ntrain Number of models to fit.
 #' @param cor_thresh A threshold on the pairwise correlation for removal of basis functions. This is similar to \code{remove_duplicates_complements}. One of the basis functions in pairs where the correlation exceeds the threshold is excluded. \code{NULL} implies no exclusion. Setting a value closer to zero will decrease the time needed to fit the final model.
 #' 
 #' 
 #' @details 
-#' \code{gpe_trees} provides learners for tree method. Either \code{\link{ctree}} or \code{\link{glmtree}} from the \code{partykit} package will be used.
+#' \code{gpe_trees} provides learners for tree method. Either \code{\link[partykit]{ctree}} or \code{\link[partykit]{glmtree}} from the \code{partykit} package will be used.
 #' 
 #' \code{gpe_linear} provides linear terms for the \code{gpe}.
 #' 
-#' \code{gpe_earth} provides basis functions where each factor is a hinge function. The model is estimated with \code{\link{earth}}.
+#' \code{gpe_earth} provides basis functions where each factor is a hinge function. The model is estimated with \code{\link[earth]{earth}}.
 #' 
 #' @return 
-#' A function that has formal arguments \code{formula}, \code{data}, \code{weights}, \code{sample_func}, \code{verbose}, \code{family}, \code{...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link{cv.glmnet}}
+#' A function that has formal arguments \code{formula}, \code{data}, \code{weights}, \code{sample_func}, \code{verbose}, \code{family}, \code{...}. The function returns a vector with character where each element is a term for the final formula in the call to \code{\link[glmnet]{cv.glmnet}}.
 #' 
 #' @seealso 
 #' \code{\link{gpe}}, \code{\link{rTerm}}, \code{\link{lTerm}}, \code{\link{eTerm}}
@@ -202,7 +202,7 @@ gpe_trees <- function(
 #' @param scale Inverse value to time \code{x} by. Usually the standard deviation is used. \code{0.4 / scale} is used as the multiplier as suggested in Friedman & Popescu (2008) and gives each linear term the same a-priori influence as a typical rule.
 #' 
 #' @details 
-#' The motivation to use wrappers is to ease getting the different terms as shown in the examples and to simplify the formula passed to \code{\link{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescales and/or winsorizes \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
+#' The motivation to use wrappers is to ease getting the different terms as shown in the examples and to simplify the formula passed to \code{\link[glmnet]{cv.glmnet}} in \code{\link{gpe}}. \code{lTerm} potentially rescales and/or winsorizes \code{x} depending on the input. \code{eTerm} potentially rescale \code{x} depending on the input.
 #' 
 #' @return 
 #' \code{x} potentially transformed with additional information provided in the attributes.
@@ -578,9 +578,9 @@ eTerm <- function(x, scale = 1 / 0.4){
 #' @title Default penalized trainer for gpe
 #' 
 #' @description 
-#' Default "penalizer function" generator \code{\link{gpe}} which uses \code{\link{cv.glmnet}}.
+#' Default "penalizer function" generator \code{\link{gpe}} which uses \code{\link[glmnet]{cv.glmnet}}.
 #' 
-#' @param ... arguments to \code{\link{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used.
+#' @param ... arguments to \code{\link[glmnet]{cv.glmnet}}. \code{x}, \code{y}, \code{weights} and \code{family} will not be used.
 #' 
 #' @return 
 #' Returns a function with formal arguments \code{x, y, weights, family} and returns a fit object.
@@ -603,7 +603,8 @@ gpe_cv.glmnet <- function(...){
 get_cv.glmnet_args <- function(args, x, y, weights, family){
   defaults <- list(
     nfolds =  10L, standardize = FALSE, 
-    type.measure = "deviance", thres = 1e-07, 
+    type.measure = "deviance", 
+    control = list(thres = 1e-07),
     parallel = FALSE)
   
   not_match <- !(names(args) %in% names(defaults))
@@ -690,7 +691,7 @@ gpe_sample <- function(sampfrac = .5){
 #' \code{weights}, \code{family} which returns a fit object. This can be changed 
 #' to test other "penalized trainers" (like other function that perform an L1 
 #' penalty or L2 penalty and elastic net penalty). Not using 
-#' \code{\link{cv.glmnet}} may cause other function for \code{gpe} objects to 
+#' \code{\link[glmnet]{cv.glmnet}} may cause other function for \code{gpe} objects to 
 #' fail. See \code{\link{gpe_cv.glmnet}}.
 #' @param model \code{TRUE} if the \code{data} should added to the returned object.
 #' 

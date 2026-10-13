@@ -1,0 +1,185 @@
+---
+title: "Computing SHAP values for rule ensembles"
+author: "Marjolein Fokkema"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Computing SHAP values for rule ensembles}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
+bibliography: bib.bib
+csl: bib_style.csl
+---
+
+## Introduction
+
+SHAP (SHapley Additive exPlanations) values were introduced by @LubdyScot17 and quantify the contribution of individual predictors to a model's predictions. SHAP values quantify these contributions for specific observations, and therefore provide measures of *local* importance [@molnar2025]. Although exact SHAP values can be computationally expensive to obtain, in @spadaccini2025discovery we derived a simplified expression for computing exact marginal SHAP values for prediction rule ensembles. This functionality is implemented in function `shap`. This vignette illustrates its use, and shows how the results can be plotted.   
+
+
+## Example: Fitting a rule ensemble
+
+```{r}
+library("pre")
+```
+
+We fit a PRE to predict `Ozone` (daily ozone readings) with the `airquality` data:
+
+```{r}
+airq <- na.omit(airquality)
+set.seed(42)
+airq.ens <- pre(Ozone ~ ., data = airq)
+airq.ens ## equivalent to print(airq.ens)
+```
+
+Twelve rules were selected, involving predictors `Temp`, `Wind`, `Solar.R` and `Day`. No linear terms were selected. 
+
+By default, the 1SE rule is used to select the final ensemble by the `print` method, which can be overridden by specifying the `penalty.par.val` argument. 
+
+## Computing marginal SHAP values 
+
+We compute SHAP values using function `shap` (it uses the same default for the `penalty.par.val` argument, which can be overridden):
+
+```{r}
+airq.shaps <- shap(airq.ens, newdata = airq)
+```
+
+The `newdata` argument specifies for which observations SHAP values should be computed. This can be one or more new (or test) observations, but here we requested SHAP values for the full training dataset. Not specifying the `newdata` argument would have yielded the exact same result.
+
+The result is a list of two elements, `marginal` and `interactions`:
+
+```{r}
+str(airq.shaps)
+```
+
+Marginal SHAP values are computed for each predictor, by default. The marginal SHAP values are returned as an $N \times p$ matrix, with SHAP values for each observation (rows) and predictor (columns). Interaction SHAP values will be computed when `interactions = TRUE` is specified.
+
+
+## Visualizing marginal SHAP values
+
+We can create a simple function to plot the resulting SHAP values, e.g.:
+
+```{r}
+plot.shap <- \(object, shaps, variable, ...) {
+  plot(object$data[ , variable], shaps$marginal[ , variable], 
+     xlab = variable, ylab = "SHAP", ...)
+}
+```
+
+We can now use this function to e.g. plot the SHAP values for `Wind` and `Month`:
+
+```{r}
+par(mfrow = c(1, 2))
+plot.shap(airq.ens, airq.shaps, "Wind")
+plot.shap(airq.ens, airq.shaps, "Month")
+```
+
+The plots reveal that `Wind` has a negative effect on predicted Ozone levels. That for the same value of `Wind`, we obtain different SHAP values suggests that the other variables could in part determine the effect of the predictors on the ensembles' predictions. For `Month`, we see that it does not affect the ensembles' predictions.
+
+
+
+
+## Visualizing marginal SHAP values with beeswarms and waterfall plots using package `shapviz`
+
+R package `shapviz` is often used to visualize the SHAP values, to e.g. obtain beeswarm or waterfall plots. We can construct a `shapviz` object from the rule ensemble's SHAP values, predictor variable values and a baseline:
+
+```{r}
+library("shapviz")
+baseline <- mean(predict(airq.ens, newdata = airq))
+sv <- shapviz(object = airq.shaps$marginal, 
+              X = airq, 
+              baseline = baseline)
+```
+
+With the default reference data used by function `shap` (see also argument `reference_data` for changing it), the baseline is the mean prediction over the the training data. Furthermore, argument `X` specifies the original predictor values corresponding to the rows of the SHAP matrix. Note that categorical predictors (if present) should be supplied in their original factor representation.
+
+From this `shapviz` object, we can obtain e.g. beeswarm plots:
+
+```{r, fig.width=5.5,fig.height=4}
+sv_importance(sv, kind = "bee")
+```
+
+The predictors are ordered by the variation in their SHAP values. More variation corresponds to greater magnitude, because a variable that does not contribute to predictions would have SHAP values of 0. `Temp` thus appears most important, followed by `Wind`, then by `Solar.R`, then by `Day` which has a very minor effect and finally `Month` which has no effect on predictions.
+
+The contributions of `Temp` and `Solar.R` appear monotonically increasing, the effect of `Wind` monotonically decreasing. If observations with similar feature values (and therefore similar colors) have substantially different SHAP values, this suggests interactions with other predictors, which does not seem to be the case here.
+
+
+`Month` does not affect predictions, but its points are colored mostly yellow because the observations in `airq` are ordered by `Month`. The apparent color pattern is therefore an artifact of the observation order, which is also used for plotting.
+
+
+Often, waterfall plots are used for explaining individual predictions, e.g.:
+
+```{r}
+sv_waterfall(sv, row_id = 1)
+```
+
+The waterfall starts at the baseline prediction and successively adds the SHAP contributions to arrive at the model prediction. For the first observation in the dataset, `Solar.R` and `Temp` have small positive effects and `Day` has a small negative effect. We observe zero contribution for `Month`, because it does not appear in any of the terms of the rule ensemble. 
+
+Other functions from package `shapviz`, like `sv_importance` and `sv_dependence` can also be applied to `sv`.
+
+
+
+## Computing interaction SHAP values
+
+We can obtain SHAP interaction values by specifying `interactions = TRUE`: 
+
+```{r}
+airq.shaps <- shap(airq.ens, newdata = airq, interactions = TRUE)
+str(airq.shaps)
+```
+
+Interaction SHAP values are saved in a three-dimensional $N \times p \times p$ array. That is, for each of the $N$ observations, a $p \times p$ matrix of SHAP values is returned. The diagonal entries are predictor variables' main-effect SHAP values, and the off-diagonal entries represent their interaction SHAP values. E.g., for the first observation the SHAP interaction matrix looks as follows:
+
+```{r}
+airq.shaps$interactions[1, , ]
+```
+
+The diagonal entries tend to have stronger magnitude than the off-diagonal entries, indicating that the model's effects for this observation are mostly main effects, while interactions are minor. There is one exception to this rule: The interaction SHAP for `Wind` and `Temp`, which has stronger magnitude than the main effect of `Wind` (but weaker than the main effect of `Temp`) for this observation.
+
+## Understanding (interaction) SHAP values
+
+Interaction SHAP values decompose the marginal SHAP values into contributions due to main effects and to interactions. Because the matrix of interaction SHAP values is symmetric, the row sums and column sums are identical, and they are also identical to the marginal SHAP values. E.g. for the first observation we have:
+
+```{r}
+rowSums(airq.shaps$interactions[1, , ])
+colSums(airq.shaps$interactions[1, , ])
+airq.shaps$marginal[1, ]
+```
+
+SHAP values represent the predictor variables' contribution to the predicted value, so by definition they sum to the difference between the model's predicted value and the baseline prediction. More formally, a model's prediction $f(x)$ is given by: 
+
+$$f(x) = E[f(X)] + \sum_j \phi_j(x),$$
+where $f$ is the predictive model, $x$ is a vector of predictor variable values, $E[f(X)]$ is the expected (or mean) model prediction over the reference distribution and $\phi_j(x)$ is the SHAP value for predictor $j$.   
+
+The SHAP values $\phi_j$ can be further decomposed into a main-effect contribution (diagonal elements) and interaction contributions with all other predictors (the corresponding off-diagonal elements). More formally,
+
+$$ \phi_j(x) = \phi_{jj}(x) + \sum_{k\neq j}\phi_{jk}(x), $$
+
+where $\phi_{jj}$ is the main effect (diagonal entries of the SHAP interaction matrix) and $\phi_{jk}$ are pairwise interactions (off-diagonal entries of the SHAP interaction matrix). 
+
+
+## Visualizing interaction SHAP values
+
+From the computed (interaction) SHAP values, we again create a `shapviz` object: 
+
+```{r, fig.width=7,fig.height=4}
+baseline <- mean(predict(airq.ens, newdata = airq))
+sv_int <- shapviz(object = airq.shaps$marginal, 
+                  X = airq, 
+                  baseline = baseline,
+                  S_inter = airq.shaps$interactions)
+sv_interaction(sv_int)
+``` 
+
+The plots on the diagonal show greatest variation in SHAP values, indicating again that main effects appear strongest in the model. Evidence for interaction effects would be found in off-diagonal plots showing variation in SHAP values. 
+
+We again observe that `Month` does not contribute to predictions, indicated by all SHAP values being zero. `Solar.R` and `Day` contribute only somewhat. `Wind` and `Temp` show the strongest effects, and there might be some interaction between them. Note that the two plots for this interaction are identical, save for the coloring, which indicates the values of `Wind` in the 2nd row, 1st column, and the values of `Temp` in the 1st row, 2nd column. However, the direction and form of this interaction are not easy to discern from these plots alone.
+
+
+## Session info
+
+In case you obtained different results, the results above were obtained using the following:
+
+```{r, echo=FALSE}
+sessionInfo()
+```
+
+## References

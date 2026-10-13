@@ -140,7 +140,7 @@ will be passed to
 \code{\link[randomForest]{randomForest}}. Argument \code{learnrate} will be 
 fixed to 0 and \code{sampfrac} will be ignored (preferences about sampling
 procedures should be passed to \code{tree.control} when using 
-\code{\link[randomForest]{randomForest}} which also allows to specify other 
+\code{\link[randomForest]{randomForest}}) which also allows to specify other 
 arguments of function \code{\link[randomForest]{randomForest}}.}
 
 \item{winsfrac}{numeric value \eqn{> 0} and \eqn{\le 0.5}. Quantiles of data 
@@ -169,10 +169,11 @@ generalizability of the final ensemble.}
 selecting the optimal value of the penalty parameter \eqn{\lambda} in selecting
 the final ensemble.}
 
-\item{tree.control}{list with control parameters to be passed to the tree 
+\item{tree.control}{a \code{list} with control parameters to be passed to the tree 
 fitting function, generated using \code{\link[partykit]{ctree_control}},
 \code{\link[partykit]{mob_control}} (if \code{use.grad = FALSE}), 
-\code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}), or
+\code{\link[rpart]{rpart.control}} (if \code{tree.unbiased = FALSE}). Or
+a list containing (n)one or more arguments that can be passed to function
 \code{\link[randomForest]{randomForest}} (if \code{randomForest = TRUE}.}
 
 \item{tree.unbiased}{logical. Should an unbiased tree generation algorithm 
@@ -365,7 +366,5 @@ Hothorn, T., & Zeileis, A. (2015). partykit: A modular toolkit for recursive
 partytioning in R. \emph{Journal of Machine Learning Research, 16}, 3905-3909.
 }
 \seealso{
-\code{\link{print.pre}}, \code{\link{plot.pre}}, 
-\code{\link{coef.pre}}, \code{\link{importance.pre}}, \code{\link{predict.pre}}, 
-\code{\link{interact}}, \code{\link{cvpre}}
+\code{\link{pre}}, \code{\link{importance.pre}}
 }

@@ -7,6 +7,8 @@ library(pre)
 
 library(earth)
 library(partykit)
+library(mlbench)
+library(glmnet)
 print(sessionInfo())
 
 test_check("pre")

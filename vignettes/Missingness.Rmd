@@ -5,7 +5,8 @@ output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Dealing with missing data in fitting prediction rule ensembles}
   %\VignetteEngine{knitr::rmarkdown}
-  %\usepackage[utf8]{inputenc}
+  %\VignetteEncoding{UTF-8}
+  %\VignettePackage{pre}
 bibliography: bib.bib
 csl: bib_style.csl
 ---
@@ -18,9 +19,9 @@ To deal with missing data in parametric models, multiple imputation is the golde
 
 * Single imputation: Perform only a single imputation and fit a prediction rule ensemble on this single dataset. This is likely better than listwise deletion, but likely inferior to multiple imputation. The main advantage is that a PRE can be fit as usual.
 
-* Multiple imputation followed by pooling. This approach takes multiple imputed datasets and fits a separate prediction rule ensemble to each of the imputed datasets, which are aggregated to form a final ensemble. The main disadvantage is that this yields an ensemble of ensembles, which will be (much) more complex and thus less interpretable than a single PRE. 
+* Multiple imputation followed by pooling. This approach takes multiple imputed datasets and fits a separate prediction rule ensemble to each of the imputed datasets, which are aggregated to form a single final ensemble. The main disadvantage is that this yields an ensemble of ensembles, which will be more complex and thus less interpretable than a single PRE. 
 
-* Multiple imputation followed by stacking. This approach stacks the multiple imputed datasets and fits a single prediction rule ensemble to this dataset. Rule generation and estimation of the final model can be adjusted to counter the artificial inflation of sample size. The main advantage is that it yields a single PRE, while treating missing data in an optimal manner.   
+* Multiple imputation followed by stacking. This approach stacks the multiple imputed datasets and fits a single prediction rule ensemble to this dataset. Rule generation and estimation of the final model can be adjusted to counter the artificial inflation of sample size. The main advantage is that it yields a single PRE, while treating missing data in an optimal manner. We have found the stacking of multiply imputed data in fitting prediction rule ensembles to work well in terms of predictive accuracy and rule recovery [@schroeder2024interpretable]. However, the fitted ensembles tend to be more complex [@schroeder2024interpretable].  
 
 An alternative, would be the Missing-In-Attributes approach for rule generation, followed by mean imputation for the final model. According to [@josse2019consistency], mean imputation and the Missing-In-Attributes approaches perform well from a prediction perspective and are computationally inexpensive. This will be implemented in future versions of package **`pre`**.
 
@@ -88,7 +89,7 @@ To deal with imputed data, we have two options: *Stacking* the imputed datasets 
 
 ### Stacking imputed datasets
 
-Function `mi_pre` implements a so-called *stacking* approach (see also [@wood2008should]), where imputed datasets are combined into one large dataset. In addition to adjustments of the sampling procedures, adjustments to observation weight are made to counter the artificial inflation of sample size. Function `mi_pre` takes a list of imputed datasets as input data, because it is assumed imputation has already been performed.
+Function `mi_pre` implements a so-called *stacking* approach (see also [@wood2008should]), where imputed datasets are combined into one large dataset. In addition to adjustments of the sampling procedures, adjustments to observation weight are made to counter the artificial inflation of sample size. Function `mi_pre` takes a list of imputed datasets as input data, because it is assumed imputation has already been performed. We have found the stacking of multiply imputed data in fitting prediction rule ensembles to work well in terms of predictive accuracy and rule recovery [@schroeder2024interpretable]. However, the fitted ensembles tend to be more complex [@schroeder2024interpretable].  
 
 Although the option to use the fraction of complete data for computing observation weight is provided through argument `compl_frac` of function `mi_pre`, users are not advised to use it. For example, [@du2022variable] write: "An alternative weight specification, proposed in Wan et al. (2015), is $o_i = \frac{f_i}{D}$, where $f_i$ is the number of observed predictors out of the total number of predictors for subject $i$ [...] upweighting subjects with less missingness and downweighting subjects with more missingness can, in some sense, be viewed as making the optimization more like complete-case analysis, which might be problematic for Missing at Random (MAR) and Missing not at Random (MNAR) scenarios."
 
