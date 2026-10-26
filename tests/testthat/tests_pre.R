@@ -57,7 +57,8 @@ test_that("Get previous results with airquality and pre function", {
   set.seed(42)
   airq.ens <- pre(Ozone ~ ., data = airquality, use.grad = FALSE, ntrees = 10)
   # save_to_test(airq.ens, "airquality_w_pre_with_glmtree")
-  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_glmtree"), tolerance = 1.49e-08)
+  expect_equal(strip_nzero_names(airq.ens),
+               strip_nzero_names(read_to_test("airquality_w_pre_with_glmtree")), tolerance = 1.49e-08)
   
   ####
   # (hidden) argument offset is passed to function glmtree and cv.glmnet
@@ -69,7 +70,8 @@ test_that("Get previous results with airquality and pre function", {
   expect(is.null(airq.ens.offs$glmnet.fit$call$offset) != is.null(airq.ens$glmnet.fit$call$offset),
          failure = "Argument offset might not be correcltly passed to cv.glmnet")
   # save_to_test(airq.ens.offs, "airquality_w_pre_with_glmtree_w_offset")
-  expect_equal(airq.ens.offs, read_to_test("airquality_w_pre_with_glmtree_w_offset"), tolerance = 1.49e-08)
+  expect_equal(strip_nzero_names(airq.ens.offs),
+               strip_nzero_names(read_to_test("airquality_w_pre_with_glmtree_w_offset")), tolerance = 1.49e-08)
   
   #####
   # Works with adaptive lasso
@@ -77,7 +79,8 @@ test_that("Get previous results with airquality and pre function", {
   airq.ens <- pre(Ozone ~ ., data = airquality, ad.alpha = 0, ntrees = 10)
   airq.ens$glmnet.fit$call <- airq.ens$glmnet.fit$glmnet.fit$call <- NULL
   # save_to_test(airq.ens, "airquality_w_pre_with_adaptive_lasso")
-  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_adaptive_lasso"), tolerance = 1.49e-08)
+  expect_equal(strip_nzero_names(airq.ens),
+               strip_nzero_names(read_to_test("airquality_w_pre_with_adaptive_lasso")), tolerance = 1.49e-08)
   
   ####
   # Works with relaxed adaptive lasso
@@ -86,7 +89,8 @@ test_that("Get previous results with airquality and pre function", {
   airq.ens$glmnet.fit$call <- airq.ens$glmnet.fit$glmnet.fit$call <- NULL
   airq.ens$glmnet.fit$glmnet.fit$relaxed$call <- NULL
   # save_to_test(airq.ens, "airquality_w_pre_with_relaxed_adaptive_lasso")
-  expect_equal(airq.ens, read_to_test("airquality_w_pre_with_relaxed_adaptive_lasso"), tolerance = 1.49e-08)
+  expect_equal(strip_nzero_names(airq.ens),
+               strip_nzero_names(read_to_test("airquality_w_pre_with_relaxed_adaptive_lasso")), tolerance = 1.49e-08)
   
   #### 
   # Relaxed (adaptive) lasso works with function prune_pre

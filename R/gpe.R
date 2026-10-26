@@ -604,7 +604,7 @@ get_cv.glmnet_args <- function(args, x, y, weights, family){
   defaults <- list(
     nfolds =  10L, standardize = FALSE, 
     type.measure = "deviance", 
-    control = list(thres = 1e-07),
+    control = list(thresh = 1e-07),
     parallel = FALSE)
   
   not_match <- !(names(args) %in% names(defaults))
