@@ -47,6 +47,26 @@ any_numeric <- function(x){
 # any_numeric(
 #   list(a = "a", b = list(a = "a", b = "c")))
 
+# glmnet < 5.2 named cv.glmnet()$nzero (and the relaxed nzero.min/nzero.1se)
+# by lambda step ("s0", "s1", ...); glmnet >= 5.2 does not. Strip those names
+# on both sides of a comparison so stored results compare equal under either
+# glmnet version.
+strip_nzero_names <- function(obj) {
+  gf <- obj$glmnet.fit
+  if (is.null(gf)) return(obj)
+  names(gf$nzero) <- NULL
+  if (!is.null(gf$relaxed)) {
+    gf$relaxed$statlist <- lapply(gf$relaxed$statlist, function(s) {
+      names(s$nzero) <- NULL
+      s
+    })
+    names(gf$relaxed$nzero.min) <- NULL
+    names(gf$relaxed$nzero.1se) <- NULL
+  }
+  obj$glmnet.fit <- gf
+  obj
+}
+
 #' @importFrom stringr str_match
 read_to_test <- function(file_name){
   path <- if(!interactive()) "./previous_results/" else

@@ -44,7 +44,7 @@ prune_pre <- function(object, nonzero, plusminus = 3) {
   
   ## Check if nonzero occurs in lambda path, otherwise warn and take nearest number
   if (!nonzero %in% object$glmnet.fit$nzero) {
-    nonzero <- object$glmnet.fit$nzero[names(which.min((nonzero - object$glmnet.fit$nzero)^2))[1L]]
+    nonzero <- object$glmnet.fit$nzero[which.min((nonzero - object$glmnet.fit$nzero)^2)]
     warning(paste0("Specified value of nonzero argument (", nonzero, ") does not occur on the lambda path. Results are returned for", nonzero, "non-zero terms, instead."), 
             immediate. = TRUE)
   }
@@ -66,16 +66,21 @@ prune_pre <- function(object, nonzero, plusminus = 3) {
     ## Get optimal lambda and gamma values for requested number of nonzero terms
     gammas <- names(object$glmnet.fit$relaxed$statlist)
     optimal_gammas <- gammas[apply(sapply(gammas, function(x) object$glmnet.fit$relaxed$statlist[[x]]$cvm), 1L, which.min)]
+    ## glmnet >= 5.2 no longer names cv.glmnet()$nzero (s0, s1, ...), so
+    ## label the lambda steps explicitly instead of relying on those names
+    ## propagating into the data.frame row names.
     df <- data.frame(lambda = object$glmnet.fit$lambda,
-                     number_of_nonzero_terms = object$glmnet.fit$nzero,
+                     number_of_nonzero_terms = unname(object$glmnet.fit$nzero),
                      optimal_gamma = optimal_gammas,
                      mean_cv_error = NA)
+    rownames(df) <- paste0("s", seq_len(nrow(df)) - 1L)
     svals <- as.numeric(substring(rownames(df)[df$number_of_nonzero_terms == nonzero], first = 2))
     svals <- (min(svals) - plusminus):(max(svals) + plusminus)
     svals <- paste0("s", svals[svals %in% 0:(nrow(df)+1)])
     df <- df[svals, ]
     for (i in rownames(df)) {
-      df[i, "mean_cv_error"] <- data.frame(object$glmnet.fit$relaxed$statlist[[df[i, "optimal_gamma"]]])[i, "cvm"]
+      step <- as.integer(substring(i, first = 2)) + 1L
+      df[i, "mean_cv_error"] <- object$glmnet.fit$relaxed$statlist[[df[i, "optimal_gamma"]]]$cvm[step]
     }
     df$optimal_gamma <- substring(df$optimal_gamma, first = 3)
     min_cvm <- which.min(df$mean_cv_error[df$number_of_nonzero_terms == nonzero])
